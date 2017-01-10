@@ -189,8 +189,9 @@ int barrelReadRaw(
 
   /* determine buffer size */
   const int8_t outClenLog2 = barrelLog2(outClen);
-  const int8_t bufClenLog2 = std::min((int8_t) BUF_CLEN_LOG2, outClenLog2);
+  if(outClenLog2 < 0) return -1;
 
+  const int8_t bufClenLog2 = std::min((int8_t) BUF_CLEN_LOG2, outClenLog2);
   const size_t bufNumel = 1 << (3 * bufClenLog2);
   const size_t bufClen = 1 << bufClenLog2;
 
@@ -248,7 +249,7 @@ int barrelReadLZ4(
 
   /* read jump table */
   size_t blockCount = 1 << (3 * (outClenLog2 - BLOCK_CLEN_LOG2));
-  uint64_t jumpTable[blockCount + 1] = {0};
+  uint64_t jumpTable[blockCount + 1];
 
   if(blockIdx){
     /* skip a couple of blocks */
@@ -257,6 +258,7 @@ int barrelReadLZ4(
     assert(fread(jumpTable, sizeof(uint64_t), blockCount + 1, in) == blockCount + 1);
   }else{
     /* start with first block */
+    jumpTable[0] = 0;
     assert(fread(&jumpTable[1], sizeof(uint64_t), blockCount, in) == blockCount);
   }
 
@@ -293,7 +295,7 @@ int barrelReadLZ4(
         size_t curZ = offZ + relZ;
 
         /* pointer to first element in requested data cube */
-        T * curOut = &out[curX + ((curY + (curZ << FILE_CLEN_LOG2)) << FILE_CLEN_LOG2)];
+        T * curOut = &out[curX + ((curY + (curZ << outClenLog2)) << outClenLog2)];
 
         /* write and decode from small to large cube */
         for(size_t relX = 0; relX < BLOCK_CLEN; ++relX)
