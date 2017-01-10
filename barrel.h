@@ -66,9 +66,13 @@ typedef enum {
 } blockType_t;
 
 int8_t barrelLog2(uint64_t val) {
+  /* make sure its not zero */
   if(val == 0) return -1;
-  if(val == 1) return  0;
 
+  /* make sure its a power of two */
+  if(val & (val - 1)) return -2;
+
+  /* valid value */
   int8_t ret = 0;
   while(val > 1){
       val >>= 1;
@@ -103,7 +107,7 @@ int barrelCompressBlocks(FILE * in, FILE * out){
   /* remember where to place the jump table */
   off_t jumpTableOff = ftell(out);
 
-  /* leave space for jump table */
+  /* jump to beginning of data segment */
   off_t encDataOff = sizeof(header_t) + sizeof(jumpTable);
   assert(fseek(out, encDataOff, SEEK_SET) == 0);
 
@@ -245,6 +249,7 @@ int barrelReadLZ4(
 
   /* validate cube length */
   const int8_t outClenLog2 = barrelLog2(outClen);
+  if(outClenLog2 < 0) return -2;
   if(outClenLog2 < BLOCK_CLEN_LOG2) return -2;
 
   /* read jump table */
