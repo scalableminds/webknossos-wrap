@@ -185,7 +185,7 @@ int barrelReadRaw(
 {
   /* seek to offset */
   const size_t offBytes = sizeof(header_t) + sizeof(T) * offIdx;
-  assert(lseek(fileno(in), offBytes, SEEK_SET) == offBytes);
+  assert(fseek(in, offBytes, SEEK_SET) == 0);
 
   /* determine buffer size */
   const int8_t outClenLog2 = barrelLog2(outClen);
@@ -217,7 +217,7 @@ int barrelReadRaw(
         size_t curZ = offZ + relZ;
 
         /* pointer to first element in requested data cube */
-        T * curOut = &out[curX + ((curY + (curZ << FILE_CLEN_LOG2)) << FILE_CLEN_LOG2)];
+        T * curOut = &out[curX + ((curY + (curZ << outClenLog2)) << outClenLog2)];
 
         /* write and decode from small to large cube */
         for(size_t relX = 0; relX < bufClen; ++relX)
