@@ -346,6 +346,7 @@ int barrelRead(
   header_t header;
   if(barrelReadHeader(in, &header) && (err = -4)) goto cleanup;
   if(barrelCheckHeader(&header) && (err = -5)) goto cleanup;
+  if(barrelGetDataType<T>() == header.dataType && (err = -6)) goto cleanup;
 
   const bool isLZ4 =
     header.blockType == BLOCK_TYPE_LZ4_32C ||
@@ -363,6 +364,9 @@ int barrelRead(
     /* this should never happen */
     default: assert(0);
   }
+
+  /* to be future proof */
+  if(err && (err -= 6)) goto cleanup;
 
 cleanup:
   if(in != NULL) fclose(in);
