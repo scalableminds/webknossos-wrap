@@ -36,9 +36,6 @@ uint8_t headerMagic[HEADER_MAGIC_LEN] = {'M', 'P', 'I', 'B', 'R'};
 #define BLOCK_CLEN (1 << BLOCK_CLEN_LOG2)
 #define BLOCK_NUMEL (1 << (3 * BLOCK_CLEN_LOG2))
 
-#define BUF_CLEN_LOG2 4
-#define BUF_NUMEL (1 << (3 * BUF_CLEN_LOG2))
-
 typedef struct {
   uint8_t magic[HEADER_MAGIC_LEN];
   uint8_t version;
@@ -204,7 +201,7 @@ int barrelReadRaw(
   const int8_t outClenLog2 = barrelLog2(outClen);
   if(outClenLog2 < 0) return -1;
 
-  const int8_t bufClenLog2 = std::min((int8_t) BUF_CLEN_LOG2, outClenLog2);
+  const int8_t bufClenLog2 = std::min((int8_t) BLOCK_CLEN_LOG2, outClenLog2);
   const size_t bufNumel = 1 << (3 * bufClenLog2);
   const size_t bufClen = 1 << bufClenLog2;
 
@@ -377,27 +374,22 @@ template<typename T>
 int barrelWriteRaw(
     const char * fileName,
     const size_t offVec[3],
-    const size_t size,
-    const T * data)
+    const size_t clen,
+    const T * in)
 {
   /* state */
   int err = 0;
   header_t header;
   FILE * out = NULL;
 
-  /* check if size is a power of two */
-  if(size & (size - 1)) return -1;
-
-  const int8_t sizeLog2 = barrelLog2(size);
-  if(sizeLog2 < 0) return -2;
-
-  size_t pos = 0;
-  const size_t end = 1 << (3 * sizeLog2);
+  /* validate size*/
+  const int8_t clenLog2 = barrelLog2(clen);
+  if(clen < BLOCK_CLEN) return -2;
+  if(clenLog2 < 0) return -2;
 
   /* validate offset */
-  if(offVec[0] % size || offVec[1] % size || offVec[2] % size) return -3;
+  if(offVec[0] % clen || offVec[1] % clen || offVec[2] % clen) return -3;
   if(offVec[0] > FILE_CLEN || offVec[1] > FILE_CLEN || offVec[2] > FILE_CLEN) return -3;
-  const size_t offset = morton3D_32_encode(offVec[0], offVec[1], offVec[2]);
 
   int outFd;
   int outFdFlags = O_RDWR | O_CREAT;
@@ -407,7 +399,8 @@ int barrelWriteRaw(
   assert((outFd = open(fileName, outFdFlags, outFdMode)) != -1);
   assert((out = fdopen(outFd, "rb+")) != NULL);
 
-  /* check if file is empty */
+  /* check if file is empty
+   * if so, let's write a header */
   if(ftell(out) == 0){
     /* build header */
     memcpy(header.magic, headerMagic, HEADER_MAGIC_LEN);
@@ -419,7 +412,7 @@ int barrelWriteRaw(
     assert(fwrite((const void *) &header, sizeof(header_t), 1, out) == 1);
 
     /* truncate file to correct size */
-    size_t fileSize = sizeof(header_t) + FILE_NUMEL * sizeof(T);
+    const size_t fileSize = sizeof(header_t) + FILE_NUMEL * sizeof(T);
     assert(ftruncate(fileno(out), fileSize) == 0);
   }else{
     /* read header */
@@ -428,25 +421,47 @@ int barrelWriteRaw(
 
     /* validate header */
     if(barrelCheckHeader(&header) != 0 && (err = -5)) goto cleanup;
+    if(barrelGetDataType<T>() != header.dataType && (err = -6)) goto cleanup;
   }
 
-  off_t offsetBytes = sizeof(header_t) + offset * sizeof(T);
+  /* seek to beginning of block */
+  size_t blockIdx = morton3D_32_encode(
+    offVec[0] >> BLOCK_CLEN_LOG2,
+    offVec[1] >> BLOCK_CLEN_LOG2,
+    offVec[2] >> BLOCK_CLEN_LOG2);
+  off_t offsetBytes = sizeof(header_t) + blockIdx * BLOCK_NUMEL * sizeof(T);
   assert(fseek(out, offsetBytes, SEEK_SET) == 0);
 
   /* prepare variables */
-  size_t toWrite;
-  T buf[BUF_NUMEL];
-  uint_fast16_t x, y, z;
+  T buf[BLOCK_NUMEL];
+  const size_t blockCount = 1 << (3 * (clenLog2 - BLOCK_CLEN_LOG2));
 
-  while((toWrite = std::min((size_t) BUF_NUMEL, end - pos))){
-    /* fill up buffer */
-    for(size_t curIdx = 0; curIdx < toWrite; ++curIdx){
-      morton3D_32_decode(pos++, x, y, z);
-      buf[curIdx] = data[x + ((y + (z << sizeLog2)) << sizeLog2)];
+  /* iterate over Fortran-order blocks */
+  for(size_t curBlkIdx = 0; curBlkIdx < blockCount; ++curBlkIdx){
+
+    /* find position in input */
+    uint_fast16_t curBlkX, curBlkY, curBlkZ;
+    morton3D_32_decode(curBlkIdx, curBlkX, curBlkY, curBlkZ);
+
+    T * curBuf = buf;
+    T * curIn = &in[
+      (curBlkX <<  BLOCK_CLEN_LOG2) +
+      (curBlkY << (BLOCK_CLEN_LOG2  +  clenLog2)) +
+      (curBlkZ << (BLOCK_CLEN_LOG2  + (clenLog2 << 1)))];
+
+    for(size_t curZ = 0; curZ < BLOCK_CLEN; ++curZ){
+      for(size_t curY = 0; curY < BLOCK_CLEN; ++curY){
+        /* copy contiguous Fortran-order strip to buffer */
+        memcpy((void *) curBuf, (const void *) curIn, sizeof(T) * BLOCK_CLEN);
+
+        /* continue */
+        curIn += clen;
+        curBuf += BLOCK_CLEN;
+      }
     }
 
     /* write current buffer to file */
-    assert(fwrite(buf, sizeof(T), toWrite, out) == toWrite);
+    assert(fwrite(buf, sizeof(T), BLOCK_NUMEL, out) == BLOCK_NUMEL);
   }
 
 cleanup:
