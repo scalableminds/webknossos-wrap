@@ -65,6 +65,15 @@ typedef enum {
   BLOCK_TYPE_UNKNOWN
 } blockType_t;
 
+/* helpers to convert types into their dataType_t */
+template<typename T> uint8_t barrelGetDataType();
+template<> uint8_t barrelGetDataType<uint8_t>(){ return DATA_TYPE_UINT8; }
+template<> uint8_t barrelGetDataType<uint16_t>(){ return DATA_TYPE_UINT16; }
+template<> uint8_t barrelGetDataType<uint32_t>(){ return DATA_TYPE_UINT32; }
+template<> uint8_t barrelGetDataType<uint64_t>(){ return DATA_TYPE_UINT64; }
+template<> uint8_t barrelGetDataType<float>(){ return DATA_TYPE_FLOAT; }
+template<> uint8_t barrelGetDataType<double>(){ return DATA_TYPE_DOUBLE; }
+
 int8_t barrelLog2(uint64_t val) {
   /* make sure its not zero */
   if(val == 0) return -1;
@@ -399,7 +408,7 @@ int barrelWriteRaw(
     /* build header */
     memcpy(header.magic, headerMagic, HEADER_MAGIC_LEN);
     header.version = 1;
-    header.dataType = DATA_TYPE_UINT32; /* TODO */
+    header.dataType = barrelGetDataType<T>();
     header.blockType = BLOCK_TYPE_RAW;
 
     /* write header to file */
