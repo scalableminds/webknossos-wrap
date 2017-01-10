@@ -86,8 +86,7 @@ function [barrelFile, wkDir, cls, sz, testFilename1, testFilename2] = buildData(
     % load data
     box = [5121, 3584, 1728];
     box = [box(:) - sz / 2, box(:) + sz / 2 - 1];
-%     data = loadSegDataGlobal(param.seg, box);
-    load('/home/mberning/Desktop/segData.mat');
+    data = loadSegDataGlobal(param.seg, box);
     
     % create folder
     benchDir = fullfile(pwd, 'benchmark');
