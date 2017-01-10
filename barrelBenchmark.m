@@ -1,5 +1,5 @@
 function barrelBenchmark(param)    
-    [barrelFile, wkDir, cls, sz] = buildData(param);
+    [barrelFile, wkDir, cls, sz, testFilename1, testFilename2] = buildData(param);
     barrelCompFile = strcat(barrelFile, '.lz4');
     
     sizeVec = 2 .^ (0:log2(sz));
@@ -7,7 +7,7 @@ function barrelBenchmark(param)
     repCount = 20;
     
     disp('<< Running benchmark');
-    data = nan(sizeCount, 3, repCount);
+    data = nan(sizeCount, 5, repCount);
     
     for curSizeIdx = 1:sizeCount
         curSize = sizeVec(curSizeIdx);
@@ -36,6 +36,17 @@ function barrelBenchmark(param)
                 barrelLoad(barrelCompFile, curSize, curRoi(:, 1)', cls);
                 data(curSizeIdx, 3, curRep) = toc;
             end
+            
+            % hdf5 (uncompressed)
+            tic;
+            h5read(testFilename1,'/seg', curRoi(:, 1)', repmat(curSize,3,1));
+            data(curSizeIdx, 4, curRep) = toc;
+            
+            % hdf5 (compressed)
+            tic;
+            h5read(testFilename2,'/seg', curRoi(:, 1)', repmat(curSize,3,1));
+            data(curSizeIdx, 5, curRep) = toc;
+           
         end
     end
     
@@ -50,7 +61,8 @@ function barrelBenchmark(param)
     errorbar(log2(sizeVec), meanMat(:, 1), stdMat(:, 1));
     errorbar(log2(sizeVec), meanMat(:, 2), stdMat(:, 2));
     errorbar(log2(sizeVec), meanMat(:, 3), stdMat(:, 3));
-    
+    errorbar(log2(sizeVec), meanMat(:, 4), stdMat(:, 4));
+    errorbar(log2(sizeVec), meanMat(:, 5), stdMat(:, 5));
     % X axis
     xticks(log2(sizeVec));
     xticklabels(arrayfun(@num2str, sizeVec, 'UniformOutput', false));
@@ -62,17 +74,20 @@ function barrelBenchmark(param)
         'KNOSSOS (128 voxels)', ...
         'Barrel (1024 voxels, raw)', ...
         'Barrel (1024 voxels, LZ4-HC compressed)', ...
+        'HDF5 (1024 voxels, uncompressed)', ...
+        'HDF5 (1024 voxels, deflate compressed)', ...
         'Location', 'NorthWest');
 end
 
-function [barrelFile, wkDir, cls, sz] = buildData(param)
+function [barrelFile, wkDir, cls, sz, testFilename1, testFilename2] = buildData(param)
     cls = 'uint32';
     sz = 1024;
     
     % load data
     box = [5121, 3584, 1728];
     box = [box(:) - sz / 2, box(:) + sz / 2 - 1];
-    data = loadSegDataGlobal(param.seg.root, param.seg.prefix, box);
+%     data = loadSegDataGlobal(param.seg, box);
+    load('/home/mberning/Desktop/segData.mat');
     
     % create folder
     benchDir = fullfile(pwd, 'benchmark');
@@ -90,4 +105,12 @@ function [barrelFile, wkDir, cls, sz] = buildData(param)
     % save KNOSSOS data
     wkDir = fullfile(benchDir, 'knossos'); mkdir(wkDir);
     writeKnossosRoi(wkDir, 'bench', [1, 1, 1], data, cls);
+    
+    % save as HDF5 file 
+    testFilename1 = fullfile(benchDir, 'data.hdf5');
+    testFilename2 = fullfile(benchDir, 'data_c.hdf5');
+    h5create(testFilename1, '/seg', size(data), 'Datatype', 'uint32', 'ChunkSize', [32 32 32], 'Deflate', 0);
+    h5write(testFilename1, '/seg', data);
+    h5create(testFilename2, '/seg', size(data), 'Datatype', 'uint32', 'ChunkSize', [32 32 32], 'Deflate', 1);
+    h5write(testFilename2, '/seg', data);
 end
