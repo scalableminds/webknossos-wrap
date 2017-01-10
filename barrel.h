@@ -9,13 +9,13 @@
 #ifndef BARREL_H
 #define BARREL_H
 
-#include <fcntl.h>
-#include <algorithm>
-#include <assert.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
+#include <fcntl.h> /* for open */
+#include <algorithm> /* for std::min */
+#include <assert.h> /* for assert */
+#include <stdint.h> /* for uintX_T */
+#include <stdio.h> /* for fopen, etc. */
+#include <string.h> /* for memcpy */
+#include <unistd.h> /* for ftruncate */
 
 /* Morton */
 #include <morton.h>
@@ -24,8 +24,8 @@
 #include <lz4.h>
 #include <lz4hc.h>
 
-#define HEADER_MAGIC_LEN 5
-uint8_t headerMagic[HEADER_MAGIC_LEN] = {'M', 'P', 'I', 'B', 'R'};
+/* every barrel file begins with these magic bytes */
+const uint8_t headerMagic[] = {'M', 'P', 'I', 'B', 'R'};
 
 /* CLEN stands for cube length */
 #define FILE_CLEN_LOG2 10
@@ -37,7 +37,7 @@ uint8_t headerMagic[HEADER_MAGIC_LEN] = {'M', 'P', 'I', 'B', 'R'};
 #define BLOCK_NUMEL (1 << (3 * BLOCK_CLEN_LOG2))
 
 typedef struct {
-  uint8_t magic[HEADER_MAGIC_LEN];
+  uint8_t magic[sizeof(headerMagic)];
   uint8_t version;
   uint8_t dataType;
   uint8_t blockType;
@@ -94,7 +94,7 @@ int barrelReadHeader(FILE * in, header_t * h){
 }
 
 int barrelCheckHeader(header_t * h){
-  if(memcmp(h->magic, headerMagic, HEADER_MAGIC_LEN) != 0) return -1;
+  if(memcmp(h->magic, headerMagic, sizeof(headerMagic)) != 0) return -1;
   if(h->version < 1 || h->version > 1) return -2;
   if(!h->dataType || h->dataType >= DATA_TYPE_UNKNOWN) return -3;
   if(!h->blockType || h->blockType >= BLOCK_TYPE_UNKNOWN) return -4;
@@ -126,8 +126,8 @@ int barrelCompressBlocks(FILE * in, FILE * out){
 
     /* compress block */
     assert((encLen = LZ4_compress_HC(
-      (const char *) rawBuf, encBuf, sizeof(T) * rawLen,
-      sizeof(encBuf), LZ4HC_DEFAULT_CLEVEL)) != 0);
+      reinterpret_cast<const char *>(rawBuf), reinterpret_cast<char *>(encBuf),
+      sizeof(T) * rawLen, sizeof(encBuf), LZ4HC_DEFAULT_CLEVEL)) != 0);
 
     /* write compressed block */
     assert(fwrite((const void *) encBuf, 1, encLen, out) == encLen);
@@ -187,56 +187,66 @@ cleanup:
 }
 
 template<typename T>
+inline T * barrelGetBlkPointer(
+  const T * in,
+  const size_t inClenLog2,
+  const size_t blkIdx)
+{
+  /* calculate position of loaded cube with respect
+   * to the entire requested data cube */
+  uint_fast16_t curBlkX, curBlkY, curBlkZ;
+  morton3D_32_decode(blkIdx, curBlkX, curBlkY, curBlkZ);
+
+  return &in[
+    (curBlkX <<  BLOCK_CLEN_LOG2) +
+    (curBlkY << (BLOCK_CLEN_LOG2  +  inClenLog2)) +
+    (curBlkZ << (BLOCK_CLEN_LOG2  + (inClenLog2 << 1)))];
+}
+
+template<typename T>
+inline void barrelCopyBlk(
+    const T * in, const size_t inClen,
+    T * out, const size_t outClen)
+{
+  for(size_t curIdx = 0; curIdx < BLOCK_CLEN * BLOCK_CLEN; ++curIdx){
+    /* copy Fortran-order stripe */
+    memcpy((void *) in, (const void *) out, sizeof(T) * BLOCK_CLEN);
+
+    /* move pointers forward */
+    in += inClen;
+    out += outClen;
+  }
+}
+
+template<typename T>
 int barrelReadRaw(
     FILE * in,
-    const size_t offIdx,
+    const size_t blkIdx,
     const size_t outClen,
     T * out)
 {
+  /* validate block index */
+  if(blkIdx >= FILE_NUMEL / BLOCK_NUMEL) return -1;
+
+  /* validate cube side length */
+  const int8_t outClenLog2 = barrelLog2(outClen);
+  if(outClenLog2 < BLOCK_CLEN_LOG2) return -2;
+
   /* seek to offset */
-  const size_t offBytes = sizeof(header_t) + sizeof(T) * offIdx;
+  const size_t offBytes = sizeof(header_t) + sizeof(T) * BLOCK_NUMEL * blkIdx;
   assert(fseek(in, offBytes, SEEK_SET) == 0);
 
-  /* determine buffer size */
-  const int8_t outClenLog2 = barrelLog2(outClen);
-  if(outClenLog2 < 0) return -1;
+  /* prepare */
+  T buf[BLOCK_NUMEL];
+  const size_t blkCount = 1 << (3 * (outClenLog2 - BLOCK_CLEN_LOG2));
 
-  const int8_t bufClenLog2 = std::min((int8_t) BLOCK_CLEN_LOG2, outClenLog2);
-  const size_t bufNumel = 1 << (3 * bufClenLog2);
-  const size_t bufClen = 1 << bufClenLog2;
+  for(size_t curBlkIdx = 0; curBlkIdx < blkCount; ++curBlkIdx){
+    /* read one block worth of data */
+    assert(fread(buf, sizeof(T), BLOCK_NUMEL, in) == BLOCK_NUMEL);
 
-  T buf[bufNumel];
-
-  /* state */
-  size_t pos = 0;
-  const size_t numel = 1 << (3 * outClenLog2);
-
-  while(pos < numel){
-    /* read one buffer full of data */
-    assert(fread(buf, sizeof(T), bufNumel, in) == bufNumel);
-
-    /* calculate position of loaded cube with respect
-     * to the entire requested data cube */
-    uint_fast16_t offX, offY, offZ;
-    morton3D_32_decode(pos, offX, offY, offZ);
-
-    /* decode and write the small loaded cube */
-    for(size_t relZ = 0; relZ < bufClen; ++relZ){
-      for(size_t relY = 0; relY < bufClen; ++relY){
-        size_t curX = offX;
-        size_t curY = offY + relY;
-        size_t curZ = offZ + relZ;
-
-        /* pointer to first element in requested data cube */
-        T * curOut = &out[curX + ((curY + (curZ << outClenLog2)) << outClenLog2)];
-
-        /* write and decode from small to large cube */
-        for(size_t relX = 0; relX < bufClen; ++relX)
-          *curOut++ = buf[morton3D_32_encode(relX, relY, relZ)];
-      }
-    }
-
-    pos += bufNumel;
+    /* copy buffer to putput */
+    T * curOut = barrelGetBlkPointer<T>(out, outClenLog2, curBlkIdx);
+    barrelCopyBlk<T>(buf, BLOCK_CLEN, curOut, outClen);
   }
 
   return 0;
@@ -245,74 +255,54 @@ int barrelReadRaw(
 template<typename T>
 int barrelReadLZ4(
     FILE * in,
-    const size_t offIdx,
+    const size_t blkIdx,
     const size_t outClen,
     T * out)
 {
-  /* validate offset */
-  if(offIdx % BLOCK_NUMEL) return -1;
-  size_t blockIdx = offIdx / BLOCK_NUMEL;
+  /* validate block index */
+  if(blkIdx >= FILE_NUMEL / BLOCK_NUMEL) return -1;
 
-  /* validate cube length */
+  /* validate cube side length */
   const int8_t outClenLog2 = barrelLog2(outClen);
-  if(outClenLog2 < 0) return -2;
   if(outClenLog2 < BLOCK_CLEN_LOG2) return -2;
 
   /* read jump table */
-  size_t blockCount = 1 << (3 * (outClenLog2 - BLOCK_CLEN_LOG2));
-  uint64_t jumpTable[blockCount + 1];
+  size_t blkCount = 1 << (3 * (outClenLog2 - BLOCK_CLEN_LOG2));
+  uint64_t jumpTable[blkCount + 1];
 
-  if(blockIdx){
+  if(blkIdx){
     /* skip a couple of blocks */
-    size_t jumpOff = sizeof(header_t) + (blockIdx - 1) * sizeof(uint64_t);
+    size_t jumpOff = sizeof(header_t) + (blkIdx - 1) * sizeof(uint64_t);
     assert(fseek(in, jumpOff, SEEK_SET) == 0);
-    assert(fread(jumpTable, sizeof(uint64_t), blockCount + 1, in) == blockCount + 1);
+    assert(fread(jumpTable, sizeof(uint64_t), blkCount + 1, in) == blkCount + 1);
   }else{
     /* start with first block */
     jumpTable[0] = 0;
-    assert(fread(&jumpTable[1], sizeof(uint64_t), blockCount, in) == blockCount);
+    assert(fread(&jumpTable[1], sizeof(uint64_t), blkCount, in) == blkCount);
   }
 
   /* seek to offset */
-  const size_t offBytes = sizeof(header_t) +
-    FILE_NUMEL / BLOCK_NUMEL * sizeof(uint64_t) + jumpTable[0];
+  const size_t offBytes =
+    jumpTable[0] + sizeof(header_t) +
+    sizeof(uint64_t) * FILE_NUMEL / BLOCK_NUMEL;
   assert(fseek(in, offBytes, SEEK_SET) == 0);
 
   /* determine buffer size */
   T encBuf[BLOCK_NUMEL];
   T rawBuf[BLOCK_NUMEL];
 
-  /* state */
-  for(size_t curIdx = 0; curIdx < blockCount; ++curIdx){
-    /* read encoded block */
-    size_t toRead = jumpTable[curIdx + 1] - jumpTable[curIdx];
+  for(size_t curBlkIdx = 0; curBlkIdx < blkCount; ++curBlkIdx){
+    /* read compressed Fortran-order block */
+    size_t toRead = jumpTable[curBlkIdx + 1] - jumpTable[curBlkIdx];
     assert(fread(encBuf, 1, toRead, in) == toRead);
 
-    /* decode block */
+    /* decompress block */
     assert(LZ4_decompress_safe(
       (const char *) encBuf, (char *) rawBuf, toRead, sizeof(rawBuf)) >= 0);
 
-    /* calculate position of loaded cube with respect
-     * to the entire requested data cube */
-    uint_fast16_t offX, offY, offZ;
-    size_t pos = curIdx * BLOCK_NUMEL;
-    morton3D_32_decode(pos, offX, offY, offZ);
-
-    /* decode and write the small loaded cube */
-    for(size_t relZ = 0; relZ < BLOCK_CLEN; ++relZ){
-      for(size_t relY = 0; relY < BLOCK_CLEN; ++relY){
-        size_t curX = offX;
-        size_t curY = offY + relY;
-        size_t curZ = offZ + relZ;
-
-        /* pointer to first element in requested data cube */
-        T * curOut = &out[curX + ((curY + (curZ << outClenLog2)) << outClenLog2)];
-
-        /* write and decode from small to large cube */
-        for(size_t relX = 0; relX < BLOCK_CLEN; ++relX)
-          *curOut++ = rawBuf[morton3D_32_encode(relX, relY, relZ)];
-      }
-    }
+    /* write to output */
+    T * curOut = barrelGetBlkPointer(out, outClenLog2, curBlkIdx);
+    barrelCopyBlk(rawBuf, BLOCK_CLEN, out, outClen);
   }
 
   return 0;
@@ -329,12 +319,17 @@ int barrelRead(
   int err = 0;
   FILE * in = NULL;
 
-  /* let's start */
+  /* validate cube length */
   const int8_t clenLog2 = barrelLog2(clen);
   if(clenLog2 < 0) return -1;
+  if(clenLog2 < BLOCK_CLEN_LOG2) return -1;
 
+  /* validate offset */
   if(offVec[0] % clen || offVec[1] % clen || offVec[2] % clen) return -2;
-  const size_t offset = morton3D_32_encode(offVec[0], offVec[1], offVec[2]);
+  const size_t blockIdx = morton3D_32_encode(
+    offVec[0] >> BLOCK_CLEN_LOG2,
+    offVec[1] >> BLOCK_CLEN_LOG2,
+    offVec[1] >> BLOCK_CLEN_LOG2);
 
   /* open file */
   if((in = fopen(fileName, "rb")) == NULL) return -3;
@@ -343,19 +338,15 @@ int barrelRead(
   header_t header;
   if(barrelReadHeader(in, &header) && (err = -4)) goto cleanup;
   if(barrelCheckHeader(&header) && (err = -5)) goto cleanup;
-  if(barrelGetDataType<T>() == header.dataType && (err = -6)) goto cleanup;
-
-  const bool isLZ4 =
-    header.blockType == BLOCK_TYPE_LZ4_32C ||
-    header.blockType == BLOCK_TYPE_LZ4HC_32C;
+  if(barrelGetDataType<T>() != header.dataType && (err = -6)) goto cleanup;
 
   switch(header.blockType){
     case BLOCK_TYPE_RAW:
-      err = barrelReadRaw(in, offset, clen, out);
+      err = barrelReadRaw(in, blockIdx, clen, out);
       break;
     case BLOCK_TYPE_LZ4_32C:
     case BLOCK_TYPE_LZ4HC_32C:
-      err = barrelReadLZ4(in, offset, clen, out);
+      err = barrelReadLZ4(in, blockIdx, clen, out);
       break;
 
     /* this should never happen */
@@ -384,8 +375,7 @@ int barrelWriteRaw(
 
   /* validate size*/
   const int8_t clenLog2 = barrelLog2(clen);
-  if(clen < BLOCK_CLEN) return -2;
-  if(clenLog2 < 0) return -2;
+  if(clenLog2 < BLOCK_CLEN_LOG2) return -2;
 
   /* validate offset */
   if(offVec[0] % clen || offVec[1] % clen || offVec[2] % clen) return -3;
@@ -403,7 +393,7 @@ int barrelWriteRaw(
    * if so, let's write a header */
   if(ftell(out) == 0){
     /* build header */
-    memcpy(header.magic, headerMagic, HEADER_MAGIC_LEN);
+    memcpy(header.magic, headerMagic, sizeof(headerMagic));
     header.version = 1;
     header.dataType = barrelGetDataType<T>();
     header.blockType = BLOCK_TYPE_RAW;
@@ -425,40 +415,22 @@ int barrelWriteRaw(
   }
 
   /* seek to beginning of block */
-  size_t blockIdx = morton3D_32_encode(
+  size_t blkIdx = morton3D_32_encode(
     offVec[0] >> BLOCK_CLEN_LOG2,
     offVec[1] >> BLOCK_CLEN_LOG2,
     offVec[2] >> BLOCK_CLEN_LOG2);
-  off_t offsetBytes = sizeof(header_t) + blockIdx * BLOCK_NUMEL * sizeof(T);
+  off_t offsetBytes = sizeof(header_t) + blkIdx * BLOCK_NUMEL * sizeof(T);
   assert(fseek(out, offsetBytes, SEEK_SET) == 0);
 
   /* prepare variables */
   T buf[BLOCK_NUMEL];
-  const size_t blockCount = 1 << (3 * (clenLog2 - BLOCK_CLEN_LOG2));
+  const size_t blkCount = 1 << (3 * (clenLog2 - BLOCK_CLEN_LOG2));
 
   /* iterate over Fortran-order blocks */
-  for(size_t curBlkIdx = 0; curBlkIdx < blockCount; ++curBlkIdx){
-
-    /* find position in input */
-    uint_fast16_t curBlkX, curBlkY, curBlkZ;
-    morton3D_32_decode(curBlkIdx, curBlkX, curBlkY, curBlkZ);
-
-    T * curBuf = buf;
-    T * curIn = &in[
-      (curBlkX <<  BLOCK_CLEN_LOG2) +
-      (curBlkY << (BLOCK_CLEN_LOG2  +  clenLog2)) +
-      (curBlkZ << (BLOCK_CLEN_LOG2  + (clenLog2 << 1)))];
-
-    for(size_t curZ = 0; curZ < BLOCK_CLEN; ++curZ){
-      for(size_t curY = 0; curY < BLOCK_CLEN; ++curY){
-        /* copy contiguous Fortran-order strip to buffer */
-        memcpy((void *) curBuf, (const void *) curIn, sizeof(T) * BLOCK_CLEN);
-
-        /* continue */
-        curIn += clen;
-        curBuf += BLOCK_CLEN;
-      }
-    }
+  for(size_t curBlkIdx = 0; curBlkIdx < blkCount; ++curBlkIdx){
+    /* copy Fortran-order block to buffer */
+    const T * curIn = barrelGetBlkPointer(in, clenLog2, curBlkIdx);
+    barrelCopyBlk(curIn, clen, buf, BLOCK_CLEN);
 
     /* write current buffer to file */
     assert(fwrite(buf, sizeof(T), BLOCK_NUMEL, out) == BLOCK_NUMEL);
