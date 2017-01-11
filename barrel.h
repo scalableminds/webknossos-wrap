@@ -188,7 +188,7 @@ cleanup:
 
 template<typename T>
 inline T * barrelGetBlkPointer(
-  const T * in,
+  T * in,
   const size_t inClenLog2,
   const size_t blkIdx)
 {
@@ -307,7 +307,7 @@ int barrelReadLZ4(
       (const char *) encBuf, (char *) rawBuf, toRead, sizeof(rawBuf)) >= 0);
 
     /* write to output */
-    T * curOut = barrelGetBlkPointer(out, outClenLog2, curBlkIdx);
+    T * curOut = barrelGetBlkPointer<T>(out, outClenLog2, curBlkIdx);
     barrelCopyBlk<T>(rawBuf, BLOCK_CLEN_LOG2, out, outClenLog2);
   }
 
@@ -435,7 +435,7 @@ int barrelWriteRaw(
   /* iterate over Fortran-order blocks */
   for(size_t curBlkIdx = 0; curBlkIdx < blkCount; ++curBlkIdx){
     /* copy Fortran-order block to buffer */
-    const T * curIn = barrelGetBlkPointer(in, clenLog2, curBlkIdx);
+    const T * curIn = barrelGetBlkPointer<const T>(in, clenLog2, curBlkIdx);
     barrelCopyBlk<T>(curIn, clenLog2, buf, BLOCK_CLEN_LOG2);
 
     /* write current buffer to file */
