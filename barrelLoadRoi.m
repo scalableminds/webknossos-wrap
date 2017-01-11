@@ -1,6 +1,11 @@
-function data = mortonLoadRoi(rootDir, filePrefix, box, dataType)
+function data = barrelLoadRoi(rootDir, filePrefix, box, dataType)
     % config
+    blockSize = 32;
     cubeSize = 1024;
+    
+    % sanity check
+    assert(all(box(:) > 0));
+    assert(all(box(:, 2) > box(:, 1)));
     
     % fix bounding box
     % a) make start indices zero-based
@@ -8,7 +13,7 @@ function data = mortonLoadRoi(rootDir, filePrefix, box, dataType)
     box(:, 1) = box(:, 1) - 1;
     
     % find the boxes to load
-    boxes = mortonSplitBox(box, cubeSize);
+    boxes = barrelSplitBox(box, blockSize, cubeSize);
     boxCount = size(boxes, 3);
     
     boxWidth = diff(box, 1, 2);
@@ -21,7 +26,7 @@ function data = mortonLoadRoi(rootDir, filePrefix, box, dataType)
         
         % build file path
         curFileName = sprintf( ...
-            '%s_x%04u_y%04u_z%04u.dat', ...
+            '%s_x%04u_y%04u_z%04u.brl', ...
             filePrefix, curCube(1), curCube(2), curCube(3));
         curFilePath = fullfile(rootDir, curFileName);
         
@@ -39,15 +44,15 @@ function data = mortonLoadRoi(rootDir, filePrefix, box, dataType)
             curSize = diff(curBox(1, :));
             curOffset = 1 + mod(curBox(:, 1), cubeSize);
             
-            curData = mortonLoad( ...
+            curData = barrelLoad( ...
                 curFilePath, curSize, curOffset, dataType);
             
+            % cut out relevant part
             if any(curValidBox(:) ~= curBox(:))
-                % cut out relevant part
                 curData = curData( ...
                     curSrcBox(1, 1):curSrcBox(1, 2), ...
                     curSrcBox(2, 1):curSrcBox(2, 2), ...
-                    curSrcBox(3, 1):curSrcBox(2, 2));
+                    curSrcBox(3, 1):curSrcBox(3, 2));
             end
         else
             curData = 0;

@@ -1,6 +1,6 @@
-function boxes = mortonSplitBox(box, cubeSize)
+function boxes = barrelSplitBox(box, blockSize, cubeSize)
     % config
-    minLoadSize = 128;
+    optLoadSize = 128;
     
     % prepare output
     boxes = zeros(3, 2, 0);
@@ -10,23 +10,26 @@ function boxes = mortonSplitBox(box, cubeSize)
     assert(all(box(:, 1) >= 0));
     assert(all(boxWidth >= 0));
     
-    % check if cube is already in agreement with Morton
-    if all(boxWidth <= cubeSize) && ~any(diff(boxWidth)) && ...
-       all(isPowerOfTwo(boxWidth)) && ~any(rem(box(:, 1), boxWidth))
-        boxes = box;
-        return;
+    % this is the short cut for valid boxes
+    if all(boxWidth >= blockSize) ... % at least block size
+       && all(boxWidth <= cubeSize) ... % not more than file size
+       && all(isPowerOfTwo(boxWidth)) ... % cube length is power of two
+       && ~any(diff(boxWidth)) ... % box is actually a cube
+       && ~any(rem(box(:, 1), boxWidth)) % offset is multiple of cube size
+        % box in agreement with file format
+        boxes = box; return;
     end
     
-    % enlarge box to fix with minimum load size
-    box(:, 1) = minLoadSize .* floor(box(:, 1) ./ minLoadSize);
-    box(:, 2) = minLoadSize .* ceil(box(:, 2) ./ minLoadSize);
+    % enlarge box to fix with optimal load size
+    box(:, 1) = optLoadSize .* floor(box(:, 1) ./ optLoadSize);
+    box(:, 2) = optLoadSize .* ceil(box(:, 2) ./ optLoadSize);
     
     % decompose it into three-dimensional cubes
-    for curSizeLog2 = fliplr(log2(minLoadSize):log2(cubeSize))
+    for curSizeLog2 = fliplr(log2(optLoadSize):log2(cubeSize))
         curSize = 2 ^ curSizeLog2;
         
         curIds = [ ...
-            ceil(box(:, 1) ./ curSize), ...
+             ceil(box(:, 1) ./ curSize), ...
             floor(box(:, 2) ./ curSize) - 1];
         
         curBoxes = nan([6, diff(curIds, 1, 2)' + 1]);

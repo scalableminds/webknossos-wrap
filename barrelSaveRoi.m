@@ -1,6 +1,10 @@
-function data = mortonSaveRoi(rootDir, filePrefix, offset, data)
+function data = barrelSaveRoi(rootDir, filePrefix, offset, data)
     % config
+    blockSize = 32;
     cubeSize = 1024;
+    
+    % sanity checks
+    assert(all(offset > 0));
     
     % fix bounding box
     % a) make start indices zero-based
@@ -10,7 +14,7 @@ function data = mortonSaveRoi(rootDir, filePrefix, offset, data)
     box(:, 2) = box(:, 1) + size(data)';
     
     % find the boxes to load
-    boxes = mortonSplitBox(box, cubeSize);
+    boxes = barrelSplitBox(box, blockSize, cubeSize);
     boxCount = size(boxes, 3);
     
     % class of data
@@ -23,7 +27,7 @@ function data = mortonSaveRoi(rootDir, filePrefix, offset, data)
         
         % build file path
         curFileName = sprintf( ...
-            '%s_x%04u_y%04u_z%04u.dat', ...
+            '%s_x%04u_y%04u_z%04u.brl', ...
             filePrefix, curCube(1), curCube(2), curCube(3));
         curFilePath = fullfile(rootDir, curFileName);
         
@@ -46,12 +50,11 @@ function data = mortonSaveRoi(rootDir, filePrefix, offset, data)
                 curSrcBox(3, 1):curSrcBox(3, 2));
         else
             if exist(curFilePath, 'file')
-                curSize = diff(curBox(1, :));
-                
                 % fill up cube with existing data
-                curData = mortonLoad( ...
-                    curFilePath, curSize, curOffset, dataType);
+                curData = barrelLoad(curFilePath, ...
+                    diff(curBox(1, :)), curOffset, dataType);
             else
+                % fill in fake zeros
                 curData = zeros(diff(curBox, 1, 2)', dataType);
             end
             
@@ -66,6 +69,6 @@ function data = mortonSaveRoi(rootDir, filePrefix, offset, data)
         end
         
         % save result
-        mortonSave(curFilePath, curData, curOffset);
+        barrelSave(curFilePath, curData, curOffset);
     end
 end
