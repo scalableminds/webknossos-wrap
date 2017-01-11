@@ -205,16 +205,22 @@ inline T * barrelGetBlkPointer(
 
 template<typename T>
 inline void barrelCopyBlk(
-    const T * in, const size_t inClen,
-    T * out, const size_t outClen)
+    const T * in, const size_t inClenLog2,
+    T * out, const size_t outClenLog2)
 {
-  for(size_t curIdx = 0; curIdx < BLOCK_CLEN * BLOCK_CLEN; ++curIdx){
-    /* copy Fortran-order stripe */
-    memcpy((void *) in, (const void *) out, sizeof(T) * BLOCK_CLEN);
 
-    /* move pointers forward */
-    in += inClen;
-    out += outClen;
+  for(size_t curZ = 0; curZ < BLOCK_CLEN; ++curZ){
+    const T * curIn = &in[curZ << (2 * inClenLog2)];
+    T * curOut = &out[curZ << (2 * outClenLog2)];
+
+    /* copy Fortran-order stripes */
+    for(size_t curY = 0; curY < BLOCK_CLEN; ++curY){
+      memcpy(curOut, curIn, sizeof(T) << BLOCK_CLEN_LOG2);
+
+      /* continue */
+      curIn = &curIn[1 << inClenLog2];
+      curOut = &curOut[1 << outClenLog2];
+    }
   }
 }
 
@@ -246,7 +252,7 @@ int barrelReadRaw(
 
     /* copy buffer to putput */
     T * curOut = barrelGetBlkPointer<T>(out, outClenLog2, curBlkIdx);
-    barrelCopyBlk<T>(buf, BLOCK_CLEN, curOut, outClen);
+    barrelCopyBlk<T>(buf, BLOCK_CLEN_LOG2, curOut, outClenLog2);
   }
 
   return 0;
@@ -302,7 +308,7 @@ int barrelReadLZ4(
 
     /* write to output */
     T * curOut = barrelGetBlkPointer(out, outClenLog2, curBlkIdx);
-    barrelCopyBlk(rawBuf, BLOCK_CLEN, out, outClen);
+    barrelCopyBlk<T>(rawBuf, BLOCK_CLEN_LOG2, out, outClenLog2);
   }
 
   return 0;
@@ -326,10 +332,10 @@ int barrelRead(
 
   /* validate offset */
   if(offVec[0] % clen || offVec[1] % clen || offVec[2] % clen) return -2;
-  const size_t blockIdx = morton3D_32_encode(
+  const size_t blkIdx = morton3D_32_encode(
     offVec[0] >> BLOCK_CLEN_LOG2,
     offVec[1] >> BLOCK_CLEN_LOG2,
-    offVec[1] >> BLOCK_CLEN_LOG2);
+    offVec[2] >> BLOCK_CLEN_LOG2);
 
   /* open file */
   if((in = fopen(fileName, "rb")) == NULL) return -3;
@@ -342,11 +348,11 @@ int barrelRead(
 
   switch(header.blockType){
     case BLOCK_TYPE_RAW:
-      err = barrelReadRaw(in, blockIdx, clen, out);
+      err = barrelReadRaw(in, blkIdx, clen, out);
       break;
     case BLOCK_TYPE_LZ4_32C:
     case BLOCK_TYPE_LZ4HC_32C:
-      err = barrelReadLZ4(in, blockIdx, clen, out);
+      err = barrelReadLZ4(in, blkIdx, clen, out);
       break;
 
     /* this should never happen */
@@ -419,7 +425,7 @@ int barrelWriteRaw(
     offVec[0] >> BLOCK_CLEN_LOG2,
     offVec[1] >> BLOCK_CLEN_LOG2,
     offVec[2] >> BLOCK_CLEN_LOG2);
-  off_t offsetBytes = sizeof(header_t) + blkIdx * BLOCK_NUMEL * sizeof(T);
+  size_t offsetBytes = sizeof(header_t) + blkIdx * BLOCK_NUMEL * sizeof(T);
   assert(fseek(out, offsetBytes, SEEK_SET) == 0);
 
   /* prepare variables */
@@ -430,7 +436,7 @@ int barrelWriteRaw(
   for(size_t curBlkIdx = 0; curBlkIdx < blkCount; ++curBlkIdx){
     /* copy Fortran-order block to buffer */
     const T * curIn = barrelGetBlkPointer(in, clenLog2, curBlkIdx);
-    barrelCopyBlk(curIn, clen, buf, BLOCK_CLEN);
+    barrelCopyBlk<T>(curIn, clenLog2, buf, BLOCK_CLEN_LOG2);
 
     /* write current buffer to file */
     assert(fwrite(buf, sizeof(T), BLOCK_NUMEL, out) == BLOCK_NUMEL);
