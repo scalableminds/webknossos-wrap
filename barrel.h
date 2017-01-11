@@ -79,10 +79,10 @@ template<> uint8_t barrelGetDataType<float>(){ return DATA_TYPE_FLOAT; }
 template<> uint8_t barrelGetDataType<double>(){ return DATA_TYPE_DOUBLE; }
 
 int8_t barrelLog2(uint64_t val) {
-  /* make sure its not zero */
+  /* make sure it's not zero */
   if(val == 0) return -1;
 
-  /* make sure its a power of two */
+  /* make sure it's a power of two */
   if(val & (val - 1)) return -2;
 
   /* valid value */
@@ -390,9 +390,17 @@ int barrelWriteRaw(
   const int8_t clenLog2 = barrelLog2(clen);
   if(clenLog2 < BLOCK_CLEN_LOG2) return -2;
 
+  /* determine number of blocks to read */
+  const size_t blkCount = 1 << (3 * (clenLog2 - BLOCK_CLEN_LOG2));
+
   /* validate offset */
   if(offVec[0] % clen || offVec[1] % clen || offVec[2] % clen) return -3;
   if(offVec[0] > FILE_CLEN || offVec[1] > FILE_CLEN || offVec[2] > FILE_CLEN) return -3;
+
+  /* determine where we start to read */
+  size_t blkIdx = morton3D_32_encode(
+    offVec[0] >> BLOCK_CLEN_LOG2, offVec[1] >> BLOCK_CLEN_LOG2, offVec[2] >> BLOCK_CLEN_LOG2);
+  size_t offsetBytes = sizeof(header_t) + sizeof(T) * BLOCK_NUMEL * blkIdx;
 
   int outFd;
   int outFdFlags = O_RDWR | O_CREAT;
@@ -428,16 +436,10 @@ int barrelWriteRaw(
   }
 
   /* seek to beginning of block */
-  size_t blkIdx = morton3D_32_encode(
-    offVec[0] >> BLOCK_CLEN_LOG2,
-    offVec[1] >> BLOCK_CLEN_LOG2,
-    offVec[2] >> BLOCK_CLEN_LOG2);
-  size_t offsetBytes = sizeof(header_t) + blkIdx * BLOCK_NUMEL * sizeof(T);
   assert(fseek(out, offsetBytes, SEEK_SET) == 0);
 
   /* prepare variables */
   T buf[BLOCK_NUMEL];
-  const size_t blkCount = 1 << (3 * (clenLog2 - BLOCK_CLEN_LOG2));
 
   /* iterate over Fortran-order blocks */
   for(size_t curBlkIdx = 0; curBlkIdx < blkCount; ++curBlkIdx){
