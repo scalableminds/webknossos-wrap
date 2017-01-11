@@ -321,6 +321,24 @@ int barrelReadLZ4(
   return 0;
 }
 
+/* barrelRead
+ *   Reads a cube of voxel data from disk.
+ *
+ * Type parameter
+ *   T:        Type of voxel data
+ *
+ * Function arguments
+ *   fileName: Absolute path to barrel file
+ *   offVec:   X, Y and Z offset of the cube.
+ *             Each entry must be an integer multiple of clen.
+ *   clen:     Side length of the desired data cube.
+ *             Must be a power of two and at least as large as BLOCK_CLEN.
+ *   out:      Destination buffer. Must be allocated by caller.
+ *
+ * Return value
+ *     0       if function call succeeded
+ *   < 0       if function call failed
+ */
 template<typename T>
 int barrelRead(
     const char * fileName,
@@ -340,9 +358,7 @@ int barrelRead(
   /* validate offset */
   if(offVec[0] % clen || offVec[1] % clen || offVec[2] % clen) return -2;
   const size_t blkIdx = morton3D_32_encode(
-    offVec[0] >> BLOCK_CLEN_LOG2,
-    offVec[1] >> BLOCK_CLEN_LOG2,
-    offVec[2] >> BLOCK_CLEN_LOG2);
+    offVec[0] >> BLOCK_CLEN_LOG2, offVec[1] >> BLOCK_CLEN_LOG2, offVec[2] >> BLOCK_CLEN_LOG2);
 
   /* open file */
   if((in = fopen(fileName, "rb")) == NULL) return -3;
