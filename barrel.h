@@ -24,6 +24,13 @@
 #include <lz4.h>
 #include <lz4hc.h>
 
+/* This library was developed with version 1.7.4 of LZ4, which
+ * contains a LZ4HC_DEFAULT_CLEVEL constant. This constant is
+ * however missing in version 1.7.1, which is on GABA. */
+#ifndef LZ4HC_DEFAULT_CLEVEL
+#define LZ4HC_DEFAULT_CLEVEL 9
+#endif
+
 /* every barrel file begins with these magic bytes */
 const uint8_t headerMagic[] = {'M', 'P', 'I', 'B', 'R'};
 
