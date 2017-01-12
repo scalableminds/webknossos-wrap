@@ -35,7 +35,7 @@ function barrelFromKnossos(wkParam, brlParam, box)
                 
                 % do the work
                 curData = readKnossosRoi( ...
-                    wkPparam.root, wkParam.prefix, curBox);
+                    wkParam.root, wkParam.prefix, curBox);
                 barrelSaveRoi( ...
                     brlParam.root, brlParam.prefix, curData, curOffset);
             end
