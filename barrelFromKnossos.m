@@ -14,6 +14,7 @@ function barrelFromKnossos(wkParam, brlParam, box)
         ceil(box(:, 2) ./ fileClen) - 1];
     
     % progress
+    tic;
     curCount = 1;
     fileCount = prod(diff(fileIds, 1, 2) + 1);
     
