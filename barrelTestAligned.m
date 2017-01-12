@@ -1,8 +1,10 @@
-function barrelTest()
-    % barrelTest
-    %   Does random reads / writes to a barrel file and a
-    %   matrix in RAM, and makes sure that the content of
-    %   these two are consistent at each point in time.
+function barrelTestAligned()
+    % barrelTestAligned
+    %   Performs randomly placed read and write operations
+    %   that are aligned to the blocks of the barrel file.
+    %   The same operations are also performed on a matrix
+    %   in RAM, which is then used to make sure that the
+    %   contents are consistent at each point in time.
     %
     % Written by
     %   Alessandro Motta <alessandro.motta@brain.mpg.de>
