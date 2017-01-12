@@ -50,8 +50,11 @@ function boxes = barrelSplitCubeBox(box, maxBox, minSize)
     box = max(box, repmat(maxBox(:, 1), 1, 2));
     box = min(box, repmat(maxBox(:, 2), 1, 2));
     
-    % check if we can and have to split further
-    if any(box(:) ~= maxBox(:)) && any(diff(maxBox, 1, 2) > minSize)
+    if any(diff(box, 1, 2) == 0)
+        % no overlap between box and maxBox
+        boxes = zeros(3, 2, 0);
+    elseif any(box(:) ~= maxBox(:)) && any(diff(maxBox, 1, 2) > minSize)
+        % we can and have to split further
         newBox = [maxBox(:, 1), mean(maxBox, 2)];
         newBoxMake = @(off) bsxfun( ...
             @plus, newBox, diff(maxBox, 1, 2) ./ 2 .* off(:));
@@ -66,6 +69,7 @@ function boxes = barrelSplitCubeBox(box, maxBox, minSize)
             barrelSplitCubeBox(box, newBoxMake([1, 1, 0]), minSize), ...
             barrelSplitCubeBox(box, newBoxMake([1, 1, 1]), minSize));
     else
+        % perfect fit
         boxes = maxBox;
     end
 end
