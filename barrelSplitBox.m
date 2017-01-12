@@ -47,16 +47,8 @@ function boxes = barrelSplitFileBox(box, cubeIds, minSize, cubeSize)
 end
 
 function boxes = barrelSplitCubeBox(box, maxBox, minSize)
-    
-    newBox = min(max(box, maxBox(:, 1)), maxBox(:, 2));
-    
-    % shortcut, if there is no overlap
-    if ~all(diff(newBox, 1, 2))
-        boxes = zeros(3, 2, 0);
-        return;
-    end
-    
-    box = newBox;
+    box = max(box, repmat(maxBox(:, 1), 1, 2));
+    box = min(box, repmat(maxBox(:, 2), 1, 2));
     
     % check if we can and have to split further
     if any(box(:) ~= maxBox(:)) && any(diff(maxBox, 1, 2) > minSize)
