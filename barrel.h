@@ -101,10 +101,10 @@ int barrelReadHeader(FILE * in, header_t * h){
 }
 
 int barrelCheckHeader(header_t * h){
-  if(memcmp(h->magic, headerMagic, sizeof(headerMagic)) != 0) return -1;
-  if(h->version < 1 || h->version > 1) return -2;
-  if(!h->dataType || h->dataType >= DATA_TYPE_UNKNOWN) return -3;
-  if(!h->blockType || h->blockType >= BLOCK_TYPE_UNKNOWN) return -4;
+  if(memcmp(h->magic, headerMagic, sizeof(headerMagic)) != 0) return -1; /* magic */
+  if(h->version == 0) return -2; /* version */
+  if(h->dataType == 0) return -3; /* data type */
+  if(h->blockType == 0) return -4;/* block type */
   return 0;
 }
 
@@ -367,7 +367,8 @@ int barrelRead(
   header_t header;
   if(barrelReadHeader(in, &header) && (err = -4)) goto cleanup;
   if(barrelCheckHeader(&header) && (err = -5)) goto cleanup;
-  if(barrelGetDataType<T>() != header.dataType && (err = -6)) goto cleanup;
+  if(header.version > 1 && (err = -6)) goto cleanup;
+  if(header.dataType != barrelGetDataType<T>() && (err = -7)) goto cleanup;
 
   switch(header.blockType){
     case BLOCK_TYPE_RAW:
@@ -383,7 +384,7 @@ int barrelRead(
   }
 
   /* to be future proof */
-  if(err && (err -= 6)) goto cleanup;
+  if(err && (err -= 7)) goto cleanup;
 
 cleanup:
   if(in != NULL) fclose(in);
@@ -426,9 +427,12 @@ int barrelWriteRaw(
   assert((outFd = open(fileName, outFdFlags, outFdMode)) != -1);
   assert((out = fdopen(outFd, "rb+")) != NULL);
 
-  /* check if file is empty
-   * if so, let's write a header */
-  if(ftell(out) == 0){
+  /* check if file is a pre-existing barrel file */
+  if(!barrelReadHeader(out, &header) && !barrelCheckHeader(&header)){
+    /* indeed, it is */
+    if(header.version > 1 && (err = -5)) goto cleanup;
+    if(barrelGetDataType<T>() != header.dataType) goto cleanup;
+  }else{
     /* build header */
     memcpy(header.magic, headerMagic, sizeof(headerMagic));
     header.version = 1;
@@ -436,19 +440,12 @@ int barrelWriteRaw(
     header.blockType = BLOCK_TYPE_RAW;
 
     /* write header to file */
+    assert(fseek(out, 0, SEEK_SET) == 0);
     assert(fwrite((const void *) &header, sizeof(header_t), 1, out) == 1);
 
     /* truncate file to correct size */
     const size_t fileSize = sizeof(header_t) + FILE_NUMEL * sizeof(T);
     assert(ftruncate(fileno(out), fileSize) == 0);
-  }else{
-    /* read header */
-    assert(fseek(out, 0, SEEK_SET) == 0);
-    assert(barrelReadHeader(out, &header) == 0);
-
-    /* validate header */
-    if(barrelCheckHeader(&header) != 0 && (err = -5)) goto cleanup;
-    if(barrelGetDataType<T>() != header.dataType && (err = -6)) goto cleanup;
   }
 
   /* seek to beginning of block */
