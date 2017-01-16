@@ -1,52 +1,52 @@
-function data = barrelLoadRoi(rootDir, filePrefix, box, dataType)
+function data = wkwLoadRoi(rootDir, filePrefix, box, dataType)
     % config
     blockSize = 32;
     cubeSize = 1024;
-    
+
     % sanity check
     assert(all(box(:) > 0));
     assert(all(box(:, 2) > box(:, 1)));
-    
+
     % fix bounding box
     % a) make start indices zero-based
     % b) make end indices exclusive
     box(:, 1) = box(:, 1) - 1;
-    
+
     % find the boxes to load
-    boxes = barrelSplitBox(box, blockSize, cubeSize);
+    boxes = wkwSplitBox(box, blockSize, cubeSize);
     boxCount = size(boxes, 3);
-    
+
     boxWidth = diff(box, 1, 2);
     data = zeros(boxWidth', dataType);
-    
+
     % load boxes
     for curIdx = 1:boxCount
         curBox = boxes(:, :, curIdx);
         curCube = floor(curBox(:, 1) ./ cubeSize);
-        
+
         % build file path
         curFileName = sprintf( ...
             '%s_x%06u_y%06u_z%06u.brl', ...
             filePrefix, curCube(1), curCube(2), curCube(3));
         curFilePath = fullfile(rootDir, curFileName);
-        
+
         % find regions to copy
         curValidBox = [ ...
             max(box(:, 1), curBox(:, 1)), ...
             min(box(:, 2), curBox(:, 2)) - 1];
-        
+
         % make relative to source and destination
         curDestBox = bsxfun(@minus, curValidBox, box(:, 1) - 1);
         curSrcBox = bsxfun(@minus, curValidBox, curBox(:, 1) - 1);
-        
+
         % read data
         if exist(curFilePath, 'file')
             curSize = diff(curBox(1, :));
             curOffset = 1 + mod(curBox(:, 1), cubeSize);
-            
-            curData = barrelLoad( ...
+
+            curData = wkwLoad( ...
                 curFilePath, curSize, curOffset, dataType);
-            
+
             % cut out relevant part
             if any(curValidBox(:) ~= curBox(:))
                 curData = curData( ...
@@ -57,7 +57,7 @@ function data = barrelLoadRoi(rootDir, filePrefix, box, dataType)
         else
             curData = 0;
         end
-        
+
         % write to correct position
         if all(curValidBox(:) == box(:))
             data(:, :, :) = curData;
