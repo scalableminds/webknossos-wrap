@@ -6,7 +6,7 @@
  */
 
 #include "mex.h"
-#include <barrel.h>
+#include <wkwrap.h>
 
 void mexFunction(
     int nlhs, mxArray * plhs[],
@@ -25,7 +25,6 @@ void mexFunction(
   const char * inFile = mxArrayToString(inFileArr);
   const char * outFile = mxArrayToString(outFileArr);
 
-  if(barrelCompress(inFile, outFile))
+  if(wkwCompress(inFile, outFile))
     mexErrMsgTxt("Error while compressing file");
 }
-

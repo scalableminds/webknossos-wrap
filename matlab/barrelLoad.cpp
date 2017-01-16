@@ -9,7 +9,7 @@
 #include "mex.h"
 #include "matrix.h"
 
-#include <barrel.h>
+#include <wkwrap.h>
 #include <iostream>
 
 void mexFunction(
@@ -53,13 +53,13 @@ void mexFunction(
 
     if(!strcmp(type, "uint8")){
       out = mxCreateUninitNumericArray(3, outSize, mxUINT8_CLASS, mxREAL);
-      errorCode = barrelRead<uint8_t>(fileName, offVec, size, (uint8_t *) mxGetData(out));
+      errorCode = wkwRead<uint8_t>(fileName, offVec, size, (uint8_t *) mxGetData(out));
     }else if(!strcmp(type, "uint32")){
       out = mxCreateUninitNumericArray(3, outSize, mxUINT32_CLASS, mxREAL);
-      errorCode = barrelRead<uint32_t>(fileName, offVec, size, (uint32_t *) mxGetData(out));
+      errorCode = wkwRead<uint32_t>(fileName, offVec, size, (uint32_t *) mxGetData(out));
     }else if(!strcmp(type, "single")){
       out = mxCreateUninitNumericArray(3, outSize, mxSINGLE_CLASS, mxREAL);
-      errorCode = barrelRead<float>(fileName, offVec, size, (float *) mxGetData(out));
+      errorCode = wkwRead<float>(fileName, offVec, size, (float *) mxGetData(out));
     }else{
       mexErrMsgTxt("Given data type is not supported");
     }

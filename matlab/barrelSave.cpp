@@ -6,7 +6,7 @@
  * Alessandro Motta <alessandro.motta@brain.mpg.de>
  */
 
-#include <barrel.h>
+#include <wkwrap.h>
 #include <stdint.h>
 
 #include "mex.h"
@@ -54,15 +54,15 @@ void mexFunction(
   /* actually write file */
   switch(inClass){
     case mxUINT8_CLASS:
-      errorCode = barrelWriteRaw<uint8_t>(
+      errorCode = wkwWriteRaw<uint8_t>(
         fileName, offVec, inSize, (const uint8_t *) mxGetData(inArr));
       break;
     case mxUINT32_CLASS:
-      errorCode = barrelWriteRaw<uint32_t>(
+      errorCode = wkwWriteRaw<uint32_t>(
         fileName, offVec, inSize, (const uint32_t *) mxGetData(inArr));
       break;
     case mxSINGLE_CLASS:
-      errorCode = barrelWriteRaw<float>(
+      errorCode = wkwWriteRaw<float>(
         fileName, offVec, inSize, (const float *) mxGetData(inArr));
       break;
     default:
