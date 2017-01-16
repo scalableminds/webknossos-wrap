@@ -1,5 +1,5 @@
-function data = barrelLoad(filePath, size, offset, class) %#ok
-    % data = barrelLoad(filePath, size, offset, class)
+function data = wkwLoad(filePath, size, offset, class) %#ok
+    % data = wkwLoad(filePath, size, offset, class)
     %   Loads a three-dimensional data cube from a Morton-encoded binary
     %   file and decodes it to Fortran-order for use in MATLAB.
     %
@@ -20,12 +20,12 @@ function data = barrelLoad(filePath, size, offset, class) %#ok
     %   and uint32 are supported.
     %
     % Example
-    %   raw = barrelLoad( ...
+    %   raw = wkwLoad( ...
     %       '/home/amotta/raw.dat', 128, [257, 129, 513], 'uint8');
-    %   seg = barrelLoad( ...
+    %   seg = wkwLoad( ...
     %       '/home/amotta/seg.dat', 128, [257, 129, 513], 'uint32');
     %
     % Written by
     %   Alessandro Motta <alessandro.motta@brain.mpg.de>
-    error('Please compile barrelLoad.cpp');
+    error('Please run wkwBuild to compile wkwLoad.cpp');
 end

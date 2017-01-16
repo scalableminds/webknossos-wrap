@@ -1,5 +1,5 @@
-function barrelSave(filePath, data, offset)
-    % barrelSave(filePath, data, offset)
+function wkwSave(filePath, data, offset)
+    % wkwSave(filePath, data, offset)
     %   Encodes a three-dimensional data cube to Morton-order and save the
     %   result in a binary file.
     %
@@ -18,9 +18,9 @@ function barrelSave(filePath, data, offset)
     %
     % Example
     %   data = randi([0, intmax('uint8')], [128, 128, 128], 'uint8');
-    %   barrelSave('/home/amotta/morton.dat', data, [129, 0, 257]);
+    %   wkwSave('/home/amotta/morton.dat', data, [129, 0, 257]);
     %
     % Written by
     %   Alessandro Motta <alessandro.motta@brain.mpg.de>
-    error('Please compile barrelSave.cpp');
+    error('Please run wkwBuild to compile wkwSave.cpp');
 end
