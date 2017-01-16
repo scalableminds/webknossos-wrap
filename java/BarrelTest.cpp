@@ -1,9 +1,9 @@
-#include<assert.h>
-#include<stdio.h>
-#include<stdint.h>
-#include<jni.h>
+#include <assert.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <jni.h>
+#include <wkwrap.h>
 
-#include "barrel.h"
 #include "BarrelTest.h"
 
 JNIEXPORT int JNICALL Java_BarrelTest_readRawData
@@ -19,10 +19,8 @@ JNIEXPORT int JNICALL Java_BarrelTest_readRawData
 
     /* call main function */
     size_t offVec[] = {x, y, z};
-    int err = barrelRead(file, offVec, clen, buf);
+    int err = wkwRead(file, offVec, clen, buf);
 
     env->ReleaseStringUTFChars(jFile, file);
     return err;
 }
-
-
