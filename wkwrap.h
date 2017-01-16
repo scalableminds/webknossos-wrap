@@ -1,13 +1,13 @@
-/* barrel.h
+/* wkwrap.h
  * A header-only C++ library for reading, writing and
- * compressing barrel files.
+ * compressing wk-wkrap files.
  *
  * Written by
  * Alessandro Motta <alessandro.motta@brain.mpg.de>
  */
 
-#ifndef BARREL_H
-#define BARREL_H
+#ifndef WKWRAP_H
+#define WKWRAP_H
 
 #include <fcntl.h> /* for open */
 #include <algorithm> /* for std::min */
@@ -31,7 +31,7 @@
 #define LZ4HC_DEFAULT_CLEVEL 9
 #endif
 
-/* every barrel file begins with these magic bytes */
+/* every wk-wrap file begins with these magic bytes */
 const uint8_t headerMagic[] = {'M', 'P', 'I', 'B', 'R'};
 
 /* CLEN stands for cube length */
@@ -70,15 +70,15 @@ typedef enum {
 } blockType_t;
 
 /* helpers to convert types into their dataType_t */
-template<typename T> uint8_t barrelGetDataType();
-template<> uint8_t barrelGetDataType<uint8_t>(){ return DATA_TYPE_UINT8; }
-template<> uint8_t barrelGetDataType<uint16_t>(){ return DATA_TYPE_UINT16; }
-template<> uint8_t barrelGetDataType<uint32_t>(){ return DATA_TYPE_UINT32; }
-template<> uint8_t barrelGetDataType<uint64_t>(){ return DATA_TYPE_UINT64; }
-template<> uint8_t barrelGetDataType<float>(){ return DATA_TYPE_FLOAT; }
-template<> uint8_t barrelGetDataType<double>(){ return DATA_TYPE_DOUBLE; }
+template<typename T> uint8_t wkwGetDataType();
+template<> uint8_t wkwGetDataType<uint8_t>(){ return DATA_TYPE_UINT8; }
+template<> uint8_t wkwGetDataType<uint16_t>(){ return DATA_TYPE_UINT16; }
+template<> uint8_t wkwGetDataType<uint32_t>(){ return DATA_TYPE_UINT32; }
+template<> uint8_t wkwGetDataType<uint64_t>(){ return DATA_TYPE_UINT64; }
+template<> uint8_t wkwGetDataType<float>(){ return DATA_TYPE_FLOAT; }
+template<> uint8_t wkwGetDataType<double>(){ return DATA_TYPE_DOUBLE; }
 
-int8_t barrelLog2(uint64_t val) {
+int8_t wkwLog2(uint64_t val) {
   /* make sure it's not zero */
   if(val == 0) return -1;
 
@@ -95,12 +95,12 @@ int8_t barrelLog2(uint64_t val) {
   return ret;
 }
 
-int barrelReadHeader(FILE * in, header_t * h){
+int wkwReadHeader(FILE * in, header_t * h){
   if(fread(h, sizeof(header_t), 1, in) != 1) return -1;
   return 0;
 }
 
-int barrelCheckHeader(header_t * h){
+int wkwCheckHeader(header_t * h){
   if(memcmp(h->magic, headerMagic, sizeof(headerMagic)) != 0) return -1; /* magic */
   if(h->version == 0) return -2; /* version */
   if(h->dataType == 0) return -3; /* data type */
@@ -109,7 +109,7 @@ int barrelCheckHeader(header_t * h){
 }
 
 template<typename T>
-int barrelCompressBlocks(FILE * in, FILE * out){
+int wkwCompressBlocks(FILE * in, FILE * out){
   T rawBuf[BLOCK_NUMEL];
   uint8_t encBuf[LZ4_COMPRESSBOUND(sizeof(T) * BLOCK_NUMEL)];
 
@@ -151,7 +151,7 @@ int barrelCompressBlocks(FILE * in, FILE * out){
   return 0;
 }
 
-int barrelCompress(const char * inFile, const char * outFile){
+int wkwCompress(const char * inFile, const char * outFile){
   int err = 0;
   FILE * in, * out;
   header_t inHeader, outHeader;
@@ -161,8 +161,8 @@ int barrelCompress(const char * inFile, const char * outFile){
   if((out = fopen(outFile, "wb")) == NULL && (err = -2)) goto cleanup;
 
   /* read and validate header of input file */
-  if(barrelReadHeader(in, &inHeader) != 0 && (err = -3)) goto cleanup;
-  if(barrelCheckHeader(&inHeader) != 0 && (err = -4)) goto cleanup;
+  if(wkwReadHeader(in, &inHeader) != 0 && (err = -3)) goto cleanup;
+  if(wkwCheckHeader(&inHeader) != 0 && (err = -4)) goto cleanup;
 
   /* build and write header of output file */
   outHeader = inHeader;
@@ -172,12 +172,12 @@ int barrelCompress(const char * inFile, const char * outFile){
 
   /* actually do the thing */
   switch(inHeader.dataType){
-    case DATA_TYPE_UINT8:  err = barrelCompressBlocks<uint8_t> (in, out); break;
-    case DATA_TYPE_UINT16: err = barrelCompressBlocks<uint16_t>(in, out); break;
-    case DATA_TYPE_UINT32: err = barrelCompressBlocks<uint32_t>(in, out); break;
-    case DATA_TYPE_UINT64: err = barrelCompressBlocks<uint64_t>(in, out); break;
-    case DATA_TYPE_FLOAT:  err = barrelCompressBlocks<float>   (in, out); break;
-    case DATA_TYPE_DOUBLE: err = barrelCompressBlocks<double>  (in, out); break;
+    case DATA_TYPE_UINT8:  err = wkwCompressBlocks<uint8_t> (in, out); break;
+    case DATA_TYPE_UINT16: err = wkwCompressBlocks<uint16_t>(in, out); break;
+    case DATA_TYPE_UINT32: err = wkwCompressBlocks<uint32_t>(in, out); break;
+    case DATA_TYPE_UINT64: err = wkwCompressBlocks<uint64_t>(in, out); break;
+    case DATA_TYPE_FLOAT:  err = wkwCompressBlocks<float>   (in, out); break;
+    case DATA_TYPE_DOUBLE: err = wkwCompressBlocks<double>  (in, out); break;
 
     /* if this ever happens, the header validation failed miserably */
     default: assert(0);
@@ -194,7 +194,7 @@ cleanup:
 }
 
 template<typename T>
-inline T * barrelGetBlkPointer(
+inline T * wkwGetBlkPointer(
   T * in,
   const size_t inClenLog2,
   const size_t blkIdx)
@@ -211,7 +211,7 @@ inline T * barrelGetBlkPointer(
 }
 
 template<typename T>
-inline void barrelCopyBlk(
+inline void wkwCopyBlk(
     const T * in, const size_t inClenLog2,
     T * out, const size_t outClenLog2)
 {
@@ -232,7 +232,7 @@ inline void barrelCopyBlk(
 }
 
 template<typename T>
-int barrelReadRaw(
+int wkwReadRaw(
     FILE * in,
     const size_t blkIdx,
     const size_t outClen,
@@ -242,7 +242,7 @@ int barrelReadRaw(
   if(blkIdx >= FILE_NUMEL / BLOCK_NUMEL) return -1;
 
   /* validate cube side length */
-  const int8_t outClenLog2 = barrelLog2(outClen);
+  const int8_t outClenLog2 = wkwLog2(outClen);
   if(outClenLog2 < BLOCK_CLEN_LOG2) return -2;
 
   /* seek to offset */
@@ -258,15 +258,15 @@ int barrelReadRaw(
     assert(fread(buf, sizeof(T), BLOCK_NUMEL, in) == BLOCK_NUMEL);
 
     /* copy buffer to putput */
-    T * curOut = barrelGetBlkPointer<T>(out, outClenLog2, curBlkIdx);
-    barrelCopyBlk<T>(buf, BLOCK_CLEN_LOG2, curOut, outClenLog2);
+    T * curOut = wkwGetBlkPointer<T>(out, outClenLog2, curBlkIdx);
+    wkwCopyBlk<T>(buf, BLOCK_CLEN_LOG2, curOut, outClenLog2);
   }
 
   return 0;
 }
 
 template<typename T>
-int barrelReadLZ4(
+int wkwReadLZ4(
     FILE * in,
     const size_t blkIdx,
     const size_t outClen,
@@ -276,7 +276,7 @@ int barrelReadLZ4(
   if(blkIdx >= FILE_NUMEL / BLOCK_NUMEL) return -1;
 
   /* validate cube side length */
-  const int8_t outClenLog2 = barrelLog2(outClen);
+  const int8_t outClenLog2 = wkwLog2(outClen);
   if(outClenLog2 < BLOCK_CLEN_LOG2) return -2;
 
   /* read jump table */
@@ -314,21 +314,21 @@ int barrelReadLZ4(
       (const char *) encBuf, (char *) rawBuf, toRead, sizeof(rawBuf)) >= 0);
 
     /* write to output */
-    T * curOut = barrelGetBlkPointer<T>(out, outClenLog2, curBlkIdx);
-    barrelCopyBlk<T>(rawBuf, BLOCK_CLEN_LOG2, out, outClenLog2);
+    T * curOut = wkwGetBlkPointer<T>(out, outClenLog2, curBlkIdx);
+    wkwCopyBlk<T>(rawBuf, BLOCK_CLEN_LOG2, out, outClenLog2);
   }
 
   return 0;
 }
 
-/* barrelRead
+/* wkwRead
  *   Reads a cube of voxel data from disk.
  *
  * Type parameter
  *   T:        Type of voxel data
  *
  * Function arguments
- *   fileName: Absolute path to barrel file
+ *   fileName: Absolute path to wk-wrap file
  *   offVec:   X, Y and Z offset of the cube.
  *             Each entry must be an integer multiple of clen.
  *   clen:     Side length of the desired data cube.
@@ -340,7 +340,7 @@ int barrelReadLZ4(
  *   < 0       if function call failed
  */
 template<typename T>
-int barrelRead(
+int wkwRead(
     const char * fileName,
     const size_t offVec[3],
     const size_t clen,
@@ -351,7 +351,7 @@ int barrelRead(
   FILE * in = NULL;
 
   /* validate cube length */
-  const int8_t clenLog2 = barrelLog2(clen);
+  const int8_t clenLog2 = wkwLog2(clen);
   if(clenLog2 < 0) return -1;
   if(clenLog2 < BLOCK_CLEN_LOG2) return -1;
 
@@ -365,18 +365,18 @@ int barrelRead(
 
   /* read and validate header */
   header_t header;
-  if(barrelReadHeader(in, &header) && (err = -4)) goto cleanup;
-  if(barrelCheckHeader(&header) && (err = -5)) goto cleanup;
+  if(wkwReadHeader(in, &header) && (err = -4)) goto cleanup;
+  if(wkwCheckHeader(&header) && (err = -5)) goto cleanup;
   if(header.version > 1 && (err = -6)) goto cleanup;
-  if(header.dataType != barrelGetDataType<T>() && (err = -7)) goto cleanup;
+  if(header.dataType != wkwGetDataType<T>() && (err = -7)) goto cleanup;
 
   switch(header.blockType){
     case BLOCK_TYPE_RAW:
-      err = barrelReadRaw(in, blkIdx, clen, out);
+      err = wkwReadRaw(in, blkIdx, clen, out);
       break;
     case BLOCK_TYPE_LZ4_32C:
     case BLOCK_TYPE_LZ4HC_32C:
-      err = barrelReadLZ4(in, blkIdx, clen, out);
+      err = wkwReadLZ4(in, blkIdx, clen, out);
       break;
 
     /* this should never happen */
@@ -392,7 +392,7 @@ cleanup:
 }
 
 template<typename T>
-int barrelWriteRaw(
+int wkwWriteRaw(
     const char * fileName,
     const size_t offVec[3],
     const size_t clen,
@@ -404,7 +404,7 @@ int barrelWriteRaw(
   FILE * out = NULL;
 
   /* validate size*/
-  const int8_t clenLog2 = barrelLog2(clen);
+  const int8_t clenLog2 = wkwLog2(clen);
   if(clenLog2 < BLOCK_CLEN_LOG2) return -2;
 
   /* determine number of blocks to read */
@@ -427,16 +427,16 @@ int barrelWriteRaw(
   assert((outFd = open(fileName, outFdFlags, outFdMode)) != -1);
   assert((out = fdopen(outFd, "rb+")) != NULL);
 
-  /* check if file is a pre-existing barrel file */
-  if(!barrelReadHeader(out, &header) && !barrelCheckHeader(&header)){
+  /* check if file is a pre-existing wk-wrap file */
+  if(!wkwReadHeader(out, &header) && !wkwCheckHeader(&header)){
     /* indeed, it is */
     if(header.version > 1 && (err = -5)) goto cleanup;
-    if(barrelGetDataType<T>() != header.dataType) goto cleanup;
+    if(wkwGetDataType<T>() != header.dataType) goto cleanup;
   }else{
     /* build header */
     memcpy(header.magic, headerMagic, sizeof(headerMagic));
     header.version = 1;
-    header.dataType = barrelGetDataType<T>();
+    header.dataType = wkwGetDataType<T>();
     header.blockType = BLOCK_TYPE_RAW;
 
     /* write header to file */
@@ -457,8 +457,8 @@ int barrelWriteRaw(
   /* iterate over Fortran-order blocks */
   for(size_t curBlkIdx = 0; curBlkIdx < blkCount; ++curBlkIdx){
     /* copy Fortran-order block to buffer */
-    const T * curIn = barrelGetBlkPointer<const T>(in, clenLog2, curBlkIdx);
-    barrelCopyBlk<T>(curIn, clenLog2, buf, BLOCK_CLEN_LOG2);
+    const T * curIn = wkwGetBlkPointer<const T>(in, clenLog2, curBlkIdx);
+    wkwCopyBlk<T>(curIn, clenLog2, buf, BLOCK_CLEN_LOG2);
 
     /* write current buffer to file */
     assert(fwrite(buf, sizeof(T), BLOCK_NUMEL, out) == BLOCK_NUMEL);
@@ -470,4 +470,4 @@ cleanup:
   return err;
 }
 
-#endif /* BARREL_H */
+#endif /* WKWRAP_H */
