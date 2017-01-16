@@ -1,5 +1,5 @@
-/* barrelLoad.cpp
- * Loads data from a Morton-encoded file and decodes it to
+/* wkwLoad.cpp
+ * Loads data from a webKNOSSOS wrap file and decodes its content to
  * Fortran order on-the-fly.
  *
  * Written by

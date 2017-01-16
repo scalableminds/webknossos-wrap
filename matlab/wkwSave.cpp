@@ -1,6 +1,6 @@
-/* barrelSave.cpp
- * Encodes a three-dimensional Fortran-order matrix to Morton order
- * and writes the result to a file.
+/* wkwSave.cpp
+ * Encodes and writes a three-dimensional Fortran-order matrix to
+ * a webKNOSSOS wrap file. 
  *
  * Written by
  * Alessandro Motta <alessandro.motta@brain.mpg.de>

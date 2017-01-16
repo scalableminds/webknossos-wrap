@@ -1,5 +1,5 @@
-/* barrelCompress.cpp
- * Compresses a raw barrel file using LZ4.
+/* wkwCompress.cpp
+ * Compresses a raw webKNOSSOS wrap file using LZ4.
  *
  * Written by
  * Alessandro Motta <alessandro.motta@brain.mpg.de>
