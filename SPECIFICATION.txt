@@ -1,0 +1,50 @@
+# The webKNOSSOS Wrapper Format
+The "webKNOSSOS wrapper" (wk-wrap) format was designed to store large amounts
+of three-dimensional voxel data while guaranteeing fast access to data sub-
+volumes. Each voxel carries a single value. The data type of these values is
+specified in the header of the wk-wrap file and is constant across all voxels.
+The byte size of each value MUST be a (possibly data type-dependent) constant.
+
+## High-level description
+Each file contains the data for a cube with side length (CLEN) of FILE_CLEN
+(MUST be a power of two; e.g., 1024) voxels. Within each file, the data is split
+into smaller, non-overlapping cubes (called "blocks") with a CLEN of BLOCK_CLEN
+(MUST be a power of two; e.g., 32) voxels.
+
+The blocks are stored in Morton order. That is,
+block index           0         1         2         3         4         5    
+block coordinates (0, 0, 0) (1, 0, 0) (0, 1, 0) (1, 1, 0) (0, 0, 1) (1, 0, 1)
+       6         7         8         9        10        11        12     ...
+   (0, 1, 1) (1, 1, 1) (2, 0, 0) (3, 0, 0) (2, 1, 0) (3, 1, 0) (2, 0, 1) ...
+
+## File format
+Each wk-wrap file begins with a fixed file header. Depending on the content of
+this fixed file header, additional meta data MAY follow. The content of the
+fixed file header and the optional meta data MUST be sufficient to determine the
+offset and size (in bytes) of each encoded block.
+
+### Fixed file header
+Each wk-wrap file MUST begin with the following sequence of (unsigned) bytes
+'M', 'P', 'I', 'B', 'R', version, dataType, blockType
+
+version: Contains the wk-wrap format version. At the time of writing, the only
+valid version number is 0x01.
+
+dataType: Encodes the data type of the voxel values. Valid values are
+value of dataType       0x01   0x02    0x03    0x04    0x05   0x06
+data type               uint8  uint16  uint32  uint64  float  double
+
+blockType: Determines how the individual blocks were encoded. Valid values are
+value of blockType      0x01  0x02     0x03
+block type              RAW   LZ4_32C  LZ4HC_32C
+
+### Raw blocks
+Within raw blocks, the voxel values are stored in Fortran order. That is,
+voxel index              X + Y * BLOCK_CLEN + Z * BLOCK_CLEN * BLOCK_CLEN  
+voxel coordinates                         (X, Y, Z)
+
+In wk-wrap version 0x01, the block with index 0 begins immediately after the
+fixed header. The bytes of subsequent blocks are immediately following each
+other (i.e., no padding).
+
+### LZ4 compressed blocks
