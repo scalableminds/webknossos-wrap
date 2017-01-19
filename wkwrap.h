@@ -72,8 +72,8 @@ typedef enum {
 typedef enum {
   BLOCK_TYPE_INVALID,
   BLOCK_TYPE_RAW,
-  BLOCK_TYPE_LZ4_32C,
-  BLOCK_TYPE_LZ4HC_32C,
+  BLOCK_TYPE_LZ4,
+  BLOCK_TYPE_LZ4HC,
   BLOCK_TYPE_UNKNOWN
 } blockType_t;
 
@@ -182,7 +182,7 @@ int wkwCompress(const char * inFile, const char * outFile){
 
   /* build and write header of output file */
   outHeader = inHeader;
-  outHeader.blockType = BLOCK_TYPE_LZ4HC_32C;
+  outHeader.blockType = BLOCK_TYPE_LZ4HC;
   outHeader.dataOffset = sizeof(header_t) + sizeof(uint64_t) * FILE_NUMEL / BLOCK_NUMEL;
   assert(fwrite((const void *) &outHeader, sizeof(header_t), 1, out) == 1);
   assert(fflush(out) == 0);
@@ -384,8 +384,8 @@ int wkwRead(
     case BLOCK_TYPE_RAW:
       err = wkwReadRaw(in, blkIdx, clen, out);
       break;
-    case BLOCK_TYPE_LZ4_32C:
-    case BLOCK_TYPE_LZ4HC_32C:
+    case BLOCK_TYPE_LZ4:
+    case BLOCK_TYPE_LZ4HC:
       err = wkwReadLZ4(in, blkIdx, clen, out);
       break;
 
