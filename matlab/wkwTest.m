@@ -7,7 +7,6 @@ function wkwTest()
     %% preparations
     thisDir = fileparts(mfilename('fullpath'));
     testDir = fullfile(thisDir, 'test');
-    testPrefix = 'test';
 
     % empty directory, if needed
     if exist(testDir, 'dir'); rmdir(testDir, 's'); end;
@@ -31,12 +30,12 @@ function wkwTest()
             curBox(3, 1):curBox(3, 2)) = curData;
 
         % write to file
-        wkwSaveRoi(testDir, testPrefix, curBox(:, 1)', curData);
+        wkwSaveRoi(testDir, curBox(:, 1)', curData);
 
         %% read data
         curBox = buildRandBox(clen);
-        curWkwData = wkwLoadRoi( ...
-            testDir, testPrefix, curBox, dataType);
+        curWkwData = wkwLoadRoi(testDir, curBox, dataType);
+        
         curRamData = data( ...
             curBox(1, 1):curBox(1, 2), ...
             curBox(2, 1):curBox(2, 2), ...

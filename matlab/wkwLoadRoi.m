@@ -1,4 +1,4 @@
-function data = wkwLoadRoi(rootDir, filePrefix, box, dataType)
+function data = wkwLoadRoi(rootDir, box, dataType)
     % config
     blockSize = 32;
     cubeSize = 1024;
@@ -26,8 +26,8 @@ function data = wkwLoadRoi(rootDir, filePrefix, box, dataType)
 
         % build file path
         curFileName = sprintf( ...
-            '%s_x%06u_y%06u_z%06u.brl', ...
-            filePrefix, curCube(1), curCube(2), curCube(3));
+            'x%06u_y%06u_z%06u.wkw', ...
+            curCube(1), curCube(2), curCube(3));
         curFilePath = fullfile(rootDir, curFileName);
 
         % find regions to copy

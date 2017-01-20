@@ -1,4 +1,4 @@
-function wkwFromKnossos(wkParam, brlParam, box)
+function wkwFromKnossos(wkParam, wkwRoot, box)
     % wkwFromKnossos(wkParam, box, outDir)
     %   Converts a KNOSSOS hierarchy into wk-wrap files.
     %
@@ -37,8 +37,7 @@ function wkwFromKnossos(wkParam, brlParam, box)
                 % do the work
                 curData = readKnossosRoi( ...
                     wkParam.root, wkParam.prefix, curBox);
-                wkwSaveRoi( ...
-                    brlParam.root, brlParam.prefix, curOffset, curData);
+                wkwSaveRoi(wkwRoot, curOffset, curData);
             end
         end
     end

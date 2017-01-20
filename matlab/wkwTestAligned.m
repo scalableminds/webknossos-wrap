@@ -18,7 +18,7 @@ function wkwTestAligned()
     fileClen = 1024;
 
     thisDir = fileparts(mfilename('fullpath'));
-    fileName = fullfile(thisDir, 'test.dat');
+    fileName = fullfile(thisDir, 'test.wkw');
 
     % start empty
     data = zeros(repmat(fileClen, 1, 3), dataType);
