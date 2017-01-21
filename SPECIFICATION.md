@@ -16,11 +16,12 @@ BLOCK_CLEN (MUST be a power of two; e.g., 32) voxels.
 
 To enable fast access to subvolumes of the voxel cube, blocks are stored in
 Morton order. That is,
-
-block index           0         1         2         3         4         5
-block coordinates (0, 0, 0) (1, 0, 0) (0, 1, 0) (1, 1, 0) (0, 0, 1) (1, 0, 1)
-       6         7         8         9        10        11        12     ...
-   (0, 1, 1) (1, 1, 1) (2, 0, 0) (3, 0, 0) (2, 1, 0) (3, 1, 0) (2, 0, 1) ...
+```
+  block index           0         1         2         3         4         5
+  block coordinates (0, 0, 0) (1, 0, 0) (0, 1, 0) (1, 1, 0) (0, 0, 1) (1, 0, 1)
+         6         7         8         9        10        11        12     ...
+     (0, 1, 1) (1, 1, 1) (2, 0, 0) (3, 0, 0) (2, 1, 0) (3, 1, 0) (2, 0, 1) ...
+```
 
 For further information, see the Wikipedia entry on the "Z-order curve":
 https://en.wikipedia.org/wiki/Z-order_curve
@@ -55,6 +56,7 @@ Each wk-wrap file MUST begin with the following header:
 * __voxelType__ encodes the data type of the voxel values. Valid values are
 
   | value of voxelType    | 0x01  | 0x02   | 0x03   | 0x04   | 0x05  | 0x06   |
+  |-----------------------|-------|--------|--------|--------|-------|--------|
   | data type             | uint8 | uint16 | uint32 | uint64 | float | double |
 
 * __voxelSize__ is an uint8 of the number of bytes per voxel. If the wk-wrap
@@ -69,8 +71,10 @@ Each wk-wrap file MUST begin with the following header:
 
 ### Raw blocks
 Within raw blocks, the voxel values are stored in Fortran order. That is,
-voxel index              X + Y * BLOCK_CLEN + Z * BLOCK_CLEN * BLOCK_CLEN
-voxel coordinates                         (X, Y, Z)
+```
+  voxel index              X + Y * BLOCK_CLEN + Z * BLOCK_CLEN * BLOCK_CLEN
+  voxel coordinates                         (X, Y, Z)
+```
 
 In wk-wrap version 0x01, the block with index 0 begins immediately after the
 fixed header. The bytes of subsequent blocks are immediately following each
