@@ -23,8 +23,8 @@ Morton order. That is,
      (0, 1, 1) (1, 1, 1) (2, 0, 0) (3, 0, 0) (2, 1, 0) (3, 1, 0) (2, 0, 1) ...
 ```
 
-For further information, see the Wikipedia entry on the "Z-order curve":
-https://en.wikipedia.org/wiki/Z-order_curve
+For further information, see the Wikipedia entry on the [Z-order curve](
+https://en.wikipedia.org/wiki/Z-order_curve).
 
 ## File format
 Each wk-wrap file begins with a file header. Depending on the content of this
