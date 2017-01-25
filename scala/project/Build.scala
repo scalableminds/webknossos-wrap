@@ -20,7 +20,7 @@ object BuildSettings {
     scalaVersion := scalaCompilerVersion,
     javaOptions in test ++= Seq("-Xmx512m", "-XX:MaxPermSize=512m"),
     javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
-    scalacOptions ++= Seq("-unchecked", "-deprecation" /*, "-Xlog-implicits", "-Yinfer-debug", "-Xprint:typer", "-Yinfer-debug", "-Xlog-implicits", "-Xprint:typer"*/ ),
+    scalacOptions ++= Seq("-unchecked", "-deprecation"),
     scalacOptions in (Compile, doc) ++= Seq("-unchecked", "-deprecation", "-implicits"),
     shellPrompt := ShellPrompt.buildShellPrompt,
     mappings in (Compile, packageBin) ~= filter,
@@ -105,15 +105,15 @@ object Resolvers {
       "sonatype rels" at "https://oss.sonatype.org/content/repositories/releases/",
       "sonatype snaps" at "https://oss.sonatype.org/content/repositories/snapshots/",
       "sgodbillon" at "https://bitbucket.org/sgodbillon/repository/raw/master/snapshots/",
-      //"mandubian" at "https://github.com/mandubian/mandubian-mvn/raw/master/snapshots/",
       "typesafe" at "http://repo.typesafe.com/typesafe/releases",
       Resolver.url("Scalableminds REL Repo", url("http://scalableminds.github.com/releases/"))(Resolver.ivyStylePatterns)
     )
 }
 
 object Dependencies {
-  val braingamesVersion = "9.0.5"
+  val braingamesVersion = "9.1.2-SNAPSHOT"
   val braingamesUtil = "com.scalableminds" %% "util" % braingamesVersion
+  val braingamesBinary = "com.scalableminds" %% "braingames-binary" % braingamesVersion
 
   val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0"
   val liftBox = "net.liftweb" % "lift-common_2.10" % "2.6-M3"
@@ -138,6 +138,7 @@ object WebknossosWrap extends Build {
     settings = buildSettings ++ Seq(
       resolvers := resolversList,
       libraryDependencies ++= Seq(
+        braingamesBinary,
         braingamesUtil,
         newrelic,
         newrelicApi,
@@ -145,12 +146,4 @@ object WebknossosWrap extends Build {
         log4jApi,
         scalaLogging,
         liftBox)))
-
-  /* val libs = Project(
-    "braingames-libs",
-    file("."),
-    settings = buildSettings ++ Seq(
-      publish := {},
-      publishLocal := {}
-    )) aggregate(util, binary, datastore) */
 }
