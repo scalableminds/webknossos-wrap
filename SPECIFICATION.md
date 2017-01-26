@@ -82,3 +82,25 @@ fixed header. The bytes of subsequent blocks are immediately following each
 other (i.e., no padding).
 
 ### LZ4 compressed blocks
+If the file header indicates that the blocks were compressed using LZ4 (by
+having a blockType value of either 0x02 or 0x03), the file header is immediately
+followed by the jump table.
+
+The jump table is an array of N unsigned 64-bit intergers, where N is the number
+of blocks in the file. The n-th entry of the jump table contains the absolute
+address (relative to the beginning of the file) of the first byte after the data
+of block n.
+
+Note that
+* the data of block n begins at address jumpTable[n - 1]
+* the data of block n is jumpTable[n] - jumpTable[n - 1] bytes long
+
+The value of jumpTable[-1] is defined as dataOffset. For this reason, it is
+convenient to build an extended jump table with the N + 1 unsigned 64-bit
+integers starting at the position of the dataOffset field.
+
+Decompression is identical for the standard and the high-compression variants of
+LZ4. For a wk-wrap reader, the difference between blockType 0x02 and 0x03 is
+only semantic.
+
+Decompression must produce valid raw blocks.
