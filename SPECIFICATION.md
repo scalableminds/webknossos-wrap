@@ -43,7 +43,6 @@ Each wk-wrap file MUST begin with the following header:
 | 0x0C | dataOffset  | dataOffset  | dataOffset  | dataOffset  |
 
 #### Header fields
-
 * __version__ contains the wk-wrap format version as unsigned byte. At the time
   of writing, the only valid version number is 0x01.
 * __lengthsLog2__ contains two 4-bit values (nibbles), which describe the file
@@ -64,10 +63,8 @@ Each wk-wrap file MUST begin with the following header:
   size of the data type. If the wk-wrap file, however, contains multiple
   channels (e.g., three 8-bit values for RGB), voxelSize is a multiple of the
   data type size.
-
 * __dataOffset__ contains the absolute address of the first byte of the first
-  block (relative to the beginning of the file). This is an unsigned 64-bit
-  integer.
+  block (relative to the beginning of the file) as unsigned 64-bit integer.
 
 ### Raw blocks
 Within raw blocks, the voxel values are stored in Fortran order. That is,
