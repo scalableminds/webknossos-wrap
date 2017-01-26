@@ -66,6 +66,10 @@ Each wk-wrap file MUST begin with the following header:
 * __dataOffset__ contains the absolute address of the first byte of the first
   block (relative to the beginning of the file) as unsigned 64-bit integer.
 
+### Byte order
+Except when noted otherwise, multi-byte voxel values are stored in little-endian
+order. That is, bytes are stored in order of increasing significance.
+
 ### Raw blocks
 Within raw blocks, the voxel values are stored in Fortran order. That is,
 ```
