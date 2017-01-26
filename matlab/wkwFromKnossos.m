@@ -1,5 +1,5 @@
-function wkwFromKnossos(wkParam, wkwRoot)
-    % wkwFromKnossos(wkParam, wkwRoot)
+function wkwFromKnossos(wkParam, wkwRoot, dataType)
+    % wkwFromKnossos(wkParam, wkwRoot, dataType)
     %   Converts a KNOSSOS hierarchy into wk-wrap files.
     %
     % Written by
@@ -8,20 +8,22 @@ function wkwFromKnossos(wkParam, wkwRoot)
     % config
     fileClen = 1024;
     
-    % get bounding box
+    % check input
+    assert(ismember(dataType, {'uint8', 'uint32'}));
+    
+    disp('<< Determining bounding box...');
     box = getBoundingBox(wkParam.root);
 
     % align box with wk-wrap files
     fileIds = [ ...
         floor((box(:, 1) - 1) ./ fileClen), ...
         ceil(box(:, 2) ./ fileClen) - 1];
-
-    % progress
+    
     tic;
     curCount = 1;
     fileCount = prod(diff(fileIds, 1, 2) + 1);
 
-    % copy files
+    disp('<< Converting files...');
     for curIdxX = fileIds(1, 1):fileIds(1, 2)
         for curIdxY = fileIds(2, 1):fileIds(2, 2)
             for curIdxZ = fileIds(3, 1):fileIds(3, 2)
@@ -39,11 +41,13 @@ function wkwFromKnossos(wkParam, wkwRoot)
 
                 % do the work
                 curData = readKnossosRoi( ...
-                    wkParam.root, wkParam.prefix, curBox);
+                    wkParam.root, wkParam.prefix, curBox, dataType);
                 wkwSaveRoi(wkwRoot, curOffset, curData);
             end
         end
     end
+    
+    disp('<< Done');
 end
 
 function box = getBoundingBox(wkRoot)
