@@ -83,7 +83,7 @@ other (i.e., no padding).
 
 ### LZ4 compressed blocks
 If the file header indicates that the blocks were compressed using LZ4 (by
-having a voxelType value of either 0x02 or 0x03), the file header is immediately
+having a blockType value of either 0x02 or 0x03), the file header is immediately
 followed by the jump table.
 
 The jump table is an array of N unsigned 64-bit intergers, where N is the number
