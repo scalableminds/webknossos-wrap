@@ -32,51 +32,59 @@
 #endif
 
 /* every wk-wrap file begins with these magic bytes */
-const uint8_t headerMagic[] = {'M', 'P', 'I', 'B', 'R'};
+const uint8_t headerMagic[] = {'W', 'K', 'W'};
 
-/* CLEN stands for cube length */
-#define FILE_CLEN_LOG2 10
-#define FILE_CLEN (1 << FILE_CLEN_LOG2)
-#define FILE_NUMEL (1 << (3 * FILE_CLEN_LOG2))
-
+/* CLEN stands for cube length, and
+ * BLEN stands for length in blocks */
 #define BLOCK_CLEN_LOG2 5
 #define BLOCK_CLEN (1 << BLOCK_CLEN_LOG2)
 #define BLOCK_NUMEL (1 << (3 * BLOCK_CLEN_LOG2))
 
+#define FILE_CLEN_LOG2 10
+#define FILE_BLEN_LOG2 (FILE_CLEN_LOG2 - BLOCK_CLEN_LOG2)
+#define FILE_CLEN (1 << FILE_CLEN_LOG2)
+#define FILE_NUMEL (1 << (3 * FILE_CLEN_LOG2))
+
+#define HI_NIBBLE(x) (((x) & 0xF0) >> 4)
+#define LO_NIBBLE(x)  ((x) & 0x0F)
+
 typedef struct {
-  uint8_t magic[sizeof(headerMagic)];
-  uint8_t version;
-  uint8_t dataType;
-  uint8_t blockType;
+  uint8_t  magic[sizeof(headerMagic)];
+  uint8_t  version;
+  uint8_t  lensLog2;
+  uint8_t  blockType;
+  uint8_t  voxelType;
+  uint8_t  voxelSize;
+  uint64_t dataOffset;
 } header_t;
 
 typedef enum {
-  DATA_TYPE_INVALID,
-  DATA_TYPE_UINT8,
-  DATA_TYPE_UINT16,
-  DATA_TYPE_UINT32,
-  DATA_TYPE_UINT64,
-  DATA_TYPE_FLOAT,
-  DATA_TYPE_DOUBLE,
-  DATA_TYPE_UNKNOWN
-} dataType_t;
+  VOXEL_TYPE_INVALID,
+  VOXEL_TYPE_UINT8,
+  VOXEL_TYPE_UINT16,
+  VOXEL_TYPE_UINT32,
+  VOXEL_TYPE_UINT64,
+  VOXEL_TYPE_FLOAT,
+  VOXEL_TYPE_DOUBLE,
+  VOXEL_TYPE_UNKNOWN
+} voxelType_t;
 
 typedef enum {
   BLOCK_TYPE_INVALID,
   BLOCK_TYPE_RAW,
-  BLOCK_TYPE_LZ4_32C,
-  BLOCK_TYPE_LZ4HC_32C,
+  BLOCK_TYPE_LZ4,
+  BLOCK_TYPE_LZ4HC,
   BLOCK_TYPE_UNKNOWN
 } blockType_t;
 
-/* helpers to convert types into their dataType_t */
-template<typename T> uint8_t wkwGetDataType();
-template<> uint8_t wkwGetDataType<uint8_t>(){ return DATA_TYPE_UINT8; }
-template<> uint8_t wkwGetDataType<uint16_t>(){ return DATA_TYPE_UINT16; }
-template<> uint8_t wkwGetDataType<uint32_t>(){ return DATA_TYPE_UINT32; }
-template<> uint8_t wkwGetDataType<uint64_t>(){ return DATA_TYPE_UINT64; }
-template<> uint8_t wkwGetDataType<float>(){ return DATA_TYPE_FLOAT; }
-template<> uint8_t wkwGetDataType<double>(){ return DATA_TYPE_DOUBLE; }
+/* helpers to convert types into their voxelType_t */
+template<typename T> uint8_t wkwGetVoxelType();
+template<> uint8_t wkwGetVoxelType<uint8_t>(){ return VOXEL_TYPE_UINT8; }
+template<> uint8_t wkwGetVoxelType<uint16_t>(){ return VOXEL_TYPE_UINT16; }
+template<> uint8_t wkwGetVoxelType<uint32_t>(){ return VOXEL_TYPE_UINT32; }
+template<> uint8_t wkwGetVoxelType<uint64_t>(){ return VOXEL_TYPE_UINT64; }
+template<> uint8_t wkwGetVoxelType<float>(){ return VOXEL_TYPE_FLOAT; }
+template<> uint8_t wkwGetVoxelType<double>(){ return VOXEL_TYPE_DOUBLE; }
 
 int8_t wkwLog2(uint64_t val) {
   /* make sure it's not zero */
@@ -103,8 +111,15 @@ int wkwReadHeader(FILE * in, header_t * h){
 int wkwCheckHeader(header_t * h){
   if(memcmp(h->magic, headerMagic, sizeof(headerMagic)) != 0) return -1; /* magic */
   if(h->version == 0) return -2; /* version */
-  if(h->dataType == 0) return -3; /* data type */
-  if(h->blockType == 0) return -4;/* block type */
+  if(h->voxelType == 0) return -3; /* voxel type */
+  if(h->blockType == 0) return -4; /* block type */
+
+  /* The following conditions do not need to be met by a valid wk-wrap file.
+   * But in its current version, this library cannot handle the more general case. */
+  if(HI_NIBBLE(h->lensLog2) != FILE_BLEN_LOG2) return -5;
+  if(LO_NIBBLE(h->lensLog2) != BLOCK_CLEN_LOG2) return -6;
+  if(h->dataOffset != sizeof(header_t)) return -7;
+
   return 0;
 }
 
@@ -163,21 +178,23 @@ int wkwCompress(const char * inFile, const char * outFile){
   /* read and validate header of input file */
   if(wkwReadHeader(in, &inHeader) != 0 && (err = -3)) goto cleanup;
   if(wkwCheckHeader(&inHeader) != 0 && (err = -4)) goto cleanup;
+  if(inHeader.blockType != BLOCK_TYPE_RAW && (err = -5)) goto cleanup;
 
   /* build and write header of output file */
   outHeader = inHeader;
-  outHeader.blockType = BLOCK_TYPE_LZ4HC_32C;
+  outHeader.blockType = BLOCK_TYPE_LZ4HC;
+  outHeader.dataOffset = sizeof(header_t) + sizeof(uint64_t) * FILE_NUMEL / BLOCK_NUMEL;
   assert(fwrite((const void *) &outHeader, sizeof(header_t), 1, out) == 1);
   assert(fflush(out) == 0);
 
   /* actually do the thing */
-  switch(inHeader.dataType){
-    case DATA_TYPE_UINT8:  err = wkwCompressBlocks<uint8_t> (in, out); break;
-    case DATA_TYPE_UINT16: err = wkwCompressBlocks<uint16_t>(in, out); break;
-    case DATA_TYPE_UINT32: err = wkwCompressBlocks<uint32_t>(in, out); break;
-    case DATA_TYPE_UINT64: err = wkwCompressBlocks<uint64_t>(in, out); break;
-    case DATA_TYPE_FLOAT:  err = wkwCompressBlocks<float>   (in, out); break;
-    case DATA_TYPE_DOUBLE: err = wkwCompressBlocks<double>  (in, out); break;
+  switch(inHeader.voxelType){
+    case VOXEL_TYPE_UINT8:  err = wkwCompressBlocks<uint8_t> (in, out); break;
+    case VOXEL_TYPE_UINT16: err = wkwCompressBlocks<uint16_t>(in, out); break;
+    case VOXEL_TYPE_UINT32: err = wkwCompressBlocks<uint32_t>(in, out); break;
+    case VOXEL_TYPE_UINT64: err = wkwCompressBlocks<uint64_t>(in, out); break;
+    case VOXEL_TYPE_FLOAT:  err = wkwCompressBlocks<float>   (in, out); break;
+    case VOXEL_TYPE_DOUBLE: err = wkwCompressBlocks<double>  (in, out); break;
 
     /* if this ever happens, the header validation failed miserably */
     default: assert(0);
@@ -283,22 +300,15 @@ int wkwReadLZ4(
   size_t blkCount = 1 << (3 * (outClenLog2 - BLOCK_CLEN_LOG2));
   uint64_t jumpTable[blkCount + 1];
 
-  if(blkIdx){
-    /* skip a couple of blocks */
-    size_t jumpOff = sizeof(header_t) + (blkIdx - 1) * sizeof(uint64_t);
-    assert(fseek(in, jumpOff, SEEK_SET) == 0);
-    assert(fread(jumpTable, sizeof(uint64_t), blkCount + 1, in) == blkCount + 1);
-  }else{
-    /* start with first block */
-    jumpTable[0] = 0;
-    assert(fread(&jumpTable[1], sizeof(uint64_t), blkCount, in) == blkCount);
-  }
+  /* go to first relevant entry of jump table */
+  size_t jumpOff = blkIdx * sizeof(uint64_t)  /* relative position to dataOffset */
+       + sizeof(header_t) - sizeof(uint64_t); /* position of dataOffset field */
 
-  /* seek to offset */
-  const size_t offBytes =
-    jumpTable[0] + sizeof(header_t) +
-    sizeof(uint64_t) * FILE_NUMEL / BLOCK_NUMEL;
-  assert(fseek(in, offBytes, SEEK_SET) == 0);
+  assert(fseek(in, jumpOff, SEEK_SET) == 0);
+  assert(fread(jumpTable, sizeof(uint64_t), blkCount + 1, in) == blkCount + 1);
+
+  /* seek to first compressed block */
+  assert(fseek(in, jumpTable[0], SEEK_SET) == 0);
 
   /* determine buffer size */
   T encBuf[BLOCK_NUMEL];
@@ -367,15 +377,15 @@ int wkwRead(
   header_t header;
   if(wkwReadHeader(in, &header) && (err = -4)) goto cleanup;
   if(wkwCheckHeader(&header) && (err = -5)) goto cleanup;
-  if(header.version > 1 && (err = -6)) goto cleanup;
-  if(header.dataType != wkwGetDataType<T>() && (err = -7)) goto cleanup;
+  if(header.voxelType != wkwGetVoxelType<T>() && (err = -6)) goto cleanup;
+  if(header.voxelSize != sizeof(T) && (err = -7)) goto cleanup;
 
   switch(header.blockType){
     case BLOCK_TYPE_RAW:
       err = wkwReadRaw(in, blkIdx, clen, out);
       break;
-    case BLOCK_TYPE_LZ4_32C:
-    case BLOCK_TYPE_LZ4HC_32C:
+    case BLOCK_TYPE_LZ4:
+    case BLOCK_TYPE_LZ4HC:
       err = wkwReadLZ4(in, blkIdx, clen, out);
       break;
 
@@ -430,14 +440,19 @@ int wkwWriteRaw(
   /* check if file is a pre-existing wk-wrap file */
   if(!wkwReadHeader(out, &header) && !wkwCheckHeader(&header)){
     /* indeed, it is */
-    if(header.version > 1 && (err = -5)) goto cleanup;
-    if(wkwGetDataType<T>() != header.dataType) goto cleanup;
+    if(header.blockType != BLOCK_TYPE_RAW && (err = -4)) goto cleanup;
+    if(header.voxelType != wkwGetVoxelType<T>() && (err = -5)) goto cleanup;
+    if(header.voxelSize != sizeof(T) && (err = -6)) goto cleanup;
   }else{
     /* build header */
     memcpy(header.magic, headerMagic, sizeof(headerMagic));
-    header.version = 1;
-    header.dataType = wkwGetDataType<T>();
-    header.blockType = BLOCK_TYPE_RAW;
+    header.version    = 1;
+    header.lensLog2   = FILE_BLEN_LOG2 << 4;
+    header.lensLog2  |= BLOCK_CLEN_LOG2;
+    header.blockType  = BLOCK_TYPE_RAW;
+    header.voxelType  = wkwGetVoxelType<T>();
+    header.voxelSize  = sizeof(T);
+    header.dataOffset = sizeof(header_t);
 
     /* write header to file */
     assert(fseek(out, 0, SEEK_SET) == 0);
