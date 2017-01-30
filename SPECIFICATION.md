@@ -1,6 +1,6 @@
 # The webKNOSSOS Wrapper Format
 webKNOSSOS wrapper (wk-wrap) is a file format for large volumetric (i.e., three-
-dimensiona) voxel data. It was designed for large file sizes and high
+dimensional) voxel data. It was designed for large file sizes and high
 performance when reading and writing small subvolumes of data.
 
 Each wk-wrap file contains the data for a cube of voxel, where the cube side-
