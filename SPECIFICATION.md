@@ -1,7 +1,7 @@
 # The webKNOSSOS Wrapper Format
-webKNOSSOS wrapper (wk-wrap) is a file format for large volumetric voxel data.
-It was designed for large file sizes and high performance when reading and
-writing small subvolumes of data.
+webKNOSSOS wrapper (wk-wrap) is a file format for large volumetric (i.e., three-
+dimensional) voxel data. It was designed for large file sizes and high
+performance when reading and writing small subvolumes of data.
 
 Each wk-wrap file contains the data for a cube of voxel, where the cube side-
 length is a power of two. Every voxel of this cube contains a fixed number of
@@ -38,17 +38,18 @@ Each wk-wrap file MUST begin with the following header:
 |      | +0x00       | +0x01       | +0x02       | +0x03       |
 |------|:-----------:|:-----------:|:-----------:|:-----------:|
 | 0x00 | 'W' (0x57)  | 'K' (0x4B)  | 'W' (0x57)  | version     |
-| 0x04 | lengthsLog2 | blockType   | voxelType   | voxelSize   |
+| 0x04 | perDimLog2  | blockType   | voxelType   | voxelSize   |
 | 0x08 | dataOffset  | dataOffset  | dataOffset  | dataOffset  |
 | 0x0C | dataOffset  | dataOffset  | dataOffset  | dataOffset  |
 
 #### Header fields
 * __version__ contains the wk-wrap format version as unsigned byte. At the time
   of writing, the only valid version number is 0x01.
-* __lengthsLog2__ contains two 4-bit values (nibbles), which describe the file
-  and block sizes. The lower nibble contains the log2 of the block side-length
-  (e.g., 5 for log2(32)). The higher nibble contains the log2 of the file side-
-  length in number of blocks (e.g., 5 for log(1024 / 32)).
+* __perDimLog2__ contains two 4-bit values (nibbles). The lower nibble (
+  `perDimLog2 & 0x0F`) contains __blocksPerFileDimLog2__, i.e., the log2 of the
+  number of blocks per file dimension. The higher nibble (`(perDimLog2 & 0xF0)
+  >> 4`) contains __voxelsPerBlockDimLog2__, i.e., the log2 of the number of
+  voxels per block dimension. Files and blocks are three-dimensional.
 * __blockType__ determines how the individual blocks were encoded. Valid values
   are: 0x01 for RAW encoding, 0x02 for LZ4 compressed, and 0x03 for the high-
   compression version of LZ4.
