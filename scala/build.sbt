@@ -48,6 +48,7 @@ scmInfo := Some(ScmInfo(
 
 libraryDependencies ++= Seq(
   "com.google.guava" % "guava" % "21.0",
+  "com.jsuereth" %% "scala-arm" % "2.0",
   "com.newrelic.agent.java" % "newrelic-agent" % "3.31.1",
   "com.newrelic.agent.java" % "newrelic-api" % "3.31.1",
   "org.apache.logging.log4j" % "log4j-api" % "2.0-beta9",
