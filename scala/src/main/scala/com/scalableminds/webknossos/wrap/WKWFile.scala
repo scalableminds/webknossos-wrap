@@ -21,7 +21,7 @@ object ManagedResourceBox {
   def apply[R : Resource, T](resource: R)(f: R => Box[T]): Box[T] = {
     managed(resource).map(f).either.either match {
       case Left(ex) =>
-        Failure(s"Exception handling DataStream: ${ex.toString}")
+        Failure(s"Exception handling Resource: ${ex.toString}")
       case Right(result) =>
         result
     }
