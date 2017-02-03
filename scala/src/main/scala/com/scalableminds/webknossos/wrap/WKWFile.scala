@@ -30,16 +30,16 @@ object ManagedResourceBox {
 
 case class WKWFileHeader(
                           version: Int,
-                          numBlocksPerFileDimension: Int,
+                          numBlocksPerCubeDimension: Int,
                           numVoxelsPerBlockDimension: Int,
                           blockType: BlockType.Value,
                           voxelType: VoxelType.Value,
                           numBytesPerVoxel: Int,
                           dataOffset: Long
                         ) {
-  def numBlocksPerFile: Long = numBlocksPerFileDimension * numBlocksPerFileDimension * numBlocksPerFileDimension
+  def numBlocksPerCube: Long = numBlocksPerCubeDimension * numBlocksPerCubeDimension * numBlocksPerCubeDimension
   def numBytesPerBlock: Int = numVoxelsPerBlockDimension * numVoxelsPerBlockDimension * numVoxelsPerBlockDimension * numBytesPerVoxel
-  def numBytesPerFile: Long = dataOffset + numBytesPerBlock.toLong * numBlocksPerFile
+  def numBytesPerCube: Long = dataOffset + numBytesPerBlock.toLong * numBlocksPerCube
 }
 
 case class WKWFile(file: File, header: WKWFileHeader) {
@@ -56,16 +56,16 @@ case class WKWFile(file: File, header: WKWFileHeader) {
   }
 
   def readBlock(x: Int, y: Int, z: Int): Box[Array[Byte]] = {
-    if (x < 0 || x >= header.numBlocksPerFileDimension ||
-        y < 0 || y >= header.numBlocksPerFileDimension ||
-        z < 0 || z >= header.numBlocksPerFileDimension) {
+    if (x < 0 || x >= header.numBlocksPerCubeDimension ||
+        y < 0 || y >= header.numBlocksPerCubeDimension ||
+        z < 0 || z >= header.numBlocksPerCubeDimension) {
       return Failure("Failed to read WKW block: Block coordinates out of range.")
     }
 
     val blockData: Array[Byte] = Array.fill(header.numBytesPerBlock){0}
     val blockIndex = mortonEncode(x, y, z)
 
-    if (blockIndex >= header.numBlocksPerFile) {
+    if (blockIndex >= header.numBlocksPerCube) {
       return Failure("Failed to read WKW block: Block index out of range.")
     }
 
@@ -100,13 +100,13 @@ object WKWFileHeader {
       }
 
       val sideLengths = dataStream.readUnsignedByte()
-      val numBlocksPerFileDimension = 1 << (sideLengths >>> 4) // file-side-length [higher nibble]
+      val numBlocksPerCubeDimension = 1 << (sideLengths >>> 4) // file-side-length [higher nibble]
       val numVoxelsPerBlockDimension = 1 << (sideLengths & 0x0f) // block-side-length [lower nibble]
       val blockType = BlockType(dataStream.readUnsignedByte())
       val voxelType = VoxelType(dataStream.readUnsignedByte())
       val numBytesPerVoxel = dataStream.readUnsignedByte() // voxel-size
       val dataOffset = dataStream.readLong()
-      Full(new WKWFileHeader(version, numBlocksPerFileDimension, numVoxelsPerBlockDimension, blockType, voxelType, numBytesPerVoxel, dataOffset))
+      Full(new WKWFileHeader(version, numBlocksPerCubeDimension, numVoxelsPerBlockDimension, blockType, voxelType, numBytesPerVoxel, dataOffset))
     }
   }
 }
