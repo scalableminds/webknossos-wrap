@@ -19,8 +19,8 @@ function wkwCompressDir(inRoot, outRoot)
     end
     
     cluster = Cluster.getCluster( ...
-        '-pe openmp 1', '-l h_vmem=12G', '-l h_rt=0:10:00');
-    jobArgs = cellfun(@(in, out) {{in, out}}, inFiles, outFiles);
+        '-pe openmp 1', '-l h_vmem=2G', '-l h_rt=0:29:00');
+    jobArgs = arrayfun(@(in, out) {{in, out}}, inFiles, outFiles);
     job = Cluster.startJob(@wkwCompress, jobArgs, 'cluster', cluster);
     
     wait(job);
