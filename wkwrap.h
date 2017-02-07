@@ -204,6 +204,7 @@ int wkwCompress(const char * inFile, const char * outFile){
   outHeader.dataOffset = dataOffset;
 
   /* write header and jump table */
+  assert(fseek(out, 0, SEEK_SET) == 0);
   assert(fwrite((const void *) &outHeader, sizeof(header_t), 1, out) == 1);
   assert(fwrite((const void *) jumpTable, sizeof(jumpTable), 1, out) == 1);
 
