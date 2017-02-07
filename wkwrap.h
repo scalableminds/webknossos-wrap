@@ -129,7 +129,7 @@ int wkwCompressBlocks(FILE * in, FILE * out){
   uint8_t encBuf[LZ4_COMPRESSBOUND(sizeof(T) * BLOCK_NUMEL)];
 
   /* jump table */
-  uint64_t jumpEntry = 0;
+  uint64_t jumpEntry = sizeof(header_t);
   uint64_t jumpTable[FILE_NUMEL / BLOCK_NUMEL];
 
   /* remember where to place the jump table */
