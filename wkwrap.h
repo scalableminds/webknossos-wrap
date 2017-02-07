@@ -124,20 +124,13 @@ int wkwCheckHeader(header_t * h){
 }
 
 template<typename T>
-int wkwCompressBlocks(FILE * in, FILE * out){
+int wkwCompressBlocks(
+    uint64_t jumpEntry,
+    uint64_t jumpTable[],
+    FILE * in, FILE * out)
+{
   T rawBuf[BLOCK_NUMEL];
   uint8_t encBuf[LZ4_COMPRESSBOUND(sizeof(T) * BLOCK_NUMEL)];
-
-  /* jump table */
-  uint64_t jumpEntry = sizeof(header_t);
-  uint64_t jumpTable[FILE_NUMEL / BLOCK_NUMEL];
-
-  /* remember where to place the jump table */
-  off_t jumpTableOff = ftell(out);
-
-  /* jump to beginning of data segment */
-  off_t encDataOff = sizeof(header_t) + sizeof(jumpTable);
-  assert(fseek(out, encDataOff, SEEK_SET) == 0);
 
   const size_t blockCount = FILE_NUMEL / BLOCK_NUMEL;
   for(size_t blockIdx = 0; blockIdx < blockCount; ++blockIdx){
@@ -159,10 +152,6 @@ int wkwCompressBlocks(FILE * in, FILE * out){
     jumpTable[blockIdx] = jumpEntry;
   }
 
-  /* write jump table */
-  assert(fseek(out, jumpTableOff, SEEK_SET) == 0);
-  assert(fwrite((const void *) jumpTable, sizeof(jumpTable), 1, out) == 1);
-
   return 0;
 }
 
@@ -170,6 +159,10 @@ int wkwCompress(const char * inFile, const char * outFile){
   int err = 0;
   FILE * in, * out;
   header_t inHeader, outHeader;
+
+  /* prepare jump table, etc. */
+  uint64_t jumpTable[FILE_NUMEL / BLOCK_NUMEL];
+  uint64_t dataOffset = sizeof(header_t) + sizeof(jumpTable);
 
   /* open files */
   if((in = fopen(inFile, "rb")) == NULL && (err = -1)) goto cleanup;
@@ -180,28 +173,39 @@ int wkwCompress(const char * inFile, const char * outFile){
   if(wkwCheckHeader(&inHeader) != 0 && (err = -4)) goto cleanup;
   if(inHeader.blockType != BLOCK_TYPE_RAW && (err = -5)) goto cleanup;
 
-  /* build and write header of output file */
-  outHeader = inHeader;
-  outHeader.blockType = BLOCK_TYPE_LZ4HC;
-  outHeader.dataOffset = sizeof(header_t) + sizeof(uint64_t) * FILE_NUMEL / BLOCK_NUMEL;
-  assert(fwrite((const void *) &outHeader, sizeof(header_t), 1, out) == 1);
-  assert(fflush(out) == 0);
+  /* prepare data streams */
+  if(fseek(in, inHeader.dataOffset, SEEK_SET) != 0 && (err = -6)) goto cleanup;
+  if(fseek(out, dataOffset, SEEK_SET) != 0 && (err = -7)) goto cleanup;
 
   /* actually do the thing */
   switch(inHeader.voxelType){
-    case VOXEL_TYPE_UINT8:  err = wkwCompressBlocks<uint8_t> (in, out); break;
-    case VOXEL_TYPE_UINT16: err = wkwCompressBlocks<uint16_t>(in, out); break;
-    case VOXEL_TYPE_UINT32: err = wkwCompressBlocks<uint32_t>(in, out); break;
-    case VOXEL_TYPE_UINT64: err = wkwCompressBlocks<uint64_t>(in, out); break;
-    case VOXEL_TYPE_FLOAT:  err = wkwCompressBlocks<float>   (in, out); break;
-    case VOXEL_TYPE_DOUBLE: err = wkwCompressBlocks<double>  (in, out); break;
+    case VOXEL_TYPE_UINT8:
+      err = wkwCompressBlocks<uint8_t> (dataOffset, jumpTable, in, out); break;
+    case VOXEL_TYPE_UINT16:
+      err = wkwCompressBlocks<uint16_t>(dataOffset, jumpTable, in, out); break;
+    case VOXEL_TYPE_UINT32:
+      err = wkwCompressBlocks<uint32_t>(dataOffset, jumpTable, in, out); break;
+    case VOXEL_TYPE_UINT64:
+      err = wkwCompressBlocks<uint64_t>(dataOffset, jumpTable, in, out); break;
+    case VOXEL_TYPE_FLOAT:
+      err = wkwCompressBlocks<float>   (dataOffset, jumpTable, in, out); break;
+    case VOXEL_TYPE_DOUBLE:
+      err = wkwCompressBlocks<double>  (dataOffset, jumpTable, in, out); break;
 
     /* if this ever happens, the header validation failed miserably */
     default: assert(0);
   }
-
   /* just to be future proof */
-  if(err && (err -= 4)) goto cleanup;
+  if(err && (err = -8)) goto cleanup;
+
+  /* build header of output file */
+  outHeader = inHeader;
+  outHeader.blockType = BLOCK_TYPE_LZ4HC;
+  outHeader.dataOffset = dataOffset;
+
+  /* write header and jump table */
+  assert(fwrite((const void *) &outHeader, sizeof(header_t), 1, out) == 1);
+  assert(fwrite((const void *) jumpTable, sizeof(jumpTable), 1, out) == 1);
 
 cleanup:
   if(in != NULL) fclose(in);
