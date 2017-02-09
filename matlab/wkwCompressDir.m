@@ -14,9 +14,11 @@ function wkwCompressDir(inRoot, outRoot)
     % prepare output
     if exist(outRoot, 'dir')
         error('Output directory must not exist');
-    else
-        mkdir(outRoot);
     end
+    
+    % make all directories
+    outDirs = cellfun(@fileparts, outFiles, 'UniformOutput', false);
+    assert(all(cellfun(@mkdir, unique(outDirs))));
     
     cluster = Cluster.getCluster( ...
         '-pe openmp 1', '-l h_vmem=2G', '-l h_rt=0:29:00', '-tc 50');
