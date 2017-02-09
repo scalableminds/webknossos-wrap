@@ -26,9 +26,7 @@ function data = wkwSaveRoi(rootDir, offset, data)
         curCube = floor(curBox(:, 1) ./ cubeSize);
 
         % build file path
-        curFileName = sprintf( ...
-            'x%06u_y%06u_z%06u.wkw', ...
-            curCube(1), curCube(2), curCube(3));
+        curFileName = wkwBuildFilePath(curCube);
         curFilePath = fullfile(rootDir, curFileName);
 
         % find regions to copy
@@ -67,6 +65,10 @@ function data = wkwSaveRoi(rootDir, offset, data)
                         curSrcBox(2, 1):curSrcBox(2, 2), ...
                         curSrcBox(3, 1):curSrcBox(3, 2));
         end
+        
+        % create directory, if needed
+        curFileDir = fileparts(curFilePath);
+        if ~exist(curFileDir, 'dir'); mkdir(curFileDir); end;
 
         % save result
         wkwSave(curFilePath, curData, curOffset);
