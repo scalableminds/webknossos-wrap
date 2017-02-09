@@ -28,14 +28,28 @@ end
 
 function files = findWkwFiles(inRoot)
     isDir = @(e) e.isdir;
+    isVis = @(e) not(strncmpi(e.name, '.', 1));
     hasSuffix = @(p, n) strncmpi(fliplr(n), fliplr(p), numel(p));
     isWkw = @(e) hasSuffix('.wkw', e.name);
     
     entries = dir(inRoot);
     dirMask = arrayfun(isDir, entries);
+    visMask = arrayfun(isVis, entries);
     wkwMask = arrayfun(isWkw, entries);
+    
+    % find dirs
+    dirs = entries(dirMask & visMask);
+    dirs = {dirs.name};
+    
+    % recurse into directories
+    recurse = @(d) fullfile(d, findWkwFiles(fullfile(inRoot, d)));
+    dirFiles = cellfun(recurse, dirs, 'UniformOutput', false);
+    dirFiles = cat(1, dirFiles{:});
     
     % find WKW files
     files = entries(~dirMask & wkwMask);
     files = {files.name};
+    
+    % build output
+    files = cat(1, files(:), dirFiles);
 end
