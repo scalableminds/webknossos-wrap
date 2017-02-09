@@ -1,4 +1,7 @@
 function wkwTest()
+    % Written by
+    %   Alessandro Motta <alessandro.motta@brain.mpg.de>
+    
     %% config
     dataType = 'uint8';
     roundCount = 50;

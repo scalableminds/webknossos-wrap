@@ -1,4 +1,7 @@
 function data = wkwSaveRoi(rootDir, offset, data)
+    % Written by
+    %   Alessandro Motta <alessandro.motta@brain.mpg.de>
+    
     % config
     blockSize = 32;
     cubeSize = 1024;

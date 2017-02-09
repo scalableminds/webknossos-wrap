@@ -1,4 +1,6 @@
 function wkwBenchmark(param)
+    % Written by
+    %   Alessandro Motta <alessandro.motta@brain.mpg.de>
     [wkwFile, wkDir, cls, sz, testFilename1, testFilename2] = buildData(param);
     wkwCompFile = strcat(wkwFile, '.lz4');
 

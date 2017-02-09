@@ -1,4 +1,6 @@
 function boxes = wkwSplitBox(box, blockSize, cubeSize)
+    % Written by
+    %   Alessandro Motta <alessandro.motta@brain.mpg.de>
     minLoadSize = 128;
 
     boxes = nan(3, 2, 0);

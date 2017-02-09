@@ -1,4 +1,7 @@
 function data = wkwLoadRoi(rootDir, box, dataType)
+    % Written by
+    %   Alessandro Motta <alessandro.motta@brain.mpg.de>
+    
     % config
     blockSize = 32;
     cubeSize = 1024;
