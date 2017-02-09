@@ -1,4 +1,4 @@
-function wkwFromKnossos(wkParam, wkwRoot, dataType)
+function wkwFromKnossos(wkParam, wkwRoot, dataType, box)
     % wkwFromKnossos(wkParam, wkwRoot, dataType)
     %   Converts a KNOSSOS hierarchy into wk-wrap files.
     %
@@ -11,43 +11,44 @@ function wkwFromKnossos(wkParam, wkwRoot, dataType)
     % check input
     assert(ismember(dataType, {'uint8', 'uint32'}));
     
-    disp('<< Determining bounding box...');
-    box = getBoundingBox(wkParam.root);
+    if ~exist('box', 'var') || isempty(box)
+        disp('<< Determining bounding box...');
+        box = getBoundingBox(wkParam.root);
+    else
+        assert(isequal(size(box), [3, 2]));
+    end
 
     % align box with wk-wrap files
     fileIds = [ ...
         floor((box(:, 1) - 1) ./ fileClen), ...
         ceil(box(:, 2) ./ fileClen) - 1];
     
-    tic;
-    curCount = 1;
-    fileCount = prod(diff(fileIds, 1, 2) + 1);
-
-    disp('<< Converting files...');
-    for curIdxX = fileIds(1, 1):fileIds(1, 2)
-        for curIdxY = fileIds(2, 1):fileIds(2, 2)
-            for curIdxZ = fileIds(3, 1):fileIds(3, 2)
-                % show progress
-                Util.progressBar(curCount, fileCount);
-                curCount = curCount + 1;
-
-                % box
-                curIds = [ ...
-                    curIdxX, curIdxY, curIdxZ];
-                curBox = [ ...
-                    max(box(:, 1),  1 + curIds(:)  .* fileClen), ...
-                    min(box(:, 2), (1 + curIds(:)) .* fileClen)];
-                curOffset = curBox(:, 1)';
-
-                % do the work
-                curData = readKnossosRoi( ...
-                    wkParam.root, wkParam.prefix, curBox, dataType);
-                wkwSaveRoi(wkwRoot, curOffset, curData);
-            end
-        end
-    end
+    [idsX, idsY, idsZ] = ndgrid( ...
+        fileIds(1, 1):fileIds(1, 2), ...
+        fileIds(2, 1):fileIds(2, 2), ...
+        fileIds(3, 1):fileIds(3, 2));
     
-    disp('<< Done');
+    jobInputs = arrayfun(@(x, y, z) {{[ ...
+        max(box(:, 1),  1 + [x; y; z]  .* fileClen), ...
+        min(box(:, 2), (1 + [x; y; z]) .* fileClen)]}}, ...
+        makeBox, idsX(:), idsY(:), idsZ(:));
+    jobSharedInputs = {wkParam, wkwRoot, dataType};
+    
+    cluster = Cluster.getCluster( ...
+        '-l h_vmem=12G', '-l h_rt=0:29:00', '-tc 50');
+    job = Cluster.startJob( ...
+        @wkwFromKnossosCore, jobInputs, ...
+        'sharedInputs', jobSharedInputs, ...
+        'cluster', cluster, ...
+        'name', mfilename);
+    
+    wait(job);
+end
+
+function wkwFromKnossosCore(wkParam, wkwRoot, dataType, box)
+    curData = readKnossosRoi( ...
+        wkParam.root, wkParam.prefix, box, dataType);
+    wkwSaveRoi(wkwRoot, reshape(box(:, 1), 1, []), curData);
 end
 
 function box = getBoundingBox(wkRoot)
