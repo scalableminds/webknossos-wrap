@@ -4,7 +4,10 @@
 package com.scalableminds.webknossos.wrap
 
 import com.google.common.io.{LittleEndianDataInputStream => DataInputStream}
-import net.liftweb.common.{Box, Failure, Full}
+import com.scalableminds.webknossos.wrap.util.ResourceBox
+import com.scalableminds.webknossos.wrap.util.BoxHelpers._
+import java.io.{File, FileInputStream}
+import net.liftweb.common.{Box, Full}
 
 object BlockType extends Enumeration {
   val Invalid, Raw, LZ4, LZ4HC, Unknown = Value
@@ -12,6 +15,8 @@ object BlockType extends Enumeration {
   def isSupported(blockType: BlockType.Value) = blockType != Invalid && blockType != Unknown
 
   def isCompressed(blockType: BlockType.Value) = blockType == LZ4 || blockType == LZ4HC
+
+  def isUncompressed(blockType: BlockType.Value) = blockType == Raw
 }
 
 object VoxelType extends Enumeration {
@@ -28,61 +33,67 @@ case class WKWHeader(
                           voxelType: VoxelType.Value,
                           numBytesPerVoxel: Int,
                           dataOffset: Long,
-                          jumpTable: Array[Long] = Array.empty
+                          jumpTable: Array[Long]
                         ) {
-  def numBlocksPerCube: Long = numBlocksPerCubeDimension * numBlocksPerCubeDimension * numBlocksPerCubeDimension
+  def isCompressed: Boolean = BlockType.isCompressed(blockType)
+
+  def numBlocksPerCube: Int = numBlocksPerCubeDimension * numBlocksPerCubeDimension * numBlocksPerCubeDimension
 
   def numBytesPerBlock: Int = numVoxelsPerBlockDimension * numVoxelsPerBlockDimension * numVoxelsPerBlockDimension * numBytesPerVoxel
 
-  def numBytesPerCube: Long = numBytesPerBlock.toLong * numBlocksPerCube
-
-  def numBytesPerFile: Long = dataOffset + numBytesPerCube
-
-  def isCompressed: Boolean = BlockType.isCompressed(blockType)
+  def expectedFileSize: Long = {
+    if (isCompressed) {
+      jumpTable.lastOption.getOrElse(-1L)
+    } else {
+      dataOffset + numBytesPerBlock.toLong * numBlocksPerCube.toLong
+    }
+  }
 }
 
 object WKWHeader {
+  private def error(msg: String, expected: Any, actual: Any, file: File): String = {
+    s"""Error reading WKW header: ${msg} [expected: ${expected}, actual: ${actual}, file: ${file.getPath}]."""
+  }
+
+  private def error(msg: String, file: File): String = {
+    s"""Error reading WKW header: ${msg} [file: ${file.getPath}]."""
+  }
+
   val magicBytes = "WKW".getBytes
   val currentVersion = 1
 
-  def apply(dataStream: DataInputStream, skipReadingJumpTable : Boolean): Box[WKWHeader] = {
-    // Check magic bytes.
-    val magicByteBuffer: Array[Byte] = Array.fill(magicBytes.length) {0}
-    dataStream.read(magicByteBuffer, 0, magicBytes.length)
-    if (!magicByteBuffer.sameElements(magicBytes)) {
-      return Failure("Error reading WKW header: Invalid magic bytes.")
+  def apply(file: File, readJumpTable: Boolean = false): Box[WKWHeader] = {
+    ResourceBox.manage(new DataInputStream(new FileInputStream(file))) { dataStream =>
+      val magicByteBuffer: Array[Byte] = Array.fill(magicBytes.length) {0}
+      dataStream.read(magicByteBuffer, 0, magicBytes.length)
+      val version = dataStream.readUnsignedByte()
+      val sideLengths = dataStream.readUnsignedByte()
+      val numBlocksPerCubeDimension = 1 << (sideLengths >>> 4) // fileSideLength [higher nibble]
+      val numVoxelsPerBlockDimension = 1 << (sideLengths & 0x0f) // blockSideLength [lower nibble]
+      val blockType = BlockType(dataStream.readUnsignedByte())
+      val voxelType = VoxelType(dataStream.readUnsignedByte())
+      val numBytesPerVoxel = dataStream.readUnsignedByte() // voxel-size
+
+      for {
+        _ <- Check(magicByteBuffer.sameElements(magicBytes)) ?~! error("Invalid magic bytes", magicBytes, magicByteBuffer, file)
+        _ <- Check(version == currentVersion) ?~! error("Unknown version", currentVersion, version, file)
+        // We only support fileSideLengths < 1024, so that the total number of blocks per file fits in an Int.
+        _ <- Check(numBlocksPerCubeDimension < 1024) ?~! error("Specified fileSideLength not supported", numBlocksPerCubeDimension, "[0, 1024)", file)
+        // We only support blockSideLengths < 1024, so that the total number of voxels per block fits in an Int.
+        _ <- Check(numBlocksPerCubeDimension < 1024) ?~! error("Specified blockSideLength not supported", numVoxelsPerBlockDimension, "[0, 1024)", file)
+        _ <- Check(BlockType.isSupported(blockType)) ?~! error("Specified blockType is not supported", file)
+        _ <- Check(VoxelType.isSupported(voxelType)) ?~! error("Specified voxelType is not supported", file)
+      } yield {
+        if (BlockType.isCompressed(blockType) && readJumpTable) {
+          // Read jump table
+          val numBlocksPerCube = numBlocksPerCubeDimension * numBlocksPerCubeDimension * numBlocksPerCubeDimension
+          val jumpTable = (0 to numBlocksPerCube).map(_ => dataStream.readLong()).toArray
+          new WKWHeader(version, numBlocksPerCubeDimension, numVoxelsPerBlockDimension, blockType, voxelType, numBytesPerVoxel, jumpTable(0), jumpTable)
+        } else {
+          val dataOffset = dataStream.readLong()
+          new WKWHeader(version, numBlocksPerCubeDimension, numVoxelsPerBlockDimension, blockType, voxelType, numBytesPerVoxel, dataOffset, Array.empty)
+        }
+      }
     }
-
-    // Check, if version is supported.
-    val version = dataStream.readUnsignedByte()
-    if (version != currentVersion) {
-      return Failure("Error reading WKW header: Unknown version.")
-    }
-
-    val sideLengths = dataStream.readUnsignedByte()
-    val numBlocksPerCubeDimension = 1 << (sideLengths >>> 4) // file-side-length [higher nibble]
-    val numVoxelsPerBlockDimension = 1 << (sideLengths & 0x0f) // block-side-length [lower nibble]
-
-    // Check, if blockType and voxelType are supported.
-    val blockType = BlockType(dataStream.readUnsignedByte())
-    if (!BlockType.isSupported(blockType)) {
-      return Failure("Error reading WKW header: Specified blockType is not supported.")
-    }
-    val voxelType = VoxelType(dataStream.readUnsignedByte())
-    if (!VoxelType.isSupported(voxelType)) {
-      return Failure("Error reading WKW header: Specified voxelType is not supported.")
-    }
-
-    val numBytesPerVoxel = dataStream.readUnsignedByte() // voxel-size
-
-    if (skipReadingJumpTable || !BlockType.isCompressed(blockType)) {
-      val dataOffset = dataStream.readLong()
-      Full(new WKWHeader(version, numBlocksPerCubeDimension, numVoxelsPerBlockDimension, blockType, voxelType, numBytesPerVoxel, dataOffset))
-    }
-
-    // Read jump table
-    val numBlocksPerCube = numBlocksPerCubeDimension * numBlocksPerCubeDimension * numBlocksPerCubeDimension
-    val jumpTable = (0 to numBlocksPerCube).map(_ => dataStream.readLong()).toArray
-    Full(new WKWHeader(version, numBlocksPerCubeDimension, numVoxelsPerBlockDimension, blockType, voxelType, numBytesPerVoxel, jumpTable(0), jumpTable))
   }
 }

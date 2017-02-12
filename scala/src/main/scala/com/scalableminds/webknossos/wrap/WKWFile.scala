@@ -3,11 +3,10 @@
  */
 package com.scalableminds.webknossos.wrap
 
-import com.google.common.io.{LittleEndianDataInputStream => DataInputStream}
 import com.scalableminds.webknossos.wrap.util.ResourceBox
 import com.scalableminds.webknossos.wrap.util.BoxHelpers._
 import com.scalableminds.webknossos.wrap.util.ExtendedTypes.ExtendedRandomAccessFile
-import java.io.{File, FileInputStream, RandomAccessFile}
+import java.io.{File, RandomAccessFile}
 import net.jpountz.lz4.LZ4Factory
 import net.liftweb.common.{Box, Failure, Full}
 
@@ -15,41 +14,27 @@ object FileMode extends Enumeration {
   val Read, ReadWrite = Value
 }
 
-
 case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: RandomAccessFile) {
-  lazy val lz4Decompressor = LZ4Factory.fastestInstance().fastDecompressor()
+  private lazy val lz4Decompressor = LZ4Factory.fastestInstance().fastDecompressor()
 
-  private def mortonEncode(x: Int, y: Int, z: Int): Long = {
-    var morton = 0L
+  private def error(msg: String, expected: Any, actual: Any) = {
+    WKWFile.error(msg, expected, actual, new File(underlyingFile.getPath))
+  }
+
+  private def mortonEncode(x: Int, y: Int, z: Int): Int = {
+    var morton = 0
     val bitLength = math.ceil(math.log(List(x, y, z).max + 1) / math.log(2)).toInt
 
     (0 until bitLength).foreach { i =>
-      morton |= ((x & (1L << i)) << (2 * i)) |
-        ((y & (1L << i)) << (2 * i + 1)) |
-        ((z & (1L << i)) << (2 * i + 2))
+      morton |= ((x & (1 << i)) << (2 * i)) |
+        ((y & (1 << i)) << (2 * i + 1)) |
+        ((z & (1 << i)) << (2 * i + 2))
     }
     morton
   }
 
-  private def readCompressedBlock(mortonIndex: Long): Box[Array[Byte]] = {
-    val blockOffset = header.jumpTable(header.numBytesPerBlock)
-    val compressedLength = (header.jumpTable(header.numBytesPerBlock + 1) - blockOffset).toInt
-    val compressedData: Array[Byte] = Array.fill(compressedLength) {0}
-    val blockData: Array[Byte] = Array.fill(compressedLength) {0}
-
-    underlyingFile.seek(blockOffset)
-    underlyingFile.read(compressedData, 0, compressedLength)
-
-    for {
-      decompressedLength <- Try(lz4Decompressor.decompress(compressedData, blockData, header.numBytesPerBlock))
-      _ <- Check(decompressedLength == header.numBytesPerBlock) ~> "Error reading WKW block: Decompressed block has invalid length."
-    } yield {
-      blockData
-    }
-  }
-
-  private def readUncompressedBlock(mortonIndex: Long): Box[Array[Byte]] = {
-    val blockOffset = header.dataOffset + mortonIndex * header.numBytesPerBlock
+  private def readUncompressedBlock(mortonIndex: Int): Box[Array[Byte]] = {
+    val blockOffset = header.dataOffset + mortonIndex.toLong * header.numBytesPerBlock.toLong
     val blockData: Array[Byte] = Array.fill(header.numBytesPerBlock) {0}
 
     underlyingFile.seek(blockOffset)
@@ -57,31 +42,42 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
     Full(blockData)
   }
 
-  private def readBlock(mortonIndex: Long): Box[Array[Byte]] = {
-    if (mortonIndex < 0 || mortonIndex >= header.numBlocksPerCube) {
-      return Failure("Error reading WKW block: Morton index is out of range.")
-    }
+  private def readCompressedBlock(mortonIndex: Int): Box[Array[Byte]] = {
+    val blockOffset = header.jumpTable(mortonIndex)
+    val compressedLength = (header.jumpTable(mortonIndex + 1) - blockOffset).toInt
+    val compressedData: Array[Byte] = Array.fill(compressedLength) {0}
+    val uncompressedData: Array[Byte] = Array.fill(header.numBytesPerBlock) {0}
 
-    if (underlyingFile.isClosed) {
-      return Failure("Error reading WKW block: underlying file has bee closed.")
-    }
+    underlyingFile.seek(blockOffset)
+    underlyingFile.read(compressedData, 0, compressedLength)
 
-    if (header.isCompressed) {
-      readCompressedBlock(mortonIndex)
-    } else {
-      readUncompressedBlock(mortonIndex)
+    for {
+      bytesDecompressed <- Try(lz4Decompressor.decompress(compressedData, uncompressedData, header.numBytesPerBlock))
+      _ <- Check(bytesDecompressed == compressedLength) ?~! error("Decompressed unexpected number of bytes", compressedLength, bytesDecompressed)
+    } yield {
+      uncompressedData
+    }
+  }
+
+  private def readBlock(mortonIndex: Int): Box[Array[Byte]] = {
+    for {
+      data <- if (header.isCompressed) readCompressedBlock(mortonIndex) else readUncompressedBlock(mortonIndex)
+    } yield {
+      data
     }
   }
 
   def readBlock(x: Int, y: Int, z: Int): Box[Array[Byte]] = {
-    if (x < 0 || x >= header.numBlocksPerCubeDimension ||
-        y < 0 || y >= header.numBlocksPerCubeDimension ||
-        z < 0 || z >= header.numBlocksPerCubeDimension) {
-      return Failure("Error reading WKW block: Block coordinates are out of range.")
+    for {
+      _ <- Check(x >= 0 && x < header.numBlocksPerCubeDimension) ?~! error("X coordinate is out of range", s"[0, ${header.numBlocksPerCubeDimension})", x)
+      _ <- Check(y >= 0 && y < header.numBlocksPerCubeDimension) ?~! error("Y coordinate is out of range", s"[0, ${header.numBlocksPerCubeDimension})", y)
+      _ <- Check(z >= 0 && z < header.numBlocksPerCubeDimension) ?~! error("Z coordinate is out of range", s"[0, ${header.numBlocksPerCubeDimension})", z)
+      mortonIndex = mortonEncode(x, y, z)
+      _ <- Check(mortonIndex >= 0 && mortonIndex < header.numBlocksPerCube) ?~! error("Morton index is out of range", s"[0, ${header.numBlocksPerCube}", mortonIndex)
+      data <- readBlock(mortonIndex)
+    } yield {
+      data
     }
-
-    val mortonIndex = mortonEncode(x, y, z)
-    readBlock(mortonIndex)
   }
 
   def close() {
@@ -100,13 +96,21 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
 }
 
 object WKWFile {
-  private def fileModeString(isCompressed: Boolean, fileMode: FileMode.Value): Box[String] = {
+  private def error(msg: String, file: File): String = {
+    s"""Error processing WKW file: ${msg} [file: ${file.getPath}]."""
+  }
+
+  private def error(msg: String, expected: Any, actual: Any, file: File): String = {
+    s"""Error processing WKW file: ${msg} [expected: ${expected}, actual: ${actual}, file: ${file.getPath}]."""
+  }
+
+  private def fileModeString(file: File, isCompressed: Boolean, fileMode: FileMode.Value): Box[String] = {
     fileMode match {
       case FileMode.Read =>
         Full("r")
       case FileMode.ReadWrite =>
         if (isCompressed) {
-          Failure("Error reading WKW file: Compressed files can only be opened in read-only.")
+          Failure(error("Compressed files can only be opened read-only", file))
         } else {
           Full("rw")
         }
@@ -115,22 +119,12 @@ object WKWFile {
 
   def apply(file: File, fileMode: FileMode.Value = FileMode.Read): Box[WKWFile] = {
     for {
-      header <- readHeader(file, false)
-      mode <- fileModeString(header.isCompressed, fileMode)
+      header <- WKWHeader(file, true)
+      _ <- Check(header.expectedFileSize == file.length) ?~! error("Unexpected file size", header.expectedFileSize, file.length, file)
+      mode <- fileModeString(file, header.isCompressed, fileMode)
       underlyingFile <- ResourceBox(new RandomAccessFile(file, mode))
     } yield {
       new WKWFile(header, fileMode, underlyingFile)
-    }
-  }
-
-  def readHeader(file: File, skipReadingJumpTable: Boolean = true): Box[WKWHeader] = {
-    ResourceBox.manage(new DataInputStream(new FileInputStream(file))) { dataStream =>
-      for {
-        header <- WKWHeader(dataStream, skipReadingJumpTable)
-        _ <- Check(header.numBytesPerFile == file.length()) ~> "Error reading WKW header: Unexpected file size."
-      } yield {
-        header
-      }
     }
   }
 }
