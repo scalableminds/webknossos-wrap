@@ -34,11 +34,12 @@ function data = wkwLoadRoi(rootDir, box, dataType)
         % find regions to copy
         curValidBox = [ ...
             max(box(:, 1), curBox(:, 1)), ...
-            min(box(:, 2), curBox(:, 2)) - 1];
+            min(box(:, 2), curBox(:, 2))];
 
         % make relative to source and destination
-        curDestBox = bsxfun(@minus, curValidBox, box(:, 1) - 1);
-        curSrcBox = bsxfun(@minus, curValidBox, curBox(:, 1) - 1);
+        curLimits = bsxfun(@minus, curValidBox, [0, 1]);
+        curDestLim = bsxfun(@minus, curLimits, box(:, 1) - 1);
+        curSrcLim = bsxfun(@minus, curLimits, curBox(:, 1) - 1);
 
         % read data
         if exist(curFilePath, 'file')
@@ -51,9 +52,9 @@ function data = wkwLoadRoi(rootDir, box, dataType)
             % cut out relevant part
             if any(curValidBox(:) ~= curBox(:))
                 curData = curData( ...
-                    curSrcBox(1, 1):curSrcBox(1, 2), ...
-                    curSrcBox(2, 1):curSrcBox(2, 2), ...
-                    curSrcBox(3, 1):curSrcBox(3, 2));
+                    curSrcLim(1, 1):curSrcLim(1, 2), ...
+                    curSrcLim(2, 1):curSrcLim(2, 2), ...
+                    curSrcLim(3, 1):curSrcLim(3, 2));
             end
         else
             curData = 0;
@@ -64,9 +65,9 @@ function data = wkwLoadRoi(rootDir, box, dataType)
             data(:, :, :) = curData;
         else
             data( ...
-                curDestBox(1, 1):curDestBox(1, 2), ...
-                curDestBox(2, 1):curDestBox(2, 2), ...
-                curDestBox(3, 1):curDestBox(3, 2)) = curData;
+                curDestLim(1, 1):curDestLim(1, 2), ...
+                curDestLim(2, 1):curDestLim(2, 2), ...
+                curDestLim(3, 1):curDestLim(3, 2)) = curData;
         end
     end
 end
