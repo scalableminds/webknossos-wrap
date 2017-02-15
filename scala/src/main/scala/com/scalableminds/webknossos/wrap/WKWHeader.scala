@@ -3,11 +3,13 @@
  */
 package com.scalableminds.webknossos.wrap
 
-import com.google.common.io.{LittleEndianDataInputStream => DataInputStream}
-import com.scalableminds.webknossos.wrap.util.ResourceBox
+import com.google.common.io.{LittleEndianDataInputStream => DataInputStream, LittleEndianDataOutputStream => DataOutputStream}
 import com.scalableminds.webknossos.wrap.util.BoxHelpers._
+import com.scalableminds.webknossos.wrap.util.ExtendedTypes.ExtendedLittleEndianDataOutputStream
+import com.scalableminds.webknossos.wrap.util.ResourceBox
 import java.io.{File, FileInputStream}
-import net.liftweb.common.{Box, Full}
+
+import net.liftweb.common.Box
 
 object BlockType extends Enumeration {
   val Invalid, Raw, LZ4, LZ4HC, Unknown = Value
@@ -47,6 +49,19 @@ case class WKWHeader(
     } else {
       dataOffset + numBytesPerBlock.toLong * numBlocksPerCube.toLong
     }
+  }
+
+  def writeToOutputStream(dataStream: DataOutputStream) = {
+    dataStream.write(WKWHeader.magicBytes)
+    dataStream.writeByte(WKWHeader.currentVersion)
+    val numBlocksPerCubeDimensionLog2 = (math.log(numBlocksPerCubeDimension) / math.log(2)).toInt
+    val numVoxelsPerBlockDimensionLog2 = (math.log(numVoxelsPerBlockDimension) / math.log(2)).toInt
+    val sideLengths = (numBlocksPerCubeDimensionLog2 << 4) + numVoxelsPerBlockDimensionLog2
+    dataStream.writeByte(sideLengths)
+    dataStream.writeByte(blockType.id)
+    dataStream.writeByte(voxelType.id)
+    dataStream.writeByte(numBytesPerVoxel)
+    dataStream.writeLong(dataStream.size + 8)
   }
 }
 

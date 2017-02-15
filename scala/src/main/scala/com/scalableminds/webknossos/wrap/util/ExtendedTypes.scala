@@ -3,11 +3,12 @@
 */
 package com.scalableminds.webknossos.wrap.util
 
-import java.io.RandomAccessFile
+import com.google.common.io.LittleEndianDataOutputStream
+import java.io.{DataOutputStream, RandomAccessFile}
 
 object ExtendedTypes {
 
-  implicit class ExtendedRandomAccessFile(f: RandomAccessFile){
+  implicit class ExtendedRandomAccessFile(f: RandomAccessFile) {
     def isClosed: Boolean = {
       val method = f.getClass.getDeclaredField("closed")
       method.setAccessible(true)
@@ -18,6 +19,15 @@ object ExtendedTypes {
       val method2 = f.getClass.getDeclaredField("path")
       method2.setAccessible(true)
       method2.get(f).asInstanceOf[String]
+    }
+  }
+
+  implicit class ExtendedLittleEndianDataOutputStream(o: LittleEndianDataOutputStream) {
+    def size: Int = {
+      val outField = o.getClass.getSuperclass.getDeclaredField("out")
+      outField.setAccessible(true)
+      val out = outField.get(o).asInstanceOf[DataOutputStream]
+      out.size()
     }
   }
 
