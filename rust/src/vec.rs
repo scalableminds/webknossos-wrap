@@ -8,10 +8,6 @@ pub struct Vec {
 }
 
 impl Vec {
-    pub fn from_scalar(s: u32) -> Vec {
-        Vec { x: s, y: s, z: s }
-    }
-
     pub fn is_valid_offset(&self) -> bool {
         (self.x == self.y && self.x == self.z && self.y == self.z) &&
         (self.x == 0 || self.x.is_power_of_two())
@@ -32,7 +28,7 @@ impl Vec {
 
 impl From<u32> for Vec {
     fn from(s: u32) -> Vec {
-        Vec::from_scalar(s)
+        Vec { x: s, y: s, z: s }
     }
 }
 

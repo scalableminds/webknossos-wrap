@@ -14,9 +14,9 @@ fn main() {
 
     let mut buf_mat = wkw::Mat::new(
         buf.as_mut_slice(),
-        wkw::Vec::from_scalar(128 as u32),
+        wkw::Vec::from(128 as u32),
         wkw_file.header().voxel_size as usize).unwrap();
-    let pos = wkw::Vec::from_scalar(128);
+    let pos = wkw::Vec::from(128 as u32);
 
     wkw_file.read_mat(&mut buf_mat, &pos).unwrap();
 

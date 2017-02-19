@@ -64,7 +64,7 @@ impl<'a> File<'a> {
             // build matrix arround buffer
             let buf_mat = Mat::new(
                 buf.as_mut_slice(),
-                Vec::from_scalar(self.header.voxels_per_block_dim as u32),
+                Vec::from(self.header.voxels_per_block_dim as u32),
                 self.header.voxel_size as usize).unwrap();
 
             // determine target position
