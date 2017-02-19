@@ -1,10 +1,5 @@
 extern crate wkw;
-
 use std::fs::File;
-use std::io::{Read, Seek, SeekFrom};
-use std::option::Option;
-
-use std::io;
 
 fn main() {
     let wkw_path = "/home/amotta/Desktop/test.wkw";
