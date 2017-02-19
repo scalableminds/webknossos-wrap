@@ -1,5 +1,12 @@
 [package]
-
 name = "wkwrap"
 version = "0.0.1"
 authors = ["Alessandro Motta <alessandro.motta@brain.mpg.de>"]
+
+[lib]
+name = "wkw"
+path = "src/lib.rs"
+
+[[bin]]
+name = "mybin"
+path = "src/main.rs"
