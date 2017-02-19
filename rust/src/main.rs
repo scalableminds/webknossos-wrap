@@ -1,10 +1,11 @@
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
+use std::ops::{Add, Div};
+use std::option::Option;
 
 use std::io;
 use std::mem;
-use std::ops::Div;
-use std::option::Option;
+use std::ptr;
 use std::result;
 
 type Result<T> = result::Result<T, &'static str>;
@@ -44,19 +45,44 @@ struct WkwVec { x: u32, y: u32, z: u32 }
 
 impl WkwVec {
     fn from_scalar(s: u32) -> WkwVec {
-        WkwVec { x: s, y: s, z: s}
+        WkwVec { x: s, y: s, z: s }
+    }
+
+    fn is_valid_offset(&self) -> bool {
+        self.x == self.y &&
+        self.x == self.z &&
+        self.y == self.z &&
+       (self.x == 0 || self.x.is_power_of_two())
     }
 
     fn is_power_of_two(&self) -> bool {
-        is_power_of_two(self.x) &&
-        is_power_of_two(self.y) &&
-        is_power_of_two(self.z)
+        self.x.is_power_of_two() &&
+        self.y.is_power_of_two() &&
+        self.z.is_power_of_two()
     }
 
-    fn is_multiple_of(&self, other: &WkwVec) -> bool {
-        self.x % other.x == 0 &&
-        self.y % other.y == 0 &&
-        self.z % other.z == 0
+    fn is_larger_equal_than(&self, other: &WkwVec) -> bool {
+        self.x >= other.x &&
+        self.y >= other.y &&
+        self.z >= other.z
+    }
+}
+
+impl From<u32> for WkwVec {
+    fn from(s: u32) -> WkwVec {
+        WkwVec::from_scalar(s)
+    }
+}
+
+impl Add for WkwVec {
+    type Output = Self;
+
+    fn add(self, rhs: WkwVec) -> Self::Output {
+        WkwVec {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+            z: self.z + rhs.z
+        }
     }
 }
 
@@ -75,32 +101,55 @@ impl Div for WkwVec {
 #[derive(Debug)]
 struct MortonIdx(u64);
 
-fn spread_bits(v: u64) -> u64 {
+fn shuffle(v: u64) -> u64 {
     // take first 21 bits
-    let mut z =     v & 0x00000000001fffff;
-    z = (z | z << 32) & 0x001f00000000ffff;
-    z = (z | z << 16) & 0x001f0000ff0000ff;
-    z = (z | z <<  8) & 0x100f00f00f00f00f;
-    z = (z | z <<  4) & 0x10c30c30c30c30c3;
-    z = (z | z <<  2) & 0x1249249249249249;
+    let mut z =       v & 0x00000000001fffff;
+    z = (z | (z << 32)) & 0x001f00000000ffff;
+    z = (z | (z << 16)) & 0x001f0000ff0000ff;
+    z = (z | (z <<  8)) & 0x100f00f00f00f00f;
+    z = (z | (z <<  4)) & 0x100f00f00f00f00f;
+    z = (z | (z <<  2)) & 0x1249249249249249;
 
     z
 }
 
-impl MortonIdx {
-    fn from_vec(vec: &WkwVec) -> MortonIdx {
+fn unshuffle(z: u64) -> u64 {
+    let mut v =       z & 0x1249249249249249;
+    v = (v ^ (v >>  2)) & 0x100f00f00f00f00f;
+    v = (v ^ (v >>  4)) & 0x100f00f00f00f00f;
+    v = (v ^ (v >>  8)) & 0x001f0000ff0000ff;
+    v = (v ^ (v >> 16)) & 0x001f00000000ffff;
+    v = (v ^ (v >> 32)) & 0x00000000001fffff;
+
+    v
+}
+
+impl<'a> From<&'a WkwVec> for MortonIdx {
+    fn from(vec: &'a WkwVec) -> MortonIdx {
         MortonIdx(
-            (spread_bits(vec.x as u64) << 0) |
-            (spread_bits(vec.y as u64) << 1) |
-            (spread_bits(vec.z as u64) << 2)
+            (shuffle(vec.x as u64) << 0) |
+            (shuffle(vec.y as u64) << 1) |
+            (shuffle(vec.z as u64) << 2)
         )
     }
 }
 
-impl From<MortonIdx> for u64 {
-    fn from(idx: MortonIdx) -> u64 {
-        idx.0
+impl From<MortonIdx> for WkwVec {
+    fn from(idx: MortonIdx) -> WkwVec {
+        WkwVec {
+            x: unshuffle(idx.0 >> 0) as u32,
+            y: unshuffle(idx.0 >> 1) as u32,
+            z: unshuffle(idx.0 >> 2) as u32
+        }
     }
+}
+
+impl From<MortonIdx> for u64 {
+    fn from(idx: MortonIdx) -> u64 { idx.0 }
+}
+
+impl From<u64> for MortonIdx {
+    fn from(idx: u64) -> MortonIdx { MortonIdx(idx) }
 }
 
 struct WkwMat<'a> {
@@ -125,6 +174,44 @@ impl<'a> WkwMat<'a> {
             width: width
         })
     }
+
+    fn offset(&self, pos: &WkwVec) -> usize {
+        pos.x as usize + self.shape.x as usize * (
+        pos.y as usize + self.shape.y as usize * pos.z as usize) * self.width
+    }
+
+    fn copy_from(&mut self, src: &WkwMat, off: &WkwVec) -> Result<()> {
+        if self.width != src.width {
+            return Err("Source and destination matrices do not match in width");
+        }
+
+        let end = off.clone() + src.shape;
+        if !self.shape.is_larger_equal_than(&end){
+            return Err("Trying to write out of bounds");
+        }
+
+        let src_ptr = src.data.as_ptr();
+        let dst_ptr = self.data.as_mut_ptr();
+        let stripe_len = src.shape.x as usize * src.width;
+
+        for cur_z in 0..src.shape.z {
+            for cur_y in 0..src.shape.y {
+                unsafe {
+                    // TODO: optimize
+                    let cur_pos = WkwVec { x: 0u32, y: cur_y, z: cur_z };
+                    let src_ptr_cur = src_ptr.offset(src.offset(&cur_pos) as isize);
+
+                    let dst_pos = off.clone() + cur_pos;
+                    let dst_ptr_cur = dst_ptr.offset(self.offset(&dst_pos) as isize);
+
+                    // copy data
+                    ptr::copy_nonoverlapping(src_ptr_cur, dst_ptr_cur, stripe_len);
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
@@ -132,10 +219,6 @@ struct WkwFile<'a> {
     file: &'a File,
     header: Header,
     block_idx: Option<u64>
-}
-
-fn is_power_of_two(v: u32) -> bool {
-    v & (v - 1) == 0
 }
 
 impl<'a> WkwFile<'a> {
@@ -150,21 +233,47 @@ impl<'a> WkwFile<'a> {
     }
 
     fn read_mat(&mut self, mat: &mut WkwMat, off: &WkwVec) -> Result<usize> {
-        if !off.is_power_of_two() {
-            return Err("Offset is not a power of two");
+        if !off.is_valid_offset() {
+            return Err("Offset is invalid");
         }
 
-        if !mat.shape.is_multiple_of(off) {
+        if !mat.shape.is_power_of_two()
+        || !mat.shape.is_larger_equal_than(off) {
             return Err("Shape of matrix is invalid");
         }
 
-        let block_side_len = self.header.voxels_per_block_dim;
-        let block_ids = off.clone() / WkwVec::from_scalar(block_side_len as u32);
-        let block_idx: u64 = MortonIdx::from_vec(&block_ids).into();
+        let block_side_len = self.header.voxels_per_block_dim as u32;
+        let block_ids = off.clone() / block_side_len.into();
+        let block_idx = u64::from(MortonIdx::from(&block_ids));
 
-        println!("Morton: {:#?}", block_idx);
+        let blocks_per_dim = mat.shape.clone() / block_side_len.into();
+        let block_count =
+            blocks_per_dim.x as usize *
+            blocks_per_dim.y as usize *
+            blocks_per_dim.z as usize;
 
-        Ok(1 as usize)
+        // seek to start
+        self.seek_block(block_idx)?;
+
+        for cur_idx in 0..block_count {
+            // read a block
+            let mut buf = vec![0 as u8; self.header.block_size];
+            self.read_block(buf.as_mut_slice())?;
+
+            // build matrix arround buffer
+            let buf_mat = WkwMat::new(
+                buf.as_mut_slice(),
+                WkwVec::from_scalar(self.header.voxels_per_block_dim as u32),
+                self.header.voxel_size as usize).unwrap();
+
+            // determine target position
+            let cur_pos = WkwVec::from(MortonIdx::from(cur_idx as u64));
+
+            // copy to target
+            mat.copy_from(&buf_mat, &cur_pos)?;
+        }
+
+        Ok(mat.data.len())
     }
 
     fn read_block(&mut self, buf: &mut [u8]) -> Result<usize> {
@@ -217,7 +326,7 @@ fn main() {
 
     wkw_file.read_mat(&mut buf_mat, &pos).unwrap();
 
-    // println!("{:#?}", buf_mat.data);
+    println!("{:#?}", buf_mat.data);
 }
 
 fn wkw_read_header_raw(file: &mut File) -> io::Result<HeaderRaw> {
