@@ -22,4 +22,13 @@ object BoxHelpers {
         Failure(s"Unhandled exception: ${ex.getMessage}", Full(ex), Empty)
     }
   }
+
+  def Try[T](f: Box[T]): Box[T] = {
+    try {
+      f
+    } catch {
+      case ex: Exception =>
+        Failure(s"Unhandled exception: ${ex.getMessage}", Full(ex), Empty)
+    }
+  }
 }
