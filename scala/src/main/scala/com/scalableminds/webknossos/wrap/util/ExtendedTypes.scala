@@ -3,8 +3,7 @@
 */
 package com.scalableminds.webknossos.wrap.util
 
-import com.google.common.io.LittleEndianDataOutputStream
-import java.io.{DataOutputStream, RandomAccessFile}
+import java.io.RandomAccessFile
 
 object ExtendedTypes {
 
@@ -21,14 +20,4 @@ object ExtendedTypes {
       method2.get(f).asInstanceOf[String]
     }
   }
-
-  implicit class ExtendedLittleEndianDataOutputStream(o: LittleEndianDataOutputStream) {
-    def size: Int = {
-      val outField = o.getClass.getSuperclass.getDeclaredField("out")
-      outField.setAccessible(true)
-      val out = outField.get(o).asInstanceOf[DataOutputStream]
-      out.size()
-    }
-  }
-
 }
