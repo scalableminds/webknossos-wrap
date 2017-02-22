@@ -51,9 +51,10 @@ libraryDependencies ++= Seq(
   "com.jsuereth" %% "scala-arm" % "2.0",
   "com.newrelic.agent.java" % "newrelic-agent" % "3.31.1",
   "com.newrelic.agent.java" % "newrelic-api" % "3.31.1",
-  "org.apache.logging.log4j" % "log4j-api" % "2.0-beta9",
-  "org.apache.logging.log4j" % "log4j-core" % "2.0-beta9",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0",
   "net.jpountz.lz4" % "lz4" % "1.3.0",
-  "net.liftweb" % "lift-common_2.10" % "2.6-M3"
+  "net.liftweb" % "lift-common_2.10" % "2.6-M3",
+  "org.apache.logging.log4j" % "log4j-api" % "2.0-beta9",
+  "org.apache.logging.log4j" % "log4j-core" % "2.0-beta9",
+  "org.xerial.snappy" % "snappy-java" % "1.1.2.1"
 )
