@@ -7,6 +7,7 @@ import com.google.common.io.{LittleEndianDataInputStream => DataInputStream}
 import com.scalableminds.webknossos.wrap.util.BoxHelpers._
 import com.scalableminds.webknossos.wrap.util.ResourceBox
 import java.io.{File, FileInputStream, RandomAccessFile}
+import java.nio.{ByteBuffer, ByteOrder}
 
 import net.liftweb.common.Box
 
@@ -61,7 +62,10 @@ case class WKWHeader(
     file.writeByte(blockType.id)
     file.writeByte(voxelType.id)
     file.writeByte(numBytesPerVoxel)
-    jumpTable.foreach(file.writeLong)
+    val jumpTableBuffer = ByteBuffer.allocate(jumpTable.length * 8)
+    jumpTableBuffer.order(ByteOrder.LITTLE_ENDIAN)
+    jumpTable.foreach(jumpTableBuffer.putLong)
+    file.write(jumpTableBuffer.array)
   }
 }
 

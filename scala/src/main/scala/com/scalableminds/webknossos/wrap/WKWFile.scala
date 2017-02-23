@@ -76,7 +76,7 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
       case BlockType.LZ4 | BlockType.LZ4HC =>
         for {
           bytesDecompressed <- Try(lz4Decompressor.decompress(compressedBlock, rawBlock, header.numBytesPerBlock))
-          _ <- Check(bytesDecompressed == rawBlock.length) ?~! error("Decompressed unexpected number of bytes", compressedBlock.length, bytesDecompressed)
+          _ <- Check(bytesDecompressed == compressedBlock.length) ?~! error("Decompressed unexpected number of bytes", compressedBlock.length, bytesDecompressed)
         } yield {
           rawBlock
         }
@@ -147,8 +147,8 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
   private def changeBlockType(targetBlockType: BlockType.Value): Box[WKWFile] = {
     val tempFile = new File(underlyingFile.getPath + ".tmp")
     val targetFile = new File(underlyingFile.getPath)
-    val isCompressed = BlockType.isCompressed(targetBlockType)
-    val jumpTableSize = if (isCompressed) header.numBlocksPerCube + 1 else 1
+    val toCompressed = BlockType.isCompressed(targetBlockType)
+    val jumpTableSize = if (toCompressed) header.numBlocksPerCube + 1 else 1
     val tempHeader = header.copy(blockType = targetBlockType, jumpTable = Array.ofDim[Long](jumpTableSize))
 
     for {
@@ -159,7 +159,7 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
         val dataOffset = file.getFilePointer
 
         underlyingFile.seek(header.dataOffset)
-        val sourceBlockLengths = if (isCompressed) {
+        val sourceBlockLengths = if (header.isCompressed) {
           header.jumpTable.sliding(2).map(a => (a(1) - a(0)).toInt)
         } else {
           Array.fill(header.numBlocksPerCube){header.numBytesPerBlock}.toIterator
@@ -180,7 +180,7 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
         }
 
         targetBlockLengths.map { blockLengths =>
-          val jumpTable = if (isCompressed) {
+          val jumpTable = if (toCompressed) {
             blockLengths.map(_.toLong).scan(dataOffset)(_ + _).toArray
           } else {
             Array(dataOffset)
@@ -191,7 +191,7 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
         }
       }
       _ <- Try(moveFile(tempFile, targetFile))
-      wkwFile <- WKWFile(targetFile)
+      wkwFile <- WKWFile(targetFile, fileMode)
     } yield {
       wkwFile
     }
