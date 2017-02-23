@@ -3,6 +3,7 @@
  */
 package com.scalableminds.webknossos.wrap
 
+import com.newrelic.api.agent.NewRelic
 import com.scalableminds.webknossos.wrap.util.ResourceBox
 import com.scalableminds.webknossos.wrap.util.BoxHelpers._
 import com.scalableminds.webknossos.wrap.util.ExtendedTypes._
@@ -52,7 +53,8 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
   }
 
   private def compressBlock(targetBlockType: BlockType.Value = header.blockType)(rawBlock: Array[Byte]): Box[Array[Byte]] = {
-    targetBlockType match {
+    val t = System.currentTimeMillis
+    val result = targetBlockType match {
       case BlockType.LZ4 | BlockType.LZ4HC =>
         val compressor = if (targetBlockType == BlockType.LZ4) lz4FastCompressor else lz4HighCompressor
         val maxCompressedLength = compressor.maxCompressedLength(rawBlock.length)
@@ -67,12 +69,15 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
       case _ =>
         Failure(error("Invalid targetBlockType for compression"))
     }
+    NewRelic.recordResponseTimeMetric(s"Custom/WebknossosWrap/block-compress-time-${header.blockType}", System.currentTimeMillis - t)
+    result
   }
 
   private def decompressBlock(sourceBlockType: BlockType.Value = header.blockType)(compressedBlock: Array[Byte]): Box[Array[Byte]] = {
     val rawBlock: Array[Byte] = Array.ofDim[Byte](header.numBytesPerBlock)
+    val t = System.currentTimeMillis
 
-    sourceBlockType match {
+    val result = sourceBlockType match {
       case BlockType.LZ4 | BlockType.LZ4HC =>
         for {
           bytesDecompressed <- Try(lz4Decompressor.decompress(compressedBlock, rawBlock, header.numBytesPerBlock))
@@ -87,6 +92,8 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
       case _ =>
         Failure(error("Invalid sourceBlockType for decompression"))
     }
+    NewRelic.recordResponseTimeMetric(s"Custom/WebknossosWrap/block-decompress-time-${header.blockType}", System.currentTimeMillis - t)
+    result
   }
 
   private def readUncompressedBlock(mortonIndex: Int): Array[Byte] = {
@@ -113,16 +120,19 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
   }
 
   def readBlock(x: Int, y: Int, z: Int): Box[Array[Byte]] = {
+    val t = System.currentTimeMillis
     for {
       _ <- Check(!underlyingFile.isClosed) ?~! error("File is already closed")
       mortonIndex <- computeMortonIndex(x, y, z)
       data <- if (header.isCompressed) Try(readCompressedBlock(mortonIndex)) else Try(readUncompressedBlock(mortonIndex))
     } yield {
+      NewRelic.recordResponseTimeMetric(s"Custom/WebknossosWrap/block-read-time-${header.blockType}", System.currentTimeMillis - t)
       data
     }
   }
 
   def writeBlock(x: Int, y: Int, z: Int, data: Array[Byte]): Box[Unit] = {
+    val t = System.currentTimeMillis
     for {
       _ <- Check(!underlyingFile.isClosed) ?~! error("File is already closed")
       _ <- Check(fileMode == FileMode.ReadWrite) ?~! error("Cannot write to files opened read-only")
@@ -130,7 +140,9 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
       _ <- Check(data.length == header.numBytesPerBlock) ?~! error("Data to be written has invalid length", header.numBytesPerBlock, data.length)
       mortonIndex <- computeMortonIndex(x, y, z)
       _ <- Try(writeUncompressedBlock(mortonIndex, data))
-    } yield {}
+    } yield {
+      NewRelic.recordResponseTimeMetric(s"Custom/WebknossosWrap/block-write-time-${header.blockType}", System.currentTimeMillis - t)
+    }
   }
 
   def close() {
