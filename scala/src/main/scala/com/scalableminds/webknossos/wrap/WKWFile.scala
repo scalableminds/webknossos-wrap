@@ -74,11 +74,11 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
   }
 
   private def decompressBlock(sourceBlockType: BlockType.Value = header.blockType)(compressedBlock: Array[Byte]): Box[Array[Byte]] = {
-    val rawBlock: Array[Byte] = Array.ofDim[Byte](header.numBytesPerBlock)
     val t = System.currentTimeMillis
 
     val result = sourceBlockType match {
       case BlockType.LZ4 | BlockType.LZ4HC =>
+        val rawBlock: Array[Byte] = Array.ofDim[Byte](header.numBytesPerBlock)
         for {
           bytesDecompressed <- Try(lz4Decompressor.decompress(compressedBlock, rawBlock, header.numBytesPerBlock))
           _ <- Check(bytesDecompressed == compressedBlock.length) ?~! error("Decompressed unexpected number of bytes", compressedBlock.length, bytesDecompressed)
@@ -86,9 +86,9 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
           rawBlock
         }
       case BlockType.Snappy =>
-        Try(Snappy.uncompress(rawBlock))
+        Try(Snappy.uncompress(compressedBlock))
       case BlockType.Raw =>
-        Full(rawBlock)
+        Full(compressedBlock)
       case _ =>
         Failure(error("Invalid sourceBlockType for decompression"))
     }
