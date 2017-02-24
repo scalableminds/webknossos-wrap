@@ -119,7 +119,7 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
     decompressBlock()(blockData)
   }
 
-  def readBlock(x: Int, y: Int, z: Int): Box[Array[Byte]] = {
+  def readBlock(x: Int, y: Int, z: Int): Box[Array[Byte]] = synchronized {
     val t = System.currentTimeMillis
     for {
       _ <- Check(!underlyingFile.isClosed) ?~! error("File is already closed")
@@ -131,7 +131,7 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
     }
   }
 
-  def writeBlock(x: Int, y: Int, z: Int, data: Array[Byte]): Box[Unit] = {
+  def writeBlock(x: Int, y: Int, z: Int, data: Array[Byte]): Box[Unit] = synchronized {
     val t = System.currentTimeMillis
     for {
       _ <- Check(!underlyingFile.isClosed) ?~! error("File is already closed")
@@ -209,9 +209,9 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
     }
   }
 
-  def decompress: Box[WKWFile] = changeBlockType(BlockType.Raw)
+  def decompress: Box[WKWFile] = synchronized { changeBlockType(BlockType.Raw) }
 
-  def compress(targetBlockType: BlockType.Value): Box[WKWFile] = changeBlockType(targetBlockType)
+  def compress(targetBlockType: BlockType.Value): Box[WKWFile] = synchronized { changeBlockType(targetBlockType) }
 }
 
 object WKWFile {
