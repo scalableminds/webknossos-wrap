@@ -37,7 +37,7 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
     }
     (0L to underlyingFile.length by Int.MaxValue.toLong).map { offset =>
       val length = Math.min(Int.MaxValue, underlyingFile.length - offset)
-      channel.map(mapMode, offset, length).load()
+      channel.map(mapMode, offset, length)
     }.toArray
   }
 
@@ -49,11 +49,20 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
     WKWFile.error(msg, expected, actual, new File(underlyingFile.getPath))
   }
 
-  private def readFromBuffers(offset: Long, length: Int): Array[Byte] = {
+  def readFromUnderlyingBuffers(offset: Long, length: Int): Array[Byte] = {
     val dest = Array.ofDim[Byte](length)
     val bufferIndex = (offset / Int.MaxValue).toInt
     val bufferOffset = (offset % Int.MaxValue).toInt
-    mappedBuffers(bufferIndex).copyTo(bufferOffset, dest, 0, length)
+    val buffer = mappedBuffers(bufferIndex)
+
+    if (buffer.capacity - bufferOffset < length) {
+      val firstPart: Int = buffer.capacity - bufferOffset
+      val secondPart = length - firstPart
+      buffer.copyTo(bufferOffset, dest, 0, firstPart)
+      mappedBuffers(bufferIndex + 1).copyTo(0, dest, firstPart, secondPart)
+    } else {
+      buffer.copyTo(bufferOffset, dest, 0, length)
+    }
     dest
   }
 
@@ -131,7 +140,7 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
 
   private def readUncompressedBlock(mortonIndex: Int): Array[Byte] = {
     val blockOffset = header.dataOffset + mortonIndex.toLong * header.numBytesPerBlock.toLong
-    readFromBuffers(blockOffset, header.numBytesPerBlock)
+    readFromUnderlyingBuffers(blockOffset, header.numBytesPerBlock)
   }
 
   private def writeUncompressedBlock(mortonIndex: Int, blockData: Array[Byte]) = {
@@ -142,7 +151,7 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
   private def readCompressedBlock(mortonIndex: Int): Box[Array[Byte]] = {
     val blockOffset = header.jumpTable(mortonIndex)
     val compressedLength = (header.jumpTable(mortonIndex + 1) - blockOffset).toInt
-    val compressedBlock = readFromBuffers(blockOffset, compressedLength)
+    val compressedBlock = readFromUnderlyingBuffers(blockOffset, compressedLength)
     decompressBlock()(compressedBlock)
   }
 
