@@ -8,7 +8,10 @@ import com.scalableminds.webknossos.wrap.util.ResourceBox
 import com.scalableminds.webknossos.wrap.util.BoxHelpers._
 import com.scalableminds.webknossos.wrap.util.ExtendedTypes._
 import java.io.{File, RandomAccessFile}
+import java.nio.MappedByteBuffer
+import java.nio.channels.FileChannel
 import java.nio.file.{Files, Paths, StandardCopyOption}
+
 import net.jpountz.lz4.LZ4Factory
 import net.liftweb.common.{Box, Failure, Full}
 import org.xerial.snappy.Snappy
@@ -22,12 +25,51 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
   private lazy val lz4FastCompressor = LZ4Factory.nativeInstance().fastCompressor()
   private lazy val lz4HighCompressor = LZ4Factory.nativeInstance().highCompressor()
 
+  val mappedBuffers: Array[MappedByteBuffer] = mapBuffers
+
+  private def mapBuffers: Array[MappedByteBuffer] = {
+    val channel = underlyingFile.getChannel()
+    val mapMode = fileMode match {
+      case FileMode.Read =>
+        FileChannel.MapMode.READ_ONLY
+      case FileMode.ReadWrite =>
+        FileChannel.MapMode.READ_WRITE
+    }
+    (0L to underlyingFile.length by Int.MaxValue.toLong).map { offset =>
+      val length = Math.min(Int.MaxValue, underlyingFile.length - offset)
+      channel.map(mapMode, offset, length)
+    }.toArray
+  }
+
   private def error(msg: String) = {
     WKWFile.error(msg, new File(underlyingFile.getPath))
   }
 
   private def error(msg: String, expected: Any, actual: Any) = {
     WKWFile.error(msg, expected, actual, new File(underlyingFile.getPath))
+  }
+
+  def readFromUnderlyingBuffers(offset: Long, length: Int): Array[Byte] = {
+    val dest = Array.ofDim[Byte](length)
+    val bufferIndex = (offset / Int.MaxValue).toInt
+    val bufferOffset = (offset % Int.MaxValue).toInt
+    val buffer = mappedBuffers(bufferIndex)
+
+    if (buffer.capacity - bufferOffset < length) {
+      val firstPart: Int = buffer.capacity - bufferOffset
+      val secondPart = length - firstPart
+      buffer.copyTo(bufferOffset, dest, 0, firstPart)
+      mappedBuffers(bufferIndex + 1).copyTo(0, dest, firstPart, secondPart)
+    } else {
+      buffer.copyTo(bufferOffset, dest, 0, length)
+    }
+    dest
+  }
+
+  private def writeToBuffers(offset: Long, data: Array[Byte]): Unit = {
+    val bufferIndex = (offset / Int.MaxValue).toInt
+    val bufferOffset = (offset % Int.MaxValue).toInt
+    Array.copy(data, 0, mappedBuffers(bufferIndex).array(), bufferOffset, data.length)
   }
 
   private def mortonEncode(x: Int, y: Int, z: Int): Int = {
@@ -98,28 +140,22 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
 
   private def readUncompressedBlock(mortonIndex: Int): Array[Byte] = {
     val blockOffset = header.dataOffset + mortonIndex.toLong * header.numBytesPerBlock.toLong
-    val blockData = Array.ofDim[Byte](header.numBytesPerBlock)
-    underlyingFile.seek(blockOffset)
-    underlyingFile.read(blockData, 0, header.numBytesPerBlock)
-    blockData
+    readFromUnderlyingBuffers(blockOffset, header.numBytesPerBlock)
   }
 
   private def writeUncompressedBlock(mortonIndex: Int, blockData: Array[Byte]) = {
     val blockOffset = header.dataOffset + mortonIndex.toLong * header.numBytesPerBlock.toLong
-    underlyingFile.seek(blockOffset)
-    underlyingFile.write(blockData)
+    writeToBuffers(blockOffset, blockData)
   }
 
   private def readCompressedBlock(mortonIndex: Int): Box[Array[Byte]] = {
     val blockOffset = header.jumpTable(mortonIndex)
     val compressedLength = (header.jumpTable(mortonIndex + 1) - blockOffset).toInt
-    val blockData = Array.ofDim[Byte](compressedLength)
-    underlyingFile.seek(blockOffset)
-    underlyingFile.read(blockData, 0, compressedLength)
-    decompressBlock()(blockData)
+    val compressedBlock = readFromUnderlyingBuffers(blockOffset, compressedLength)
+    decompressBlock()(compressedBlock)
   }
 
-  def readBlock(x: Int, y: Int, z: Int): Box[Array[Byte]] = synchronized {
+  def readBlock(x: Int, y: Int, z: Int): Box[Array[Byte]] = {
     val t = System.currentTimeMillis
     for {
       _ <- Check(!underlyingFile.isClosed) ?~! error("File is already closed")
@@ -131,7 +167,7 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
     }
   }
 
-  def writeBlock(x: Int, y: Int, z: Int, data: Array[Byte]): Box[Unit] = synchronized {
+  def writeBlock(x: Int, y: Int, z: Int, data: Array[Byte]): Box[Unit] = {
     val t = System.currentTimeMillis
     for {
       _ <- Check(!underlyingFile.isClosed) ?~! error("File is already closed")
@@ -209,9 +245,9 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
     }
   }
 
-  def decompress: Box[WKWFile] = synchronized { changeBlockType(BlockType.Raw) }
+  def decompress: Box[WKWFile] = changeBlockType(BlockType.Raw)
 
-  def compress(targetBlockType: BlockType.Value): Box[WKWFile] = synchronized { changeBlockType(targetBlockType) }
+  def compress(targetBlockType: BlockType.Value): Box[WKWFile] = changeBlockType(targetBlockType)
 }
 
 object WKWFile {
