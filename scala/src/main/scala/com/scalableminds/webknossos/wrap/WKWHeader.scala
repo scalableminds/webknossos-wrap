@@ -11,20 +11,16 @@ import java.nio.{ByteBuffer, ByteOrder}
 
 import net.liftweb.common.Box
 
-object BlockType extends Enumeration {
-  val Invalid, Raw, LZ4, LZ4HC, Snappy = Value
-
-  def isSupported(blockType: BlockType.Value) = blockType != Invalid
+object BlockType extends Enumeration(1) {
+  val Raw, LZ4, LZ4HC, Snappy = Value
 
   def isCompressed(blockType: BlockType.Value) = blockType == LZ4 || blockType == LZ4HC || blockType == Snappy
 
   def isUncompressed(blockType: BlockType.Value) = blockType == Raw
 }
 
-object VoxelType extends Enumeration {
-  val Invalid, UInt8, UInt16, UInt32, UInt64, Float, Double = Value
-
-  def isSupported(voxelType: VoxelType.Value) = voxelType != Invalid
+object VoxelType extends Enumeration(1) {
+  val UInt8, UInt16, UInt32, UInt64, Float, Double = Value
 }
 
 case class WKWHeader(
@@ -89,8 +85,8 @@ object WKWHeader {
       val sideLengths = dataStream.readUnsignedByte()
       val numBlocksPerCubeDimension = 1 << (sideLengths >>> 4) // fileSideLength [higher nibble]
       val numVoxelsPerBlockDimension = 1 << (sideLengths & 0x0f) // blockSideLength [lower nibble]
-      val blockType = BlockType(dataStream.readUnsignedByte())
-      val voxelType = VoxelType(dataStream.readUnsignedByte())
+      val blockTypeId = dataStream.readUnsignedByte()
+      val voxelTypeId = dataStream.readUnsignedByte()
       val numBytesPerVoxel = dataStream.readUnsignedByte() // voxel-size
 
       for {
@@ -100,8 +96,8 @@ object WKWHeader {
         _ <- Check(numBlocksPerCubeDimension < 1024) ?~! error("Specified fileSideLength not supported", numBlocksPerCubeDimension, "[0, 1024)", file)
         // We only support blockSideLengths < 1024, so that the total number of voxels per block fits in an Int.
         _ <- Check(numBlocksPerCubeDimension < 1024) ?~! error("Specified blockSideLength not supported", numVoxelsPerBlockDimension, "[0, 1024)", file)
-        _ <- Check(BlockType.isSupported(blockType)) ?~! error("Specified blockType is not supported", file)
-        _ <- Check(VoxelType.isSupported(voxelType)) ?~! error("Specified voxelType is not supported", file)
+        blockType <- Try(BlockType(blockTypeId)) ?~! error("Specified blockType is not supported", file)
+        voxelType <- Try(VoxelType(voxelTypeId)) ?~! error("Specified voxelType is not supported", file)
       } yield {
         if (BlockType.isCompressed(blockType) && readJumpTable) {
           // Read jump table
