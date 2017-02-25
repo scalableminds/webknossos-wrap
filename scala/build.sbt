@@ -56,6 +56,5 @@ libraryDependencies ++= Seq(
   "net.liftweb" % "lift-common_2.10" % "2.6-M3",
   "org.apache.commons" % "commons-lang3" % "3.1",
   "org.apache.logging.log4j" % "log4j-api" % "2.0-beta9",
-  "org.apache.logging.log4j" % "log4j-core" % "2.0-beta9",
-  "org.xerial.snappy" % "snappy-java" % "1.1.2.1"
+  "org.apache.logging.log4j" % "log4j-core" % "2.0-beta9"
 )

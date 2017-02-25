@@ -47,7 +47,7 @@ object ExtendedTypes {
           val targetOffset: java.lang.Long = destPos + arrayBaseOffset
           // Anything that might go south here can result in a segmentation fault, so be careful!
           unsafeCopy.invoke(unsafe, null, memOffset, other, targetOffset, length)
-          Full()
+          Full(())
         }
       } else {
         Failure("Could not copy from memory mapped array.")

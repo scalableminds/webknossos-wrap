@@ -11,10 +11,8 @@ import java.io.{File, RandomAccessFile}
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.{Files, Paths, StandardCopyOption}
-
 import net.jpountz.lz4.LZ4Factory
 import net.liftweb.common.{Box, Failure, Full}
-import org.xerial.snappy.Snappy
 
 object FileMode extends Enumeration {
   val Read, ReadWrite = Value
@@ -104,8 +102,6 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
         Try(compressor.compress(rawBlock, compressedBlock)).map { compressedLength =>
           compressedBlock.slice(0, compressedLength)
         }
-      case BlockType.Snappy =>
-        Try(Snappy.compress(rawBlock))
       case BlockType.Raw =>
         Full(rawBlock)
       case _ =>
@@ -127,8 +123,6 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
         } yield {
           rawBlock
         }
-      case BlockType.Snappy =>
-        Try(Snappy.uncompress(compressedBlock))
       case BlockType.Raw =>
         Full(compressedBlock)
       case _ =>
@@ -200,7 +194,6 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
     val tempHeader = header.copy(blockType = targetBlockType, jumpTable = Array.ofDim[Long](jumpTableSize))
 
     for {
-      _ <- Check(BlockType.isSupported(targetBlockType)) ?~! error("TargetBlockType is not supported")
       _ <- Check(targetBlockType != header.blockType) ?~! error("File already has requested blockType")
       _ <- ResourceBox.manage(new RandomAccessFile(tempFile, "rw")) { file =>
         tempHeader.writeToFile(file)

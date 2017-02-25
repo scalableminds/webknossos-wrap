@@ -12,9 +12,9 @@ import java.nio.{ByteBuffer, ByteOrder}
 import net.liftweb.common.Box
 
 object BlockType extends Enumeration(1) {
-  val Raw, LZ4, LZ4HC, Snappy = Value
+  val Raw, LZ4, LZ4HC= Value
 
-  def isCompressed(blockType: BlockType.Value) = blockType == LZ4 || blockType == LZ4HC || blockType == Snappy
+  def isCompressed(blockType: BlockType.Value) = blockType == LZ4 || blockType == LZ4HC
 
   def isUncompressed(blockType: BlockType.Value) = blockType == Raw
 }
