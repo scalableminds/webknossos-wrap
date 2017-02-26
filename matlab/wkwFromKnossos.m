@@ -1,23 +1,52 @@
-function wkwFromKnossos(wkParam, wkwRoot, dataType, box)
+function wkwFromKnossos(wkParam, wkwRoot, dataType)
     % wkwFromKnossos(wkParam, wkwRoot, dataType)
     %   Converts a KNOSSOS hierarchy into wk-wrap files.
     %
     % Written by
     %   Alessandro Motta <alessandro.motta@brain.mpg.de>
+    assert(ismember(dataType, {'uint8', 'uint32'}));
+    
+    % find resolutions
+    resolutions = findResolutions(wkParam.root);
+    
+    for curResolution = resolutions
+        [curWkParam, curWkwRoot] = ...
+            paramsForResolution(wkParam, wkwRoot, curResolution);
+        wkwFromKnossosResolution(curWkParam, curWkwRoot, dataType);
+    end
+end
 
+function resolutions = findResolutions(wkRoot)
+    % find available resolutions
+    [~, resDirs] = getFilesAndDirs(wkRoot);
+    resDirs = resDirs(cellfun(@all, isstrprop(resDirs, 'digit')));
+    resolutions = cellfun(@str2num, resDirs);
+    
+    % make sure that "high-res" data is available
+    resolutions = sort(resolutions);
+    assert(~isempty(resolutions) && resolutions(1) == 1);
+    
+    % show resolutions
+    disp(['>> Found resolutions: ', strjoin( ...
+        arrayfun(@num2str, resolutions, 'Uni', false), ', ')]);
+end
+
+function [wkParam, wkwRoot] = paramsForResolution(wkParam, wkwRoot, res)
+    % webKNOSSOS parameters
+    wkParam.root = [fullfile(wkParam.root, num2str(res)), filesep];
+    wkParam.prefix = [wkParam.prefix, '_mag', num2str(res)];
+    
+    % webKNOSSOS wrap parameters
+    wkwRoot = fullfile(wkwRoot, num2str(res));
+end
+
+function wkwFromKnossosResolution(wkParam, wkwRoot, dataType)
     % config
     fileClen = 1024;
     
-    % check input
-    assert(ismember(dataType, {'uint8', 'uint32'}));
+    disp('<< Determining bounding box...');
+    box = getBoundingBox(wkParam.root);
     
-    if ~exist('box', 'var') || isempty(box)
-        disp('<< Determining bounding box...');
-        box = getBoundingBox(wkParam.root);
-    else
-        assert(isequal(size(box), [3, 2]));
-    end
-
     % align box with wk-wrap files
     fileIds = [ ...
         floor((box(:, 1) - 1) ./ fileClen), ...
@@ -38,10 +67,13 @@ function wkwFromKnossos(wkParam, wkwRoot, dataType, box)
         idsX(:), idsY(:), idsZ(:));
     jobSharedInputs = {wkParam, wkwRoot, dataType};
     
+    disp( '<< Converting...');
+    disp(['   ', wkParam.root, ' → ', wkwRoot]);
+    
     cluster = Cluster.getCluster( ...
         '-l h_vmem=12G', '-l h_rt=0:29:00', '-tc 50');
     job = Cluster.startJob( ...
-        @wkwFromKnossosCore, jobInputs, ...
+        @wkwFromKnossosFile, jobInputs, ...
         'sharedInputs', jobSharedInputs, ...
         'cluster', cluster, ...
         'name', mfilename);
@@ -49,7 +81,7 @@ function wkwFromKnossos(wkParam, wkwRoot, dataType, box)
     wait(job);
 end
 
-function wkwFromKnossosCore(wkParam, wkwRoot, dataType, box)
+function wkwFromKnossosFile(wkParam, wkwRoot, dataType, box)
     curData = readKnossosRoi( ...
         wkParam.root, wkParam.prefix, box, dataType);
     wkwSaveRoi(wkwRoot, reshape(box(:, 1), 1, []), curData);
@@ -84,15 +116,25 @@ function cubeIds = getKnossosCubeIds(wkRoot)
     cubeIds = cellfun(@str2num, cubeIds);
 end
 
-function files = getAllFiles(wkRoot)
-    dirData = dir(wkRoot);
+function [files, dirs] = getFilesAndDirs(root)
+    dirData = dir(root);
     dirMask = [dirData.isdir];
     dirEntries = {dirData.name};
     clear dirData;
     
-    files = dirEntries(~dirMask);
-    subDirs = dirEntries(dirMask);
-    subDirs(ismember(subDirs, {'.', '..'})) = [];
+    % remove hidden entries
+    visMask = ~strncmp('.', dirEntries, 1);
+    dirMask = dirMask(visMask);
+    dirEntries = dirEntries(visMask);
+    
+    % build output
+    files = dirEntries(visMask & ~dirMask);
+    dirs  = dirEntries(visMask &  dirMask);
+end
+
+function files = getAllFiles(wkRoot)
+    % list directory
+    [files, subDirs] = getFilesAndDirs(wkRoot);
     
     % recurse into subdirectories
     subDirs = fullfile(wkRoot, subDirs);
