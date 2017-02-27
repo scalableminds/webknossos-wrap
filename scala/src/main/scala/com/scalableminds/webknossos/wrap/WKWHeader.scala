@@ -79,7 +79,7 @@ object WKWHeader {
 
   def apply(file: File, readJumpTable: Boolean = false): Box[WKWHeader] = {
     ResourceBox.manage(new DataInputStream(new FileInputStream(file))) { dataStream =>
-      val magicByteBuffer: Array[Byte] = Array.fill(magicBytes.length) {0}
+      val magicByteBuffer: Array[Byte] = Array.ofDim[Byte](magicBytes.length)
       dataStream.read(magicByteBuffer, 0, magicBytes.length)
       val version = dataStream.readUnsignedByte()
       val sideLengths = dataStream.readUnsignedByte()

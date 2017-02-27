@@ -23,9 +23,9 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
   private lazy val lz4FastCompressor = LZ4Factory.nativeInstance().fastCompressor()
   private lazy val lz4HighCompressor = LZ4Factory.nativeInstance().highCompressor()
 
-  val mappedBuffers: Array[MappedByteBuffer] = mapBuffers
+  val mappedBuffers: Array[ExtendedMappedByteBuffer] = mapBuffers
 
-  private def mapBuffers: Array[MappedByteBuffer] = {
+  private def mapBuffers: Array[ExtendedMappedByteBuffer] = {
     val channel = underlyingFile.getChannel()
     val mapMode = fileMode match {
       case FileMode.Read =>
@@ -33,9 +33,9 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
       case FileMode.ReadWrite =>
         FileChannel.MapMode.READ_WRITE
     }
-    (0L to underlyingFile.length by Int.MaxValue.toLong).map { offset =>
+    (0L until underlyingFile.length by Int.MaxValue.toLong).map { offset =>
       val length = Math.min(Int.MaxValue, underlyingFile.length - offset)
-      channel.map(mapMode, offset, length)
+      ExtendedMappedByteBuffer(channel.map(mapMode, offset, length))
     }.toArray
   }
 
@@ -47,7 +47,7 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
     WKWFile.error(msg, expected, actual, new File(underlyingFile.getPath))
   }
 
-  def readFromUnderlyingBuffers(offset: Long, length: Int): Array[Byte] = {
+  private def readFromUnderlyingBuffers(offset: Long, length: Int): Array[Byte] = {
     val dest = Array.ofDim[Byte](length)
     val bufferIndex = (offset / Int.MaxValue).toInt
     val bufferOffset = (offset % Int.MaxValue).toInt
@@ -64,10 +64,19 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
     dest
   }
 
-  private def writeToBuffers(offset: Long, data: Array[Byte]): Unit = {
+  private def writeToUnderlyingBuffers(offset: Long, data: Array[Byte]): Unit = {
     val bufferIndex = (offset / Int.MaxValue).toInt
     val bufferOffset = (offset % Int.MaxValue).toInt
-    Array.copy(data, 0, mappedBuffers(bufferIndex).array(), bufferOffset, data.length)
+    val buffer = mappedBuffers(bufferIndex)
+
+    if (buffer.capacity - bufferOffset < data.length) {
+      val firstPart: Int = buffer.capacity - bufferOffset
+      val secondPart = data.length - firstPart
+      buffer.copyFrom(bufferOffset, data, 0, firstPart)
+      mappedBuffers(bufferIndex + 1).copyFrom(0, data, firstPart, secondPart)
+    } else {
+      buffer.copyFrom(bufferOffset, data, 0, data.length)
+    }
   }
 
   private def mortonEncode(x: Int, y: Int, z: Int): Int = {
@@ -139,7 +148,7 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
 
   private def writeUncompressedBlock(mortonIndex: Int, blockData: Array[Byte]) = {
     val blockOffset = header.dataOffset + mortonIndex.toLong * header.numBytesPerBlock.toLong
-    writeToBuffers(blockOffset, blockData)
+    writeToUnderlyingBuffers(blockOffset, blockData)
   }
 
   private def readCompressedBlock(mortonIndex: Int): Box[Array[Byte]] = {
@@ -186,51 +195,55 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
     close()
   }
 
-  private def changeBlockType(targetBlockType: BlockType.Value): Box[WKWFile] = {
-    val tempFile = new File(underlyingFile.getPath + ".tmp")
-    val targetFile = new File(underlyingFile.getPath)
+  private def transcodeFile(targetBlockType: BlockType.Value)(file: RandomAccessFile): Box[Unit] = {
     val toCompressed = BlockType.isCompressed(targetBlockType)
     val jumpTableSize = if (toCompressed) header.numBlocksPerCube + 1 else 1
     val tempHeader = header.copy(blockType = targetBlockType, jumpTable = Array.ofDim[Long](jumpTableSize))
+    tempHeader.writeToFile(file)
+
+    val dataOffset = file.getFilePointer
+    underlyingFile.seek(header.dataOffset)
+
+    val sourceBlockLengths = if (header.isCompressed) {
+      header.jumpTable.sliding(2).map(a => (a(1) - a(0)).toInt)
+    } else {
+      Array.fill(header.numBlocksPerCube)(header.numBytesPerBlock).toIterator
+    }
+
+    val targetBlockLengths = sourceBlockLengths.foldLeft[Box[Seq[Int]]](Full(Seq.empty)) {
+      case (Full(result), blockLength) =>
+        val blockData = Array.ofDim[Byte](blockLength)
+        underlyingFile.read(blockData)
+        for {
+          rawBlock <- decompressBlock(header.blockType)(blockData)
+          encodedBlock <- compressBlock(targetBlockType)(rawBlock)
+        } yield {
+          file.write(encodedBlock)
+          result :+ encodedBlock.length
+        }
+      case (failure, _) =>
+        failure
+    }
+
+    targetBlockLengths.map { blockLengths =>
+      val jumpTable = if (toCompressed) {
+        blockLengths.map(_.toLong).scan(dataOffset)(_ + _).toArray
+      } else {
+        Array(dataOffset)
+      }
+      val newHeader = tempHeader.copy(jumpTable = jumpTable)
+      file.seek(0)
+      newHeader.writeToFile(file)
+    }
+  }
+
+  def changeBlockType(targetBlockType: BlockType.Value): Box[WKWFile] = {
+    val tempFile = new File(underlyingFile.getPath + ".tmp")
+    val targetFile = new File(underlyingFile.getPath)
 
     for {
       _ <- Check(targetBlockType != header.blockType) ?~! error("File already has requested blockType")
-      _ <- ResourceBox.manage(new RandomAccessFile(tempFile, "rw")) { file =>
-        tempHeader.writeToFile(file)
-        val dataOffset = file.getFilePointer
-
-        underlyingFile.seek(header.dataOffset)
-        val sourceBlockLengths = if (header.isCompressed) {
-          header.jumpTable.sliding(2).map(a => (a(1) - a(0)).toInt)
-        } else {
-          Array.fill(header.numBlocksPerCube){header.numBytesPerBlock}.toIterator
-        }
-        val targetBlockLengths = sourceBlockLengths.foldLeft[Box[Seq[Int]]](Full(Seq.empty)) {
-          case (Full(result), blockLength) =>
-            val blockData = Array.ofDim[Byte](blockLength)
-            underlyingFile.read(blockData)
-            for {
-              rawBlock <- decompressBlock(header.blockType)(blockData)
-              encodedBlock <- compressBlock(targetBlockType)(rawBlock)
-            } yield {
-              file.write(encodedBlock)
-              result :+ encodedBlock.length
-            }
-          case (failure, _) =>
-            failure
-        }
-
-        targetBlockLengths.map { blockLengths =>
-          val jumpTable = if (toCompressed) {
-            blockLengths.map(_.toLong).scan(dataOffset)(_ + _).toArray
-          } else {
-            Array(dataOffset)
-          }
-          val newHeader = tempHeader.copy(jumpTable = jumpTable)
-          file.seek(0)
-          newHeader.writeToFile(file)
-        }
-      }
+      _ <- ResourceBox.manage(new RandomAccessFile(tempFile, "rw"))(transcodeFile(targetBlockType))
       _ <- Try(moveFile(tempFile, targetFile))
       wkwFile <- WKWFile(targetFile, fileMode)
     } yield {

@@ -39,6 +39,8 @@ object ExtendedTypes {
       m
     }
 
+    def capacity = mappedData.capacity
+
     def copyTo(offset: Long, other: Array[Byte], destPos: Long, length: java.lang.Integer): Box[Unit] = {
       // Any regularly called log statements in here should be avoided as they drastically slow down this method.
       if (offset + length < mappedData.limit()) {
@@ -51,6 +53,21 @@ object ExtendedTypes {
         }
       } else {
         Failure("Could not copy from memory mapped array.")
+      }
+    }
+
+    def copyFrom(offset: Long, other: Array[Byte], srcPos: Long, length: java.lang.Integer): Box[Unit] = {
+      // Any regularly called log statements in here should be avoided as they drastically slow down this method.
+      if (offset + length < mappedData.limit()) {
+        Try {
+          val memOffset: java.lang.Long = address + offset
+          val srcOffset: java.lang.Long = srcPos + arrayBaseOffset
+          // Anything that might go south here can result in a segmentation fault, so be careful!
+          unsafeCopy.invoke(unsafe, other, srcOffset, null, memOffset, length)
+          Full(())
+        }
+      } else {
+        Failure("Could not copy to memory mapped array.")
       }
     }
   }
