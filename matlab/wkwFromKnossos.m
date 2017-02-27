@@ -1,23 +1,63 @@
-function wkwFromKnossos(wkParam, wkwRoot, dataType, box)
+function wkwFromKnossos(wkParam, wkwRoot, dataType)
     % wkwFromKnossos(wkParam, wkwRoot, dataType)
     %   Converts a KNOSSOS hierarchy into wk-wrap files.
     %
     % Written by
     %   Alessandro Motta <alessandro.motta@brain.mpg.de>
+    assert(ismember(dataType, {'uint8', 'uint32'}));
+    
+    % find resolutions
+    resolutions = findResolutions(wkParam.root);
+    
+    forResolution = @(r) ...
+        wkwFromKnossosResolution(wkParam, wkwRoot, dataType);
+    arrayfun(forResolution, resolutions);
+end
 
+function resolutions = findResolutions(wkRoot)
+    fprintf('Searching resolutions... ');
+    
+    % find available resolutions
+    [~, resDirs] = getFilesAndDirs(wkRoot);
+    resDirs = resDirs(cellfun(@all, isstrprop(resDirs, 'digit')));
+    resolutions = cellfun(@str2num, resDirs);
+    
+    % make sure that "high-res" data is available
+    resolutions = sort(resolutions);
+    assert(~isempty(resolutions) && resolutions(1) == 1);
+    
+    disp('✔');
+    disp(['  Found ', strjoin( ...
+        arrayfun(@num2str, resolutions, 'Uni', false), ', ')]);
+end
+
+function [wkParam, wkwRoot] = ...
+        buildParametersForResolution(wkParam, wkwRoot, resolution)
+    % webKNOSSOS parameters
+    wkParam.root = fullfile(wkParam.root, num2str(resolution));
+    wkParam.prefix = [wkParam.prefix, '_mag', num2str(resolution)];
+    
+    % NOTE: For historical reasons, the read- / writeKnossosRoi functions
+    % expect the root directory to end with a directory separator
+    wkParam.root = strcat(wkParam.root, filesep);
+    
+    % webKNOSSOS wrap parameters
+    wkwRoot = fullfile(wkwRoot, num2str(resolution));
+end
+
+function wkwFromKnossosResolution(wkParam, wkwRoot, dataType, resolution)
     % config
     fileClen = 1024;
     
-    % check input
-    assert(ismember(dataType, {'uint8', 'uint32'}));
+    % update parameters
+    [wkParam, wkwRoot] = ...
+        buildParametersForResolution(wkParam, wkwRoot, resolution);
     
-    if ~exist('box', 'var') || isempty(box)
-        disp('<< Determining bounding box...');
-        box = getBoundingBox(wkParam.root);
-    else
-        assert(isequal(size(box), [3, 2]));
-    end
-
+    disp(['Processing ', wkParam.prefix, '...']);
+    fprintf('  Determining bounding box... ');
+    box = getBoundingBox(wkParam.root);
+    disp('✔');
+    
     % align box with wk-wrap files
     fileIds = [ ...
         floor((box(:, 1) - 1) ./ fileClen), ...
@@ -40,16 +80,19 @@ function wkwFromKnossos(wkParam, wkwRoot, dataType, box)
     
     cluster = Cluster.getCluster( ...
         '-l h_vmem=12G', '-l h_rt=0:29:00', '-tc 50');
+    
+    fprintf('  Converting... ');
     job = Cluster.startJob( ...
-        @wkwFromKnossosCore, jobInputs, ...
+        @wkwFromKnossosFile, jobInputs, ...
         'sharedInputs', jobSharedInputs, ...
         'cluster', cluster, ...
         'name', mfilename);
     
     wait(job);
+    disp('✔');
 end
 
-function wkwFromKnossosCore(wkParam, wkwRoot, dataType, box)
+function wkwFromKnossosFile(wkParam, wkwRoot, dataType, box)
     curData = readKnossosRoi( ...
         wkParam.root, wkParam.prefix, box, dataType);
     wkwSaveRoi(wkwRoot, reshape(box(:, 1), 1, []), curData);
@@ -84,15 +127,22 @@ function cubeIds = getKnossosCubeIds(wkRoot)
     cubeIds = cellfun(@str2num, cubeIds);
 end
 
-function files = getAllFiles(wkRoot)
-    dirData = dir(wkRoot);
-    dirMask = [dirData.isdir];
+function [files, dirs] = getFilesAndDirs(root)
+    dirData = dir(root);
     dirEntries = {dirData.name};
-    clear dirData;
     
-    files = dirEntries(~dirMask);
-    subDirs = dirEntries(dirMask);
-    subDirs(ismember(subDirs, {'.', '..'})) = [];
+    % build masks
+    dirMask = [dirData.isdir];
+    visMask = ~strncmp('.', dirEntries, 1);
+    
+    % build output
+    files = dirEntries(visMask & ~dirMask);
+    dirs  = dirEntries(visMask &  dirMask);
+end
+
+function files = getAllFiles(wkRoot)
+    % list directory
+    [files, subDirs] = getFilesAndDirs(wkRoot);
     
     % recurse into subdirectories
     subDirs = fullfile(wkRoot, subDirs);
