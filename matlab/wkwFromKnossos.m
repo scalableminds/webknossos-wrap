@@ -9,14 +9,14 @@ function wkwFromKnossos(wkParam, wkwRoot, dataType)
     % find resolutions
     resolutions = findResolutions(wkParam.root);
     
-    for curResolution = resolutions
-        [curWkParam, curWkwRoot] = ...
-            paramsForResolution(wkParam, wkwRoot, curResolution);
-        wkwFromKnossosResolution(curWkParam, curWkwRoot, dataType);
-    end
+    forResolution = @(r) ...
+        wkwFromKnossosResolution(wkParam, wkwRoot, dataType);
+    arrayfun(forResolution, resolutions);
 end
 
 function resolutions = findResolutions(wkRoot)
+    fprintf('Searching resolutions... ');
+    
     % find available resolutions
     [~, resDirs] = getFilesAndDirs(wkRoot);
     resDirs = resDirs(cellfun(@all, isstrprop(resDirs, 'digit')));
@@ -26,26 +26,37 @@ function resolutions = findResolutions(wkRoot)
     resolutions = sort(resolutions);
     assert(~isempty(resolutions) && resolutions(1) == 1);
     
-    % show resolutions
-    disp(['>> Found resolutions: ', strjoin( ...
+    disp('✔');
+    disp(['  Found ', strjoin( ...
         arrayfun(@num2str, resolutions, 'Uni', false), ', ')]);
 end
 
-function [wkParam, wkwRoot] = paramsForResolution(wkParam, wkwRoot, res)
+function [wkParam, wkwRoot] = ...
+        buildParametersForResolution(wkParam, wkwRoot, resolution)
     % webKNOSSOS parameters
-    wkParam.root = [fullfile(wkParam.root, num2str(res)), filesep];
-    wkParam.prefix = [wkParam.prefix, '_mag', num2str(res)];
+    wkParam.root = fullfile(wkParam.root, num2str(resolution));
+    wkParam.prefix = [wkParam.prefix, '_mag', num2str(resolution)];
+    
+    % NOTE: For historical reasons, the read- / writeKnossosRoi functions
+    % expect the root directory to end with a directory separator
+    wkParam.root = strcat(wkParam.root, filesep);
     
     % webKNOSSOS wrap parameters
-    wkwRoot = fullfile(wkwRoot, num2str(res));
+    wkwRoot = fullfile(wkwRoot, num2str(resolution));
 end
 
-function wkwFromKnossosResolution(wkParam, wkwRoot, dataType)
+function wkwFromKnossosResolution(wkParam, wkwRoot, dataType, resolution)
     % config
     fileClen = 1024;
     
-    disp('<< Determining bounding box...');
+    % update parameters
+    [wkParam, wkwRoot] = ...
+        buildParametersForResolution(wkParam, wkwRoot, resolution);
+    
+    disp(['Processing ', wkParam.prefix, '...']);
+    fprintf('  Determining bounding box... ');
     box = getBoundingBox(wkParam.root);
+    disp('✔');
     
     % align box with wk-wrap files
     fileIds = [ ...
@@ -67,11 +78,10 @@ function wkwFromKnossosResolution(wkParam, wkwRoot, dataType)
         idsX(:), idsY(:), idsZ(:));
     jobSharedInputs = {wkParam, wkwRoot, dataType};
     
-    disp( '<< Converting...');
-    disp(['   ', wkParam.root, ' → ', wkwRoot]);
-    
     cluster = Cluster.getCluster( ...
         '-l h_vmem=12G', '-l h_rt=0:29:00', '-tc 50');
+    
+    fprintf('  Converting... ');
     job = Cluster.startJob( ...
         @wkwFromKnossosFile, jobInputs, ...
         'sharedInputs', jobSharedInputs, ...
@@ -79,6 +89,7 @@ function wkwFromKnossosResolution(wkParam, wkwRoot, dataType)
         'name', mfilename);
     
     wait(job);
+    disp('✔');
 end
 
 function wkwFromKnossosFile(wkParam, wkwRoot, dataType, box)
@@ -118,14 +129,11 @@ end
 
 function [files, dirs] = getFilesAndDirs(root)
     dirData = dir(root);
-    dirMask = [dirData.isdir];
     dirEntries = {dirData.name};
-    clear dirData;
     
-    % remove hidden entries
+    % build masks
+    dirMask = [dirData.isdir];
     visMask = ~strncmp('.', dirEntries, 1);
-    dirMask = dirMask(visMask);
-    dirEntries = dirEntries(visMask);
     
     % build output
     files = dirEntries(visMask & ~dirMask);
