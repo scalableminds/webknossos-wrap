@@ -24,6 +24,24 @@ impl Vec {
         self.y >= other.y &&
         self.z >= other.z
     }
+
+    // TODO(amotta): implement trait
+    pub fn shift_left(&self, other: &Vec) -> Vec {
+        Vec {
+            x: self.x << other.x,
+            y: self.y << other.y,
+            z: self.z << other.z
+        }
+    }
+
+    // TODO(amotta): implement trait
+    pub fn shift_right(&self, other: &Vec) -> Vec {
+        Vec {
+            x: self.x >> other.x,
+            y: self.y >> other.y,
+            z: self.z >> other.z
+        }
+    }
 }
 
 impl From<u32> for Vec {

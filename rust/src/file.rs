@@ -33,25 +33,44 @@ impl<'a> File<'a> {
 
     pub fn header(&'a self) -> &'a Header { &self.header }
 
-    pub fn read_mat(&mut self, mat: &mut Mat, off: &Vec) -> Result<usize> {
-        if !off.is_valid_offset() {
-            return Err("Offset is invalid");
+    fn offset_to_block_idx(&self, off: &Vec) -> Result<u64> {
+        if off.is_valid_offset() {
+            let block_side_len = self.header.voxels_per_block_dim as u32;
+            let block_ids = off.clone() / block_side_len.into();
+            u64::from(Morton::from(&block_ids))
+        } else {
+            Err("Offset is invalid")
         }
+    }
+
+    fn vec_is_block_aligned(&self, vec: &Vec) -> bool {
+        vec.is_power_of_two() &&
+        vec.is_larger_equal_than(self.header.voxels_per_block_dim.into())
+    }
+
+    fn vec_to_blocks(&self, vec: &Vec) -> Vec {
+        vec.shift_right(self.header.voxels_per_block_dim_log2.into())
+    }
+
+    fn mat_to_block_count(&self, mat: &Mat) -> usize {
+        let blocks_per_dim = self.vec_to_blocks(mat.shape());
+        blocks_per_dim.x as usize * blocks_per_dim.y as usize * blocks_per_dim.z as usize
+    }
+
+    pub fn write_mat(&mut self, mat: &Mat, off: &Vec) -> Result<usize> {
+        let block_idx = self.offset_to_block_idx(off)?;
+    }
+
+    pub fn read_mat(&mut self, mat: &mut Mat, off: &Vec) -> Result<usize> {
+        let block_idx = self.offset_to_block_idx(off)?;
 
         if !mat.shape().is_power_of_two()
         || !mat.shape().is_larger_equal_than(off) {
             return Err("Shape of matrix is invalid");
         }
 
-        let block_side_len = self.header.voxels_per_block_dim as u32;
-        let block_ids = off.clone() / block_side_len.into();
-        let block_idx = u64::from(Morton::from(&block_ids));
-
         let blocks_per_dim = mat.shape().clone() / block_side_len.into();
         let block_count =
-            blocks_per_dim.x as usize *
-            blocks_per_dim.y as usize *
-            blocks_per_dim.z as usize;
 
         // seek to start
         self.seek_block(block_idx)?;
