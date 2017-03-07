@@ -8,6 +8,18 @@ length is a power of two. Every voxel of this cube contains a fixed number of
 values of a given data type (e.g., one 8-bit value for raw image data, or one
 32-bit value for image segmentation).
 
+## Implementations
+
+This repository contains the reference implementations for the webKNOSSOS
+wrapper format. Code is available for
+
+* C++
+* Scala
+* MATLAB
+
+The latter is a binding around the C++ library and demonstrates how wk-wrap
+files can be read and written from within other programming languages.
+
 ## High-level description
 Each file contains the data for a cube with side-length (CLEN) of FILE_CLEN
 (MUST be a power of two; e.g., 1024) voxels. Within each file, the data is split
