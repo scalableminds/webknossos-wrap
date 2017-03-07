@@ -23,7 +23,7 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
   private lazy val lz4FastCompressor = LZ4Factory.nativeInstance().fastCompressor()
   private lazy val lz4HighCompressor = LZ4Factory.nativeInstance().highCompressor()
 
-  val mappedBuffers: Array[ExtendedMappedByteBuffer] = mapBuffers
+  private val mappedBuffers: Array[ExtendedMappedByteBuffer] = mapBuffers
 
   private def mapBuffers: Array[ExtendedMappedByteBuffer] = {
     val channel = underlyingFile.getChannel()
@@ -33,10 +33,10 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
       case FileMode.ReadWrite =>
         FileChannel.MapMode.READ_WRITE
     }
-    (0L until underlyingFile.length by Int.MaxValue.toLong).map { offset =>
+    (0L until underlyingFile.length by Int.MaxValue.toLong).toArray.map { offset =>
       val length = Math.min(Int.MaxValue, underlyingFile.length - offset)
-      ExtendedMappedByteBuffer(channel.map(mapMode, offset, length))
-    }.toArray
+      new ExtendedMappedByteBuffer(channel.map(mapMode, offset, length))
+    }
   }
 
   private def error(msg: String) = {
@@ -185,9 +185,8 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
   }
 
   def close() {
-    if (!underlyingFile.isClosed) {
-      underlyingFile.close()
-    }
+    mappedBuffers.indices.map(i => mappedBuffers(i) = null)
+    underlyingFile.close()
   }
 
   private def moveFile(tempFile: File, targetFile: File) = {

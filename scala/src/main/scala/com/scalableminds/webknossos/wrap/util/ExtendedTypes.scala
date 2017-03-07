@@ -12,20 +12,24 @@ import org.apache.commons.lang3.reflect.FieldUtils
 object ExtendedTypes {
 
   implicit class ExtendedRandomAccessFile(f: RandomAccessFile) {
-    def isClosed: Boolean = {
+    private val closedF = {
       val method = f.getClass.getDeclaredField("closed")
       method.setAccessible(true)
-      method.getBoolean(f)
+      method
     }
 
-    def getPath: String = {
-      val method2 = f.getClass.getDeclaredField("path")
-      method2.setAccessible(true)
-      method2.get(f).asInstanceOf[String]
+    private val pathF = {
+      val method = f.getClass.getDeclaredField("path")
+      method.setAccessible(true)
+      method
     }
+
+    def isClosed: Boolean = closedF.getBoolean(f)
+
+    def getPath: String = pathF.get(f).asInstanceOf[String]
   }
 
-  implicit class ExtendedMappedByteBuffer(mappedData: MappedByteBuffer) {
+  class ExtendedMappedByteBuffer(mappedData: MappedByteBuffer) {
     val unsafe = FieldUtils.readField(mappedData, "unsafe", true)
 
     val address = FieldUtils.readField(mappedData, "address", true).asInstanceOf[Long]
