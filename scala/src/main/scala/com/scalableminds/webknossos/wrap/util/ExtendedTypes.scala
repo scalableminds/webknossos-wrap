@@ -29,7 +29,7 @@ object ExtendedTypes {
     def getPath: String = pathF.get(f).asInstanceOf[String]
   }
 
-  class ExtendedMappedByteBuffer(var mappedData: MappedByteBuffer) {
+  class ExtendedMappedByteBuffer(mappedData: MappedByteBuffer) {
     val unsafe = FieldUtils.readField(mappedData, "unsafe", true)
 
     val address = FieldUtils.readField(mappedData, "address", true).asInstanceOf[Long]
@@ -41,24 +41,6 @@ object ExtendedTypes {
         classOf[Object], classOf[Long], classOf[Object], classOf[Long], classOf[Long])
       m.setAccessible(true)
       m
-    }
-
-    def cleanMapping(): Unit = {
-      if (mappedData!=null && mappedData.isDirect) {
-        // we could use this type cast and call functions without reflection code,
-        // but static import from sun.* package is risky for non-SUN virtual machine.
-        //try { ((sun.nio.ch.DirectBuffer)cb).cleaner().clean(); } catch (Exception ex) { }
-        try {
-          val cleaner = mappedData.getClass.getMethod("cleaner")
-          cleaner.setAccessible(true)
-          val clean = Class.forName("sun.misc.Cleaner").getMethod("clean")
-          clean.setAccessible(true)
-          clean.invoke(cleaner.invoke(mappedData))
-        } catch {
-          case _: Exception =>
-        }
-        mappedData = null
-      }
     }
 
     def capacity = mappedData.capacity

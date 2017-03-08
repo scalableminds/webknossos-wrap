@@ -37,11 +37,10 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
       case FileMode.ReadWrite =>
         FileChannel.MapMode.READ_WRITE
     }
-    val ms = (0L until underlyingFile.length by Int.MaxValue.toLong).toArray.map { offset =>
+    (0L until underlyingFile.length by Int.MaxValue.toLong).toArray.map { offset =>
       val length = Math.min(Int.MaxValue, underlyingFile.length - offset)
       new ExtendedMappedByteBuffer(channel.map(mapMode, offset, length))
     }
-    ms
   }
 
   private def error(msg: String) = {
@@ -189,13 +188,12 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
     }
   }
 
-  def close() {
-    mappedBuffers.map(buffer => buffer.cleanMapping())
+  def close(): Unit = {
     channel.close()
     underlyingFile.close()
   }
 
-  private def moveFile(tempFile: File, targetFile: File) = {
+  private def moveFile(tempFile: File, targetFile: File): Unit = {
     Files.move(tempFile.toPath, Paths.get(underlyingFile.getPath), StandardCopyOption.REPLACE_EXISTING)
     close()
   }
