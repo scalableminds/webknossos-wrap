@@ -19,14 +19,18 @@ object FileMode extends Enumeration {
 }
 
 case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: RandomAccessFile) {
+  
   private lazy val lz4Decompressor = LZ4Factory.nativeInstance().fastDecompressor()
+  
   private lazy val lz4FastCompressor = LZ4Factory.nativeInstance().fastCompressor()
+  
   private lazy val lz4HighCompressor = LZ4Factory.nativeInstance().highCompressor()
+
+  private val channel = underlyingFile.getChannel()
 
   private val mappedBuffers: Array[ExtendedMappedByteBuffer] = mapBuffers
 
   private def mapBuffers: Array[ExtendedMappedByteBuffer] = {
-    val channel = underlyingFile.getChannel()
     val mapMode = fileMode match {
       case FileMode.Read =>
         FileChannel.MapMode.READ_ONLY
@@ -37,7 +41,6 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
       val length = Math.min(Int.MaxValue, underlyingFile.length - offset)
       new ExtendedMappedByteBuffer(channel.map(mapMode, offset, length))
     }
-    channel.close()
     ms
   }
 
@@ -188,6 +191,7 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
 
   def close() {
     mappedBuffers.map(buffer => buffer.cleanMapping())
+    channel.close()
     underlyingFile.close()
   }
 
