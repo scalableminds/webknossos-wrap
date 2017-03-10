@@ -33,47 +33,43 @@ impl<'a> File<'a> {
 
     pub fn header(&'a self) -> &'a Header { &self.header }
 
-    fn offset_to_block_idx(&self, off: &Vec) -> Result<u64> {
-        if off.is_valid_offset() {
+    pub fn aligned_blocks(&self, mat: &Mat, off: &Vec) -> Option<(u64, u64)> {
+        if self.is_aligned(mat, off) {
             let block_side_len = self.header.voxels_per_block_dim as u32;
-            let block_ids = off.clone() / block_side_len.into();
-            u64::from(Morton::from(&block_ids))
+
+            let block_off_vec = off.clone() / Vec::from(block_side_len);
+            let block_off = u64::from(Morton::from(&block_off_vec));
+
+            let block_side_len = mat.shape().x / block_side_len;
+            let block_count = block_side_len * block_side_len * block_side_len;
+
+            Some((block_off, block_count as u64))
         } else {
-            Err("Offset is invalid")
+            None
         }
     }
 
-    fn vec_is_block_aligned(&self, vec: &Vec) -> bool {
-        vec.is_power_of_two() &&
-        vec.is_larger_equal_than(self.header.voxels_per_block_dim.into())
-    }
-
-    fn vec_to_blocks(&self, vec: &Vec) -> Vec {
-        vec.shift_right(self.header.voxels_per_block_dim_log2.into())
-    }
-
-    fn mat_to_block_count(&self, mat: &Mat) -> usize {
-        let blocks_per_dim = self.vec_to_blocks(mat.shape());
-        blocks_per_dim.x as usize * blocks_per_dim.y as usize * blocks_per_dim.z as usize
-    }
-
-    pub fn write_mat(&mut self, mat: &Mat, off: &Vec) -> Result<usize> {
-        let block_idx = self.offset_to_block_idx(off)?;
+    pub fn is_aligned(&self, mat: &Mat, off: &Vec) -> bool {
+        mat.shape().is_cube_diagonal()
+        && mat.shape().x.is_power_of_two()
+        && mat.shape().x >= self.header.voxels_per_block_dim as u32
+        && off.is_multiple_of(mat.shape())
     }
 
     pub fn read_mat(&mut self, mat: &mut Mat, off: &Vec) -> Result<usize> {
-        let block_idx = self.offset_to_block_idx(off)?;
-
-        if !mat.shape().is_power_of_two()
-        || !mat.shape().is_larger_equal_than(off) {
-            return Err("Shape of matrix is invalid");
+        match self.aligned_blocks(mat, off) {
+            Some((block_off, block_count)) => self.read_aligned_mat(block_off, block_count, mat),
+            None => Err("This library does not yet support unaligned reads")
         }
+    }
 
-        let blocks_per_dim = mat.shape().clone() / block_side_len.into();
-        let block_count =
-
-        // seek to start
-        self.seek_block(block_idx)?;
+    pub fn read_aligned_mat(
+        &mut self,
+        block_off: u64,
+        block_count: u64,
+        mat: &mut Mat
+    ) -> Result<usize> {
+        self.seek_block(block_off)?;
 
         for cur_idx in 0..block_count {
             // read a block

@@ -8,9 +8,10 @@ pub struct Vec {
 }
 
 impl Vec {
-    pub fn is_valid_offset(&self) -> bool {
-        (self.x == self.y && self.x == self.z && self.y == self.z) &&
-        (self.x == 0 || self.x.is_power_of_two())
+    pub fn is_cube_diagonal(&self) -> bool {
+        self.x == self.y &&
+        self.x == self.z &&
+        self.y == self.z
     }
 
     pub fn is_power_of_two(&self) -> bool {
@@ -23,6 +24,12 @@ impl Vec {
         self.x >= other.x &&
         self.y >= other.y &&
         self.z >= other.z
+    }
+
+    pub fn is_multiple_of(&self, other: &Vec) -> bool {
+        self.x % other.x == 0 &&
+        self.y % other.y == 0 &&
+        self.z % other.z == 0
     }
 
     // TODO(amotta): implement trait
