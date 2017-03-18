@@ -17,7 +17,7 @@ fn shuffle(v: u64) -> u64 {
 
 fn unshuffle(z: u64) -> u64 {
     let mut v =       z & 0x1249249249249249;
-    v = (v ^ (v >>  2)) & 0x100f00f00f00f00f;
+    v = (v ^ (v >>  2)) & 0x10c30c30c30c30c3;
     v = (v ^ (v >>  4)) & 0x100f00f00f00f00f;
     v = (v ^ (v >>  8)) & 0x001f0000ff0000ff;
     v = (v ^ (v >> 16)) & 0x001f00000000ffff;
