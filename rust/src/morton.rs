@@ -1,6 +1,6 @@
 use vec::Vec;
 
-#[derive(Debug)]
+#[derive(PartialEq, Debug)]
 pub struct Morton(u64);
 
 fn shuffle(v: u64) -> u64 {
@@ -52,4 +52,34 @@ impl From<Morton> for u64 {
 
 impl From<u64> for Morton {
     fn from(idx: u64) -> Morton { Morton(idx) }
+}
+
+#[test]
+fn test_encoding() {
+    assert!(Morton::from(&Vec { x: 0, y: 0, z: 0 }) == Morton::from(0  as u64));
+    assert!(Morton::from(&Vec { x: 1, y: 0, z: 0 }) == Morton::from(1  as u64));
+    assert!(Morton::from(&Vec { x: 0, y: 1, z: 0 }) == Morton::from(2  as u64));
+    assert!(Morton::from(&Vec { x: 1, y: 1, z: 0 }) == Morton::from(3  as u64));
+    assert!(Morton::from(&Vec { x: 0, y: 0, z: 1 }) == Morton::from(4  as u64));
+    assert!(Morton::from(&Vec { x: 1, y: 0, z: 1 }) == Morton::from(5  as u64));
+    assert!(Morton::from(&Vec { x: 0, y: 1, z: 1 }) == Morton::from(6  as u64));
+    assert!(Morton::from(&Vec { x: 1, y: 1, z: 1 }) == Morton::from(7  as u64));
+    assert!(Morton::from(&Vec { x: 2, y: 0, z: 0 }) == Morton::from(8  as u64));
+    assert!(Morton::from(&Vec { x: 0, y: 2, z: 0 }) == Morton::from(16 as u64));
+    assert!(Morton::from(&Vec { x: 0, y: 0, z: 2 }) == Morton::from(32 as u64));
+}
+
+#[test]
+fn test_decoding() {
+    assert!(Vec { x: 0, y: 0, z: 0 } == Vec::from(Morton::from(0  as u64)));
+    assert!(Vec { x: 1, y: 0, z: 0 } == Vec::from(Morton::from(1  as u64)));
+    assert!(Vec { x: 0, y: 1, z: 0 } == Vec::from(Morton::from(2  as u64)));
+    assert!(Vec { x: 1, y: 1, z: 0 } == Vec::from(Morton::from(3  as u64)));
+    assert!(Vec { x: 0, y: 0, z: 1 } == Vec::from(Morton::from(4  as u64)));
+    assert!(Vec { x: 1, y: 0, z: 1 } == Vec::from(Morton::from(5  as u64)));
+    assert!(Vec { x: 0, y: 1, z: 1 } == Vec::from(Morton::from(6  as u64)));
+    assert!(Vec { x: 1, y: 1, z: 1 } == Vec::from(Morton::from(7  as u64)));
+    assert!(Vec { x: 2, y: 0, z: 0 } == Vec::from(Morton::from(8  as u64)));
+    assert!(Vec { x: 0, y: 2, z: 0 } == Vec::from(Morton::from(16 as u64)));
+    assert!(Vec { x: 0, y: 0, z: 2 } == Vec::from(Morton::from(32 as u64)));
 }
