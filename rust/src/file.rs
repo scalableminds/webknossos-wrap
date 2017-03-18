@@ -71,6 +71,8 @@ impl<'a> File<'a> {
     ) -> Result<usize> {
         self.seek_block(block_off)?;
 
+        let block_size = Vec::from(self.header.voxels_per_block_dim as u32);
+
         for cur_idx in 0..block_count {
             // read a block
             let mut buf = vec![0 as u8; self.header.block_size];
@@ -79,11 +81,12 @@ impl<'a> File<'a> {
             // build matrix arround buffer
             let buf_mat = Mat::new(
                 buf.as_mut_slice(),
-                Vec::from(self.header.voxels_per_block_dim as u32),
+                block_size.clone(),
                 self.header.voxel_size as usize).unwrap();
 
             // determine target position
-            let cur_pos = Vec::from(Morton::from(cur_idx as u64));
+            let cur_blk_ids = Vec::from(Morton::from(cur_idx as u64));
+            let cur_pos = cur_blk_ids * block_size;
 
             // copy to target
             mat.copy_from(&buf_mat, &cur_pos)?;

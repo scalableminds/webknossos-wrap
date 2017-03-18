@@ -1,4 +1,4 @@
-use std::ops::{Add, Div};
+use std::ops::{Add, Mul, Div};
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Vec {
@@ -65,6 +65,18 @@ impl Add for Vec {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
             z: self.z + rhs.z
+        }
+    }
+}
+
+impl Mul< for Vec {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Vec {
+            x: self.x * rhs.x,
+            y: self.y * rhs.y,
+            z: self.z * rhs.z
         }
     }
 }
