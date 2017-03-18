@@ -35,12 +35,12 @@ impl<'a> File<'a> {
 
     pub fn aligned_blocks(&self, mat: &Mat, off: &Vec) -> Option<(u64, u64)> {
         if self.is_aligned(mat, off) {
-            let block_len = self.header.block_len() as u32;
+            let block_len_log2 = self.header.block_len_log2 as u32;
 
-            let block_off_vec = off.clone() / block_len;
+            let block_off_vec = off.clone() >> block_len_log2;
             let block_off = u64::from(Morton::from(&block_off_vec));
 
-            let block_side_len = mat.shape().x / block_len;
+            let block_side_len = mat.shape().x >> block_len_log2;
             let block_count = block_side_len * block_side_len * block_side_len;
 
             Some((block_off, block_count as u64))
@@ -84,7 +84,7 @@ impl<'a> File<'a> {
 
             // determine target position
             let cur_blk_ids = Vec::from(Morton::from(cur_idx as u64));
-            let cur_pos = cur_blk_ids * self.header.block_len() as u32;
+            let cur_pos = cur_blk_ids << self.header.block_len_log2 as u32;
 
             // copy to target
             mat.copy_from(&buf_mat, &cur_pos)?;
