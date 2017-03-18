@@ -42,7 +42,7 @@ impl<'a> Mat<'a> {
             return Err("Source and destination matrices do not match in width");
         }
 
-        let end = off.clone() + src.shape;
+        let end = off.clone() + &src.shape;
         if !self.shape.is_larger_equal_than(&end){
             return Err("Trying to write out of bounds");
         }
@@ -58,7 +58,7 @@ impl<'a> Mat<'a> {
                     let cur_pos = Vec { x: 0u32, y: cur_y, z: cur_z };
                     let src_ptr_cur = src_ptr.offset(src.offset(&cur_pos) as isize);
 
-                    let dst_pos = off.clone() + cur_pos;
+                    let dst_pos = off.clone() + &cur_pos;
                     let dst_ptr_cur = dst_ptr.offset(self.offset(&dst_pos) as isize);
 
                     // copy data

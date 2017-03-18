@@ -57,38 +57,34 @@ impl From<u32> for Vec {
     }
 }
 
-impl Add for Vec {
-    type Output = Self;
+impl<'a> Add<&'a Vec> for Vec {
+    type Output = Vec;
 
-    fn add(self, rhs: Vec) -> Self::Output {
-        Vec {
-            x: self.x + rhs.x,
-            y: self.y + rhs.y,
-            z: self.z + rhs.z
-        }
+    fn add(self, rhs: &Vec) -> Self::Output {
+        Vec { x: self.x + rhs.x, y: self.y + rhs.y, z: self.z + rhs.z }
     }
 }
 
-impl Mul< for Vec {
-    type Output = Self;
+impl Add<u32> for Vec {
+    type Output = Vec;
 
-    fn mul(self, rhs: Self) -> Self::Output {
-        Vec {
-            x: self.x * rhs.x,
-            y: self.y * rhs.y,
-            z: self.z * rhs.z
-        }
+    fn add(self, rhs: u32) -> Self::Output {
+        Vec { x: self.x + rhs, y: self.y + rhs, z: self.z + rhs }
     }
 }
 
-impl Div for Vec {
+impl Mul<u32> for Vec {
+    type Output = Vec;
+
+    fn mul(self, rhs: u32) -> Self::Output {
+        Vec { x: self.x * rhs, y: self.y * rhs, z: self.z * rhs }
+    }
+}
+
+impl Div<u32> for Vec {
     type Output = Self;
 
-    fn div(self, rhs: Self) -> Self::Output {
-        Vec {
-            x: self.x / rhs.x,
-            y: self.y / rhs.y,
-            z: self.z / rhs.z
-        }
+    fn div(self, rhs: u32) -> Self::Output {
+        Vec { x: self.x / rhs, y: self.y / rhs, z: self.z / rhs }
     }
 }

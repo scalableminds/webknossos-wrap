@@ -37,7 +37,7 @@ impl<'a> File<'a> {
         if self.is_aligned(mat, off) {
             let block_side_len = self.header.voxels_per_block_dim as u32;
 
-            let block_off_vec = off.clone() / Vec::from(block_side_len);
+            let block_off_vec = off.clone() / block_side_len;
             let block_off = u64::from(Morton::from(&block_off_vec));
 
             let block_side_len = mat.shape().x / block_side_len;
@@ -71,22 +71,23 @@ impl<'a> File<'a> {
     ) -> Result<usize> {
         self.seek_block(block_off)?;
 
-        let block_size = Vec::from(self.header.voxels_per_block_dim as u32);
+        let bytes_per_blk = self.header.block_size;
+        let vx_per_blk_dim = self.header.voxels_per_block_dim;
 
         for cur_idx in 0..block_count {
             // read a block
-            let mut buf = vec![0 as u8; self.header.block_size];
+            let mut buf = vec![0 as u8; bytes_per_blk];
             self.read_block(buf.as_mut_slice())?;
 
             // build matrix arround buffer
             let buf_mat = Mat::new(
                 buf.as_mut_slice(),
-                block_size.clone(),
+                Vec::from(vx_per_blk_dim as u32),
                 self.header.voxel_size as usize).unwrap();
 
             // determine target position
             let cur_blk_ids = Vec::from(Morton::from(cur_idx as u64));
-            let cur_pos = cur_blk_ids * block_size;
+            let cur_pos = cur_blk_ids * vx_per_blk_dim as u32;
 
             // copy to target
             mat.copy_from(&buf_mat, &cur_pos)?;
