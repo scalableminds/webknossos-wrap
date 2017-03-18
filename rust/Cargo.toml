@@ -4,7 +4,7 @@ version = "0.0.1"
 authors = ["Alessandro Motta <alessandro.motta@brain.mpg.de>"]
 
 [lib]
-name = "wkw"
+name = "wkwrap"
 path = "src/lib.rs"
 
 [[bin]]

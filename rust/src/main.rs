@@ -1,4 +1,4 @@
-extern crate wkw;
+extern crate wkwrap as wkw;
 use std::fs::File;
 
 fn main() {
