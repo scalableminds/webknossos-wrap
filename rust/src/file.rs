@@ -35,12 +35,12 @@ impl<'a> File<'a> {
 
     pub fn aligned_blocks(&self, mat: &Mat, off: &Vec) -> Option<(u64, u64)> {
         if self.is_aligned(mat, off) {
-            let block_side_len = self.header.voxels_per_block_dim as u32;
+            let block_len = self.header.block_len() as u32;
 
-            let block_off_vec = off.clone() / block_side_len;
+            let block_off_vec = off.clone() / block_len;
             let block_off = u64::from(Morton::from(&block_off_vec));
 
-            let block_side_len = mat.shape().x / block_side_len;
+            let block_side_len = mat.shape().x / block_len;
             let block_count = block_side_len * block_side_len * block_side_len;
 
             Some((block_off, block_count as u64))
@@ -52,7 +52,7 @@ impl<'a> File<'a> {
     pub fn is_aligned(&self, mat: &Mat, off: &Vec) -> bool {
         mat.shape().is_cube_diagonal()
         && mat.shape().x.is_power_of_two()
-        && mat.shape().x >= self.header.voxels_per_block_dim as u32
+        && mat.shape().x >= self.header.block_len() as u32
         && off.is_multiple_of(mat.shape())
     }
 
@@ -71,23 +71,20 @@ impl<'a> File<'a> {
     ) -> Result<usize> {
         self.seek_block(block_off)?;
 
-        let bytes_per_blk = self.header.block_size;
-        let vx_per_blk_dim = self.header.voxels_per_block_dim;
-
         for cur_idx in 0..block_count {
             // read a block
-            let mut buf = vec![0 as u8; bytes_per_blk];
+            let mut buf = vec![0 as u8; self.header.block_size()];
             self.read_block(buf.as_mut_slice())?;
 
             // build matrix arround buffer
             let buf_mat = Mat::new(
                 buf.as_mut_slice(),
-                Vec::from(vx_per_blk_dim as u32),
+                Vec::from(self.header.block_len() as u32),
                 self.header.voxel_size as usize).unwrap();
 
             // determine target position
             let cur_blk_ids = Vec::from(Morton::from(cur_idx as u64));
-            let cur_pos = cur_blk_ids * vx_per_blk_dim as u32;
+            let cur_pos = cur_blk_ids * self.header.block_len() as u32;
 
             // copy to target
             mat.copy_from(&buf_mat, &cur_pos)?;
@@ -97,7 +94,7 @@ impl<'a> File<'a> {
     }
 
     fn read_block(&mut self, buf: &mut [u8]) -> Result<usize> {
-        let block_size = self.header.block_size;
+        let block_size = self.header.block_size();
 
         if buf.len() != block_size {
             return Err("Buffer has invalid size");
@@ -116,7 +113,7 @@ impl<'a> File<'a> {
         }
 
         // calculate byte offset
-        let block_size = self.header.block_size as u64;
+        let block_size = self.header.block_size() as u64;
         let offset = self.header.data_offset + block_idx * block_size;
 
         // seek to byte offset
