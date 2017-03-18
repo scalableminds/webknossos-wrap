@@ -1,4 +1,4 @@
-use std::ops::{Add, Mul, Div};
+use std::ops::{Add, Mul, Div, Shl, Shr};
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Vec {
@@ -31,24 +31,6 @@ impl Vec {
         self.y % other.y == 0 &&
         self.z % other.z == 0
     }
-
-    // TODO(amotta): implement trait
-    pub fn shift_left(&self, other: &Vec) -> Vec {
-        Vec {
-            x: self.x << other.x,
-            y: self.y << other.y,
-            z: self.z << other.z
-        }
-    }
-
-    // TODO(amotta): implement trait
-    pub fn shift_right(&self, other: &Vec) -> Vec {
-        Vec {
-            x: self.x >> other.x,
-            y: self.y >> other.y,
-            z: self.z >> other.z
-        }
-    }
 }
 
 impl From<u32> for Vec {
@@ -59,7 +41,6 @@ impl From<u32> for Vec {
 
 impl<'a> Add<&'a Vec> for Vec {
     type Output = Vec;
-
     fn add(self, rhs: &Vec) -> Self::Output {
         Vec { x: self.x + rhs.x, y: self.y + rhs.y, z: self.z + rhs.z }
     }
@@ -67,7 +48,6 @@ impl<'a> Add<&'a Vec> for Vec {
 
 impl Add<u32> for Vec {
     type Output = Vec;
-
     fn add(self, rhs: u32) -> Self::Output {
         Vec { x: self.x + rhs, y: self.y + rhs, z: self.z + rhs }
     }
@@ -75,7 +55,6 @@ impl Add<u32> for Vec {
 
 impl Mul<u32> for Vec {
     type Output = Vec;
-
     fn mul(self, rhs: u32) -> Self::Output {
         Vec { x: self.x * rhs, y: self.y * rhs, z: self.z * rhs }
     }
@@ -83,8 +62,21 @@ impl Mul<u32> for Vec {
 
 impl Div<u32> for Vec {
     type Output = Self;
-
     fn div(self, rhs: u32) -> Self::Output {
         Vec { x: self.x / rhs, y: self.y / rhs, z: self.z / rhs }
+    }
+}
+
+impl Shl<u32> for Vec {
+    type Output = Self;
+    fn shl(self, rhs: u32) -> Self:: Output {
+        Vec { x: self.x << rhs, y: self.y << rhs, z: self.z << rhs }
+    }
+}
+
+impl Shr<u32> for Vec {
+    type Output = Self;
+    fn shr(self, rhs: u32) -> Self:: Output {
+        Vec { x: self.x >> rhs, y: self.y >> rhs, z: self.z >> rhs }
     }
 }
