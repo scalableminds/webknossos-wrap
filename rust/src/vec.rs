@@ -1,4 +1,4 @@
-use std::ops::{Add, Mul, Div, Shl, Shr};
+use std::ops::{Add, Sub, Mul, Div, Shl, Shr};
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Vec {
@@ -50,6 +50,13 @@ impl Add<u32> for Vec {
     type Output = Vec;
     fn add(self, rhs: u32) -> Self::Output {
         Vec { x: self.x + rhs, y: self.y + rhs, z: self.z + rhs }
+    }
+}
+
+impl Sub<u32> for Vec {
+    type Output = Vec;
+    fn sub(self, rhs: u32) -> Self::Output {
+        Vec { x: self.x - rhs, y: self.y - rhs, z: self.z - rhs }
     }
 }
 

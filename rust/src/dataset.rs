@@ -5,6 +5,8 @@ use std::io::Read;
 
 use header::Header;
 use result::Result;
+use mat::Mat;
+use vec::Vec;
 
 #[derive(Debug)]
 pub struct Dataset<'a> {
@@ -30,6 +32,21 @@ impl<'a> Dataset<'a> {
     }
 
     pub fn header(&'a self) -> &'a Header { &self.header }
+
+    pub fn read_mat(&mut self, mat: &mut Mat, off: &Vec) -> Result<usize> {
+        let vec_min = off.clone() / self.header.block_len() as u32;
+        let vec_max = (off.clone() + mat.shape() - 1u32) / self.header.block_len() as u32 + 1;
+
+        for cur_x in vec_min.x..vec_max.x {
+            for cur_y in vec_min.y..vec_max.y {
+                for cur_z in vec_min.z..vec_max.z {
+                    println!("X: {}, Y: {}, Z: {}", cur_x, cur_y, cur_z);
+                }
+            }
+        }
+
+        Ok(0 as usize)
+    }
 
     // NOTE(amotta): A lot of the error handling in this function
     // could be simplified if there existed an automatic conversion
