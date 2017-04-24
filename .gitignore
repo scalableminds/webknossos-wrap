@@ -16,3 +16,9 @@ project/plugins/project/
 .scala_dependencies
 .worksheet
 .idea/
+
+# mex specific
+*.mexw32
+*.mexw64
+*.mexa64
+*.mexmaci64
