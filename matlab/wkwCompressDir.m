@@ -28,7 +28,7 @@ function wkwCompressDir(inRoot, outRoot)
     wait(job);
     
     % check that there were no errors
-    assert(all(arrayfun(@isempty, get(job.Tasks, 'Error'))));
+    assert(all(cellfun(@isempty, get(job.Tasks, {'Error'}))));
 end
 
 function files = findWkwFiles(inRoot)
