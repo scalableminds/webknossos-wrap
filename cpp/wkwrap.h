@@ -118,7 +118,9 @@ int wkwCheckHeader(header_t * h){
    * But in its current version, this library cannot handle the more general case. */
   if(HI_NIBBLE(h->lensLog2) != FILE_BLEN_LOG2) return -5;
   if(LO_NIBBLE(h->lensLog2) != BLOCK_CLEN_LOG2) return -6;
-  if(h->dataOffset != sizeof(header_t)) return -7;
+
+  /* This probably needs to be changed for the header file. */
+  if(h->dataOffset < sizeof(header_t)) return -7;
 
   return 0;
 }
