@@ -26,6 +26,9 @@ function wkwCompressDir(inRoot, outRoot)
     job = Cluster.startJob(@wkwCompress, jobArgs, 'cluster', cluster);
     
     wait(job);
+    
+    % check that there were no errors
+    assert(all(cellfun(@isempty, get(job.Tasks, {'Error'}))));
 end
 
 function files = findWkwFiles(inRoot)
