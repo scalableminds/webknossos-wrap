@@ -14,7 +14,7 @@ pub struct Dataset<'a> {
     header: Header
 }
 
-static HEADER_FILE_NAME: &'static str = "header.wkw";
+static HEADER_FILE_NAME: &'static str = "meta.wkw";
 
 impl<'a> Dataset<'a> {
     pub fn new(root: &'a Path) -> Result<Dataset<'a>> {
@@ -40,7 +40,19 @@ impl<'a> Dataset<'a> {
         for cur_x in vec_min.x..vec_max.x {
             for cur_y in vec_min.y..vec_max.y {
                 for cur_z in vec_min.z..vec_max.z {
-                    println!("X: {}, Y: {}, Z: {}", cur_x, cur_y, cur_z);
+                    let cur_file_ids = Vec { x: cur_x, y: cur_y, z: cur_z };
+                    let cur_file_min = Vec::from(self.header.file_len()) * cur_file_ids;
+                    let cur_file_max = Vec::from(self.header.file_len()) * (cur_file_ids + 1);
+
+                    let cur_roi_off = max(cur_file_min, off);
+                    let cur_roi_off_rel = cur_roi_off - cur_file_min;
+                    let cur_roi_shape = min(cur_file_max, off.clone() + mat.shape()) - cur_roi_off;
+
+                    let cur_mat = Mat::new(..., cur_roi_shape, self.header.voxel_size);
+
+                    let mut cur_file = File::open();
+                    let mut cur_wkw_file = File(cur_file);
+                    cur_wkw_file.read_mat(&cur_mat, cur_roi_off_rel);
                 }
             }
         }
