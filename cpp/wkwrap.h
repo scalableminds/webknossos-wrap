@@ -332,7 +332,7 @@ int wkwReadLZ4(
 
     /* write to output */
     T * curOut = wkwGetBlkPointer<T>(out, outClenLog2, curBlkIdx);
-    wkwCopyBlk<T>(rawBuf, BLOCK_CLEN_LOG2, out, outClenLog2);
+    wkwCopyBlk<T>(rawBuf, BLOCK_CLEN_LOG2, curOut, outClenLog2);
   }
 
   return 0;
