@@ -1,5 +1,5 @@
-function wkwCompressDir(inRoot, outRoot)
-    % wkwCompressDir(inRoot, outRoot)
+function wkwCompressDir(inRoot, outRoot, taskCount)
+    % wkwCompressDir(inRoot, outRoot, taskCount = 10)
     %   Compresses all .wkw files in `inRoot` in parallel (using the
     %   GABA compute cluster, if launched there) and writes the result
     %   to `outRoot`. The output directory must not exist yet.
@@ -11,6 +11,11 @@ function wkwCompressDir(inRoot, outRoot)
     inFiles = fullfile(inRoot, wkwFiles);
     outFiles = fullfile(outRoot, wkwFiles);
     
+    % default thread count
+    if ~exist('taskCount', 'var') || isempty(taskCount)
+        taskCount = 10;
+    end
+    
     % prepare output
     if exist(outRoot, 'dir')
         error('Output directory must not exist');
@@ -21,7 +26,8 @@ function wkwCompressDir(inRoot, outRoot)
     assert(all(cellfun(@mkdir, unique(outDirs))));
     
     cluster = Cluster.getCluster( ...
-        '-pe openmp 1', '-l h_vmem=6G', '-l h_rt=0:29:00', '-tc 50');
+        '-pe openmp 1', '-l h_vmem=6G', ...
+        '-l h_rt=0:29:00', ['-tc ', num2str(taskCount)]);
     jobArgs = cellfun(@(in, out) {{in, out}}, inFiles, outFiles);
     job = Cluster.startJob(@wkwCompress, jobArgs, 'cluster', cluster);
     
