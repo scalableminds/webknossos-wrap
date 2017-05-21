@@ -58,3 +58,22 @@ libraryDependencies ++= Seq(
   "org.apache.logging.log4j" % "log4j-api" % "2.0-beta9",
   "org.apache.logging.log4j" % "log4j-core" % "2.0-beta9"
 )
+
+val root = (project in file("."))
+  .enablePlugins(BuildInfoPlugin)
+  .settings(
+    buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion,
+      "commitHash" -> new java.lang.Object() {
+        override def toString(): String = {
+          try {
+            val extracted = new java.io.InputStreamReader(java.lang.Runtime.getRuntime().exec("git rev-parse HEAD").getInputStream())
+            (new java.io.BufferedReader(extracted)).readLine()
+          } catch {
+            case t: Throwable => "get git hash failed"
+          }
+        }
+      }.toString()
+    ),
+    buildInfoPackage := "webknossoswrap",
+    buildInfoOptions := Seq(BuildInfoOption.ToJson, BuildInfoOption.BuildTime)
+  )
