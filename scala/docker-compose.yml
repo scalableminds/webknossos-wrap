@@ -5,6 +5,7 @@ services:
     image: scalableminds/sbt:sbt-0.13.9_mongo-3.2.1_node-7.x_jdk-8
     volumes:
       - "..:/project"
+      - "~/.ssh/id_rsa:/root/.ssh/id_rsa"
       - "${DOCKER_CACHE_PREFIX:-~}/.m2:/root/.m2"
       - "${DOCKER_CACHE_PREFIX:-~}/.ivy2:/root/.ivy2"
       - "${DOCKER_CACHE_PREFIX:-~}/.sbt:/root/.sbt"
