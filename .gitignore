@@ -23,3 +23,6 @@ project/plugins/project/
 *.mexw64
 *.mexa64
 *.mexmaci64
+
+# macOS specific
+.DS_Store
