@@ -6,10 +6,10 @@ pub use self::morton::Morton;
 pub use self::vec::Vec;
 pub use self::result::Result;
 
-mod dataset;
-mod file;
-mod header;
-mod mat;
-mod morton;
-mod result;
-mod vec;
+pub mod dataset;
+pub mod file;
+pub mod header;
+pub mod mat;
+pub mod morton;
+pub mod result;
+pub mod vec;
