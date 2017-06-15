@@ -1,12 +1,14 @@
+extern crate walkdir;
+use dataset::walkdir::{DirEntry, WalkDir, WalkDirIterator};
+
 use std::path::{Path, PathBuf};
 use std::ffi::OsStr;
-use std::fs::File;
-use std::io::Read;
+use std::io::{Read, Write};
+use std::fs;
 
+use file::File;
 use header::Header;
 use result::Result;
-use mat::Mat;
-use vec::Vec;
 
 #[derive(Debug)]
 pub struct Dataset<'a> {
@@ -14,7 +16,19 @@ pub struct Dataset<'a> {
     header: Header
 }
 
-static HEADER_FILE_NAME: &'static str = "meta.wkw";
+static HEADER_FILE_NAME: &'static str = "header.wkw";
+
+fn is_wkw_file(entry: &DirEntry) -> bool {
+    let is_wkw = entry.file_name()
+                      .to_str()
+                      .map(|s| s.ends_with(".wkw"))
+                      .unwrap_or(false);
+    let is_file = entry.metadata()
+                       .map(|m| m.is_file())
+                       .unwrap_or(false);
+
+    is_wkw && is_file
+}
 
 impl<'a> Dataset<'a> {
     pub fn new(root: &'a Path) -> Result<Dataset<'a>> {
@@ -33,31 +47,39 @@ impl<'a> Dataset<'a> {
 
     pub fn header(&'a self) -> &'a Header { &self.header }
 
-    pub fn read_mat(&mut self, mat: &mut Mat, off: &Vec) -> Result<usize> {
-        let vec_min = off.clone() / self.header.block_len() as u32;
-        let vec_max = (off.clone() + mat.shape() - 1u32) / self.header.block_len() as u32 + 1;
+    pub fn recover_header(&self) -> Result<()> {
+        // find an arbitrary .wkw file
+        let mut walker = WalkDir::new(self.root)
+                                 .min_depth(3).max_depth(3)
+                                 .into_iter()
+                                 .filter_entry(|e| is_wkw_file(e));
 
-        for cur_x in vec_min.x..vec_max.x {
-            for cur_y in vec_min.y..vec_max.y {
-                for cur_z in vec_min.z..vec_max.z {
-                    let cur_file_ids = Vec { x: cur_x, y: cur_y, z: cur_z };
-                    let cur_file_min = Vec::from(self.header.file_len()) * cur_file_ids;
-                    let cur_file_max = Vec::from(self.header.file_len()) * (cur_file_ids + 1);
+        let wkw_file_entry = match walker.next() {
+            Some(Ok(s)) => s,
+            Some(Err(_)) => return Err("Error in directory walk"),
+            None => return Err("No .wkw files found")
+        };
 
-                    let cur_roi_off = max(cur_file_min, off);
-                    let cur_roi_off_rel = cur_roi_off - cur_file_min;
-                    let cur_roi_shape = min(cur_file_max, off.clone() + mat.shape()) - cur_roi_off;
+        // open wkw file
+        let mut wkw_file_handle = fs::File::open(wkw_file_entry.path()).unwrap();
+        let wkw_file = File::new(&mut wkw_file_handle).unwrap();
 
-                    let cur_mat = Mat::new(..., cur_roi_shape, self.header.voxel_size);
+        // build header for meta file
+        let mut wkw_header = wkw_file.header().clone();
+        wkw_header.data_offset = 0;
 
-                    let mut cur_file = File::open();
-                    let mut cur_wkw_file = File(cur_file);
-                    cur_wkw_file.read_mat(&cur_mat, cur_roi_off_rel);
-                }
-            }
-        }
+        // convert to bytes
+        let wkw_header_bytes = wkw_header.to_bytes();
 
-        Ok(0 as usize)
+        // build path to header file
+        let mut header_file_path = PathBuf::from(self.root);
+        header_file_path.push(HEADER_FILE_NAME);
+
+        // write header
+        let mut header_file_handle = fs::File::create(header_file_path).unwrap();
+        header_file_handle.write(&wkw_header_bytes).unwrap();
+
+        Ok(())
     }
 
     // NOTE(amotta): A lot of the error handling in this function
@@ -67,7 +89,7 @@ impl<'a> Dataset<'a> {
         let mut header_path = PathBuf::from(root);
         header_path.push(HEADER_FILE_NAME);
 
-        let header_file_opt = File::open(header_path);
+        let header_file_opt = fs::File::open(header_path);
 
         if header_file_opt.is_err() {
             return Err("Could not open header file");

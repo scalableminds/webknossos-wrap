@@ -2,6 +2,7 @@ use std::mem;
 use result::Result;
 
 #[repr(C)]
+#[derive(Debug)]
 struct HeaderRaw {
     magic: [u8; 3],
     version: u8,
@@ -12,13 +13,13 @@ struct HeaderRaw {
     data_offset: u64
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum BlockType { Raw, LZ4, LZ4HC }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum VoxelType { U8, U16, U32, U64, F32, F64 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct Header {
     pub version: u8,
     pub block_len_log2: u8,
@@ -70,6 +71,27 @@ impl Header {
             voxel_size: raw.voxel_size,
             data_offset: raw.data_offset
         })
+    }
+
+    pub fn to_bytes(&self) -> [u8; 16] {
+        let per_dim_log2 = (self.file_len_log2 << 4)
+                         | (self.block_len_log2 & 0x0f);
+
+        let mut raw = HeaderRaw {
+            magic: [0u8; 3],
+            version: self.version,
+            per_dim_log2: per_dim_log2,
+            block_type: 1u8 + self.block_type as u8,
+            voxel_type: 1u8 + self.voxel_type as u8,
+            voxel_size: self.voxel_size,
+            data_offset: self.data_offset
+        };
+
+        // set magic bytes
+        raw.magic.copy_from_slice("WKW".as_bytes());
+
+        // convert to bytes
+        unsafe { mem::transmute::<HeaderRaw, [u8; 16]>(raw) }
     }
 
     pub fn block_len(&self) -> u16 { 1u16 << self.block_len_log2 }

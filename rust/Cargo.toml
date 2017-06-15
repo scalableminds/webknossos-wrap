@@ -3,6 +3,9 @@ name = "wkwrap"
 version = "0.0.1"
 authors = ["Alessandro Motta <alessandro.motta@brain.mpg.de>"]
 
+[dependencies]
+walkdir = "1"
+
 [lib]
 name = "wkwrap"
 path = "src/lib.rs"
