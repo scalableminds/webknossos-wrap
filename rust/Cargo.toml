@@ -11,5 +11,5 @@ name = "wkwrap"
 path = "src/lib.rs"
 
 [[bin]]
-name = "mybin"
+name = "wkw"
 path = "src/main.rs"
