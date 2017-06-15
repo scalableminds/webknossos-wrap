@@ -1,24 +1,26 @@
 extern crate wkwrap as wkw;
-use std::fs::File;
+
+use std::env;
+
+fn recover_header() {
+    let pwd = env::current_dir().unwrap();
+    wkw::dataset::recover_header(pwd.as_path()).unwrap();
+}
 
 fn main() {
-    let wkw_path = "/home/amotta/Desktop/test.wkw";
+    // parse input arguments
+    let args: Vec<String> = env::args().collect();
+    let arg_count = args.len();
 
-    let mut file = File::open(wkw_path).unwrap();
-    let mut wkw_file = wkw::File::new(&mut file).unwrap();
+    if arg_count < 2 {
+        println!("Not enough input arguments");
+        return;
+    }
 
-    println!("Header: {:#?}", wkw_file.header());
-
-    // allocate buffer matrix
-    let mut buf = vec![0 as u8; 128 * 128 * 128];
-
-    let mut buf_mat = wkw::Mat::new(
-        buf.as_mut_slice(),
-        wkw::Vec::from(128 as u32),
-        wkw_file.header().voxel_size as usize).unwrap();
-    let pos = wkw::Vec::from(128 as u32);
-
-    wkw_file.read_mat(&mut buf_mat, &pos).unwrap();
-
-    println!("{:#?}", buf_mat);
+    // parse sub-command
+    match args[1].as_ref() {
+        "recover-header" => recover_header(),
+        "verify-headers" => println!("Not implemented yet"),
+        _                => println!("Invalid sub-command")
+    }
 }
