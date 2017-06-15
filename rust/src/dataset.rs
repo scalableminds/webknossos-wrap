@@ -30,6 +30,41 @@ fn is_wkw_file(entry: &DirEntry) -> bool {
     is_wkw && is_file
 }
 
+pub fn recover_header(root: &Path) -> Result<()> {
+    // find an arbitrary .wkw file
+    let mut walker = WalkDir::new(root)
+                             .min_depth(3).max_depth(3)
+                             .into_iter()
+                             .filter_entry(|e| is_wkw_file(e));
+
+    let wkw_file_entry = match walker.next() {
+        Some(Ok(s)) => s,
+        Some(Err(_)) => return Err("Error in directory walk"),
+        None => return Err("No .wkw files found")
+    };
+
+    // open wkw file
+    let mut wkw_file_handle = fs::File::open(wkw_file_entry.path()).unwrap();
+    let wkw_file = File::new(&mut wkw_file_handle).unwrap();
+
+    // build header for meta file
+    let mut wkw_header = wkw_file.header().clone();
+    wkw_header.data_offset = 0;
+
+    // convert to bytes
+    let wkw_header_bytes = wkw_header.to_bytes();
+
+    // build path to header file
+    let mut header_file_path = PathBuf::from(root);
+    header_file_path.push(HEADER_FILE_NAME);
+
+    // write header
+    let mut header_file_handle = fs::File::create(header_file_path).unwrap();
+    header_file_handle.write(&wkw_header_bytes).unwrap();
+
+    Ok(())
+}
+
 impl<'a> Dataset<'a> {
     pub fn new(root: &'a Path) -> Result<Dataset<'a>> {
         if !root.is_dir() {
@@ -46,41 +81,6 @@ impl<'a> Dataset<'a> {
     }
 
     pub fn header(&'a self) -> &'a Header { &self.header }
-
-    pub fn recover_header(&self) -> Result<()> {
-        // find an arbitrary .wkw file
-        let mut walker = WalkDir::new(self.root)
-                                 .min_depth(3).max_depth(3)
-                                 .into_iter()
-                                 .filter_entry(|e| is_wkw_file(e));
-
-        let wkw_file_entry = match walker.next() {
-            Some(Ok(s)) => s,
-            Some(Err(_)) => return Err("Error in directory walk"),
-            None => return Err("No .wkw files found")
-        };
-
-        // open wkw file
-        let mut wkw_file_handle = fs::File::open(wkw_file_entry.path()).unwrap();
-        let wkw_file = File::new(&mut wkw_file_handle).unwrap();
-
-        // build header for meta file
-        let mut wkw_header = wkw_file.header().clone();
-        wkw_header.data_offset = 0;
-
-        // convert to bytes
-        let wkw_header_bytes = wkw_header.to_bytes();
-
-        // build path to header file
-        let mut header_file_path = PathBuf::from(self.root);
-        header_file_path.push(HEADER_FILE_NAME);
-
-        // write header
-        let mut header_file_handle = fs::File::create(header_file_path).unwrap();
-        header_file_handle.write(&wkw_header_bytes).unwrap();
-
-        Ok(())
-    }
 
     // NOTE(amotta): A lot of the error handling in this function
     // could be simplified if there existed an automatic conversion
