@@ -1,4 +1,4 @@
-use vec::Vec3;
+use ::Vec3;
 
 #[derive(PartialEq, Debug)]
 pub struct Morton(u64);

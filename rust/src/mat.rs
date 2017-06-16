@@ -1,7 +1,6 @@
 use std::ptr;
 
-use result::Result;
-use vec::Vec3;
+use ::{Result, Vec3};
 
 #[derive(Debug)]
 pub struct Mat<'a> {

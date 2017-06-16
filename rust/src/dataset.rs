@@ -1,14 +1,11 @@
 extern crate walkdir;
 use dataset::walkdir::{DirEntry, WalkDir, WalkDirIterator};
 
+use ::{File, Header, Result};
 use std::path::{Path, PathBuf};
 use std::ffi::OsStr;
 use std::io::{Read, Write};
 use std::fs;
-
-use file::File;
-use header::Header;
-use result::Result;
 
 #[derive(Debug)]
 pub struct Dataset<'a> {

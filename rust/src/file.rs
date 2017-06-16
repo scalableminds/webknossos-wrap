@@ -1,11 +1,6 @@
 use std::fs;
 use std::io::{Read, Seek, SeekFrom};
-
-use header::Header;
-use mat::Mat;
-use morton::Morton;
-use result::Result;
-use vec::Vec3;
+use ::{Header, Mat, Morton, Result, Vec3};
 
 #[derive(Debug)]
 pub struct File<'a> {

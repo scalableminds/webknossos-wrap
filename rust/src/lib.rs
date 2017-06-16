@@ -1,10 +1,10 @@
-pub use self::dataset::Dataset;
-pub use self::file::File;
-pub use self::header::Header;
-pub use self::mat::Mat;
-pub use self::morton::Morton;
-pub use self::vec::Vec3;
-pub use self::result::Result;
+pub use ::dataset::Dataset;
+pub use ::file::File;
+pub use ::header::Header;
+pub use ::mat::Mat;
+pub use ::morton::Morton;
+pub use ::vec::Vec3;
+pub use ::result::Result;
 
 pub mod dataset;
 pub mod file;
