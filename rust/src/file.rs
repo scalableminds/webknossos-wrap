@@ -64,25 +64,23 @@ impl<'a> File<'a> {
         block_count: u64,
         mat: &mut Mat
     ) -> Result<usize> {
+
+        let mut buf = vec![0 as u8; self.header.block_size()];
+        let buf_shape = Vec3::from(self.header.block_len() as u32);
+        let buf_width = self.header.voxel_size as usize;
+
         self.seek_block(block_off)?;
 
         for cur_idx in 0..block_count {
-            // read a block
-            let mut buf = vec![0 as u8; self.header.block_size()];
             self.read_block(buf.as_mut_slice())?;
-
-            // build matrix arround buffer
-            let buf_mat = Mat::new(
-                buf.as_mut_slice(),
-                Vec3::from(self.header.block_len() as u32),
-                self.header.voxel_size as usize).unwrap();
 
             // determine target position
             let cur_blk_ids = Vec3::from(Morton::from(cur_idx as u64));
             let cur_pos = cur_blk_ids << self.header.block_len_log2 as u32;
 
             // copy to target
-            mat.copy_from(&buf_mat, cur_pos)?;
+            let buf_mat = Mat::new(buf.as_mut_slice(), buf_shape, buf_width)?;
+            mat.copy_all_from(cur_pos, &buf_mat)?;
         }
 
         Ok(mat.as_slice().len())

@@ -1,6 +1,6 @@
 use std::ptr;
 
-use ::{Result, Vec3};
+use ::{Box3, Result, Vec3};
 
 #[derive(Debug)]
 pub struct Mat<'a> {
@@ -28,36 +28,40 @@ impl<'a> Mat<'a> {
 
     pub fn as_slice(&'a self) -> &'a [u8] { self.data }
     pub fn as_mut_slice(&'a mut self) -> &'a mut [u8] { self.data }
-    pub fn shape(&self) -> &Vec3 { &self.shape }
+    pub fn shape(&self) -> Vec3 { self.shape }
     pub fn width(&self) -> usize { self.width }
 
-    fn offset(&self, pos: &Vec3) -> usize {
+    fn offset(&self, pos: Vec3) -> usize {
         pos.x as usize + self.shape.x as usize * (
         pos.y as usize + self.shape.y as usize * pos.z as usize) * self.width
     }
 
-    pub fn copy_from(&mut self, src: &Mat, off: Vec3) -> Result<()> {
+    pub fn copy_all_from(&mut self, dst_pos: Vec3, src: &Mat) -> Result<()> {
+        let src_box = Box3::new(Vec3::from(0u32), src.shape)?;
+        self.copy_from(dst_pos, src, src_box)
+    }
+
+    pub fn copy_from(&mut self, dst_pos: Vec3, src: &Mat, src_box: Box3) -> Result<()> {
         if self.width != src.width {
             return Err("Source and destination matrices do not match in width");
         }
 
-        if off + src.shape > self.shape {
-            return Err("Trying to write out of bounds");
-        }
+        if src_box.max() > src.shape { return Err("Reading out of bounds"); }
+        if dst_pos + src_box.width() > self.shape() { return Err("Writing out of bounds"); }
 
-        let src_ptr = src.data.as_ptr();
-        let dst_ptr = self.data.as_mut_ptr();
-        let stripe_len = src.shape.x as usize * src.width;
+        let src_ptr = unsafe { src.data.as_ptr().offset(src.offset(src_box.min()) as isize) };
+        let dst_ptr = unsafe { self.data.as_mut_ptr().offset(self.offset(dst_pos) as isize) };
 
-        for cur_z in 0..src.shape.z {
-            for cur_y in 0..src.shape.y {
+        let len = src_box.width();
+        let stripe_len = src.width * len.x as usize;
+
+        for cur_z in 0..len.z {
+            for cur_y in 0..len.y {
                 unsafe {
                     // TODO: optimize
                     let cur_pos = Vec3 { x: 0u32, y: cur_y, z: cur_z };
-                    let src_ptr_cur = src_ptr.offset(src.offset(&cur_pos) as isize);
-
-                    let dst_pos = off + cur_pos;
-                    let dst_ptr_cur = dst_ptr.offset(self.offset(&dst_pos) as isize);
+                    let src_ptr_cur = src_ptr.offset(src.offset(cur_pos) as isize);
+                    let dst_ptr_cur = dst_ptr.offset(self.offset(cur_pos) as isize);
 
                     // copy data
                     ptr::copy_nonoverlapping(src_ptr_cur, dst_ptr_cur, stripe_len);
