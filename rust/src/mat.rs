@@ -1,17 +1,17 @@
 use std::ptr;
 
-use vec::Vec;
 use result::Result;
+use vec::Vec3;
 
 #[derive(Debug)]
 pub struct Mat<'a> {
     data: &'a mut [u8],
-    shape: Vec,
+    shape: Vec3,
     width: usize
 }
 
 impl<'a> Mat<'a> {
-    pub fn new(data: &mut [u8], shape: Vec, width: usize) -> Result<Mat> {
+    pub fn new(data: &mut [u8], shape: Vec3, width: usize) -> Result<Mat> {
         // make sure that slice is large enough
         let numel = shape.x as usize * shape.y as usize * shape.z as usize;
         let expected_len: usize = numel * width;
@@ -29,15 +29,15 @@ impl<'a> Mat<'a> {
 
     pub fn as_slice(&'a self) -> &'a [u8] { self.data }
     pub fn as_mut_slice(&'a mut self) -> &'a mut [u8] { self.data }
-    pub fn shape(&self) -> &Vec { &self.shape }
+    pub fn shape(&self) -> &Vec3 { &self.shape }
     pub fn width(&self) -> usize { self.width }
 
-    fn offset(&self, pos: &Vec) -> usize {
+    fn offset(&self, pos: &Vec3) -> usize {
         pos.x as usize + self.shape.x as usize * (
         pos.y as usize + self.shape.y as usize * pos.z as usize) * self.width
     }
 
-    pub fn copy_from(&mut self, src: &Mat, off: Vec) -> Result<()> {
+    pub fn copy_from(&mut self, src: &Mat, off: Vec3) -> Result<()> {
         if self.width != src.width {
             return Err("Source and destination matrices do not match in width");
         }
@@ -55,7 +55,7 @@ impl<'a> Mat<'a> {
             for cur_y in 0..src.shape.y {
                 unsafe {
                     // TODO: optimize
-                    let cur_pos = Vec { x: 0u32, y: cur_y, z: cur_z };
+                    let cur_pos = Vec3 { x: 0u32, y: cur_y, z: cur_z };
                     let src_ptr_cur = src_ptr.offset(src.offset(&cur_pos) as isize);
 
                     let dst_pos = off + cur_pos;

@@ -5,7 +5,7 @@ use header::Header;
 use mat::Mat;
 use morton::Morton;
 use result::Result;
-use vec::Vec;
+use vec::Vec3;
 
 #[derive(Debug)]
 pub struct File<'a> {
@@ -33,7 +33,7 @@ impl<'a> File<'a> {
 
     pub fn header(&'a self) -> &'a Header { &self.header }
 
-    pub fn aligned_blocks(&self, mat: &Mat, off: &Vec) -> Option<(u64, u64)> {
+    pub fn aligned_blocks(&self, mat: &Mat, off: &Vec3) -> Option<(u64, u64)> {
         if self.is_aligned(mat, off) {
             let block_len_log2 = self.header.block_len_log2 as u32;
 
@@ -49,14 +49,14 @@ impl<'a> File<'a> {
         }
     }
 
-    pub fn is_aligned(&self, mat: &Mat, off: &Vec) -> bool {
+    pub fn is_aligned(&self, mat: &Mat, off: &Vec3) -> bool {
         mat.shape().is_cube_diagonal()
         && mat.shape().x.is_power_of_two()
         && mat.shape().x >= self.header.block_len() as u32
         && off.is_multiple_of(mat.shape())
     }
 
-    pub fn read_mat(&mut self, mat: &mut Mat, off: &Vec) -> Result<usize> {
+    pub fn read_mat(&mut self, mat: &mut Mat, off: &Vec3) -> Result<usize> {
         match self.aligned_blocks(mat, off) {
             Some((block_off, block_count)) => self.read_aligned_mat(block_off, block_count, mat),
             None => Err("This library does not yet support unaligned reads")
@@ -79,11 +79,11 @@ impl<'a> File<'a> {
             // build matrix arround buffer
             let buf_mat = Mat::new(
                 buf.as_mut_slice(),
-                Vec::from(self.header.block_len() as u32),
+                Vec3::from(self.header.block_len() as u32),
                 self.header.voxel_size as usize).unwrap();
 
             // determine target position
-            let cur_blk_ids = Vec::from(Morton::from(cur_idx as u64));
+            let cur_blk_ids = Vec3::from(Morton::from(cur_idx as u64));
             let cur_pos = cur_blk_ids << self.header.block_len_log2 as u32;
 
             // copy to target

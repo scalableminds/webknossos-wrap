@@ -1,13 +1,13 @@
 use std::ops::{Add, Sub, Mul, Div, Shl, Shr};
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct Vec {
+pub struct Vec3 {
     pub x: u32,
     pub y: u32,
     pub z: u32
 }
 
-impl Vec {
+impl Vec3 {
     pub fn is_cube_diagonal(&self) -> bool {
         self.x == self.y &&
         self.x == self.z &&
@@ -20,13 +20,13 @@ impl Vec {
         self.z.is_power_of_two()
     }
 
-    pub fn is_larger_equal_than(&self, other: &Vec) -> bool {
+    pub fn is_larger_equal_than(&self, other: &Vec3) -> bool {
         self.x >= other.x &&
         self.y >= other.y &&
         self.z >= other.z
     }
 
-    pub fn is_multiple_of(&self, other: &Vec) -> bool {
+    pub fn is_multiple_of(&self, other: &Vec3) -> bool {
         self.x % other.x == 0 &&
         self.y % other.y == 0 &&
         self.z % other.z == 0
@@ -37,11 +37,11 @@ impl Vec {
 macro_rules! impl_binary_op(
     ($trt:ident, $operator:tt, $mth:ident) => (
 
-impl $trt<Vec> for Vec {
-    type Output = Vec;
+impl $trt<Vec3> for Vec3 {
+    type Output = Vec3;
 
-    fn $mth(self, rhs: Vec) -> Vec {
-        Vec {
+    fn $mth(self, rhs: Vec3) -> Vec3 {
+        Vec3 {
             x: self.x $operator rhs.x,
             y: self.y $operator rhs.y,
             z: self.z $operator rhs.z
@@ -49,11 +49,11 @@ impl $trt<Vec> for Vec {
     }
 }
 
-impl $trt<u32> for Vec {
-    type Output = Vec;
+impl $trt<u32> for Vec3 {
+    type Output = Vec3;
 
-    fn $mth(self, rhs: u32) -> Vec {
-        Vec {
+    fn $mth(self, rhs: u32) -> Vec3 {
+        Vec3 {
             x: self.x $operator rhs,
             y: self.y $operator rhs,
             z: self.z $operator rhs
@@ -70,8 +70,8 @@ impl_binary_op!(Div, /, div);
 impl_binary_op!(Shl, <<, shl);
 impl_binary_op!(Shr, >>, shr);
 
-impl From<u32> for Vec {
-    fn from(s: u32) -> Vec {
-        Vec { x: s, y: s, z: s }
+impl From<u32> for Vec3 {
+    fn from(s: u32) -> Vec3 {
+        Vec3 { x: s, y: s, z: s }
     }
 }
