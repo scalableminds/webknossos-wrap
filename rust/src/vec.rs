@@ -1,5 +1,4 @@
 use std::cmp::Ordering;
-use std::ops::{Add, Sub, Mul, Div, Shl, Shr};
 use ::Result;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -55,6 +54,8 @@ impl Vec3 {
 macro_rules! impl_binary_op(
     ($trt:ident, $operator:tt, $mth:ident) => (
 
+use std::ops::$trt;
+
 impl $trt<Vec3> for Vec3 {
     type Output = Vec3;
 
@@ -85,6 +86,7 @@ impl_binary_op!(Add, +, add);
 impl_binary_op!(Sub, -, sub);
 impl_binary_op!(Mul, *, mul);
 impl_binary_op!(Div, /, div);
+impl_binary_op!(Rem, %, rem);
 impl_binary_op!(Shl, <<, shl);
 impl_binary_op!(Shr, >>, shr);
 
