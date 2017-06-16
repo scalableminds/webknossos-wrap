@@ -1,4 +1,4 @@
-use ::Vec3;
+use ::{Box3, Vec3};
 
 #[derive(PartialEq, Debug)]
 pub struct Morton(u64);
@@ -52,6 +52,87 @@ impl From<Morton> for u64 {
 
 impl From<u64> for Morton {
     fn from(idx: u64) -> Morton { Morton(idx) }
+}
+
+pub struct Iter {
+    log2: u32,
+    off: Vec<Vec3>,
+    z_idx: u32,
+    query: Box3
+}
+
+impl Iter {
+    pub fn new(log2: u32, query: Box3) -> Iter {
+        let mut off = Vec::with_capacity(log2 as usize);
+        off.push(Vec3::from(0u32));
+
+        Iter {
+            log2: log2 - 1,
+            off: off,
+            z_idx: 0,
+            query: query
+        }
+    }
+}
+
+impl Iterator for Iter {
+    type Item = u32;
+
+    fn next(&mut self) -> Option<u32> {
+        while !self.off.is_empty() {
+            let off = self.off[self.off.len() - 1];
+            let level = self.off.len() as u32 - 1;
+
+            let len = 1 << (self.log2 - level);
+            let bbox = Box3::from(Vec3::from(len)) + off;
+
+            for z_idx in (self.z_idx & 0b111)..8 {
+                let cur_off = Vec3::from(Morton(z_idx as u64));
+                let cur_box = bbox + cur_off * len;
+
+                let cur_z_idx = (self.z_idx << 3) + z_idx;
+                println!("{:?}", cur_box);
+                println!("{:?}", self.query);
+
+                // check if there is overlap with query
+                let cur_overlap =
+                    self.query.min() < cur_box.max()
+                 && self.query.max() >= cur_box.min();
+                 println!("{:?}", cur_overlap);
+
+                if cur_overlap {
+                    if level < self.log2 {
+                        if z_idx < 0b111 {
+                            self.off.push(cur_box.min());
+                            self.z_idx = (self.z_idx << 3) + z_idx + 1;
+                        }
+
+                        return self.next();
+                    } else {
+                        return Some(z_idx);
+                    }
+                }
+            }
+
+            self.off.pop().unwrap();
+        }
+
+        None
+    }
+}
+
+#[test]
+fn test_iterator_1() {
+    let query = Box3::from(Vec3::from(4u32));
+    let mut iter = Iter::new(3, query);
+
+    println!("Let's go!");
+
+    for z in iter {
+        println!("{:?}", z);
+    }
+
+    assert!(true);
 }
 
 #[test]
