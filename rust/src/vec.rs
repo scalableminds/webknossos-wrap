@@ -8,6 +8,7 @@ pub struct Vec3 {
     pub z: u32
 }
 
+#[derive(Copy, Clone, Debug)]
 pub struct Box3 {
     min: Vec3,
     max: Vec3
@@ -28,6 +29,26 @@ impl Box3 {
     pub fn min(&self) -> Vec3 { self.min }
     pub fn max(&self) -> Vec3 { self.max }
     pub fn width(&self) -> Vec3 { self.max - self.min }
+}
+
+impl From<Vec3> for Box3 {
+    fn from(max: Vec3) -> Box3 {
+        Box3 {
+            min: Vec3::from(0u32),
+            max: max
+        }
+    }
+}
+
+impl Add<Vec3> for Box3 {
+    type Output = Box3;
+
+    fn add(self, rhs: Vec3) -> Box3 {
+        Box3 {
+            min: self.min + rhs,
+            max: self.max + rhs
+        }
+    }
 }
 
 impl Vec3 {
