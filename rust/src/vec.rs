@@ -1,10 +1,30 @@
 use std::ops::{Add, Sub, Mul, Div, Shl, Shr};
+use ::Result;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Vec3 {
     pub x: u32,
     pub y: u32,
     pub z: u32
+}
+
+pub struct Box3 {
+    min: Vec3,
+    max: Vec3
+}
+
+impl Box3 {
+    pub fn new(min: Vec3, max: Vec3) -> Result<Box3> {
+        if min.x > max.x || min.y > max.y || min.z > max.z {
+            Err("Minimum and maximum vectors are conflicting")
+        } else {
+            Ok(Box3 { min: min, max: max })
+        }
+    }
+
+    pub fn min(&self) -> Vec3 { self.min }
+    pub fn max(&self) -> Vec3 { self.max }
+    pub fn width(&self) -> Vec3 { self.max - self.min }
 }
 
 impl Vec3 {
