@@ -41,8 +41,7 @@ impl<'a> Mat<'a> {
             return Err("Source and destination matrices do not match in width");
         }
 
-        let end = off + src.shape;
-        if !self.shape.is_larger_equal_than(&end){
+        if off + src.shape > self.shape {
             return Err("Trying to write out of bounds");
         }
 
