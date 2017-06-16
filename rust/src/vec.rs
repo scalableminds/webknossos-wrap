@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::ops::{Add, Sub, Mul, Div, Shl, Shr};
 use ::Result;
 
@@ -15,10 +16,13 @@ pub struct Box3 {
 
 impl Box3 {
     pub fn new(min: Vec3, max: Vec3) -> Result<Box3> {
-        if min.x > max.x || min.y > max.y || min.z > max.z {
-            Err("Minimum and maximum vectors are conflicting")
+        if min <= max {
+            Ok(Box3 {
+                min: min,
+                max: max
+            })
         } else {
-            Ok(Box3 { min: min, max: max })
+            Err("Minimum and maximum are in conflict")
         }
     }
 
@@ -38,12 +42,6 @@ impl Vec3 {
         self.x.is_power_of_two() &&
         self.y.is_power_of_two() &&
         self.z.is_power_of_two()
-    }
-
-    pub fn is_larger_equal_than(&self, other: &Vec3) -> bool {
-        self.x >= other.x &&
-        self.y >= other.y &&
-        self.z >= other.z
     }
 
     pub fn is_multiple_of(&self, other: &Vec3) -> bool {
@@ -93,5 +91,25 @@ impl_binary_op!(Shr, >>, shr);
 impl From<u32> for Vec3 {
     fn from(s: u32) -> Vec3 {
         Vec3 { x: s, y: s, z: s }
+    }
+}
+
+impl PartialOrd for Vec3 {
+    fn partial_cmp(&self, rhs: &Vec3) -> Option<Ordering> {
+        let ords = [
+            self.x.cmp(&rhs.x),
+            self.y.cmp(&rhs.y),
+            self.z.cmp(&rhs.z)
+        ];
+
+        let any_lt = ords.iter().any(|s| s == &Ordering::Less);
+        let any_gt = ords.iter().any(|s| s == &Ordering::Greater);
+
+        match (any_lt, any_gt) {
+            (false, false) => Some(Ordering::Equal),
+            (false, true)  => Some(Ordering::Greater),
+            (true,  false) => Some(Ordering::Less),
+            (true,  true)  => None
+        }
     }
 }
