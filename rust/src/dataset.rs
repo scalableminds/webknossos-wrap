@@ -82,6 +82,35 @@ impl<'a> Dataset<'a> {
 
     pub fn header(&'a self) -> &'a Header { &self.header }
 
+    pub fn verify_headers(&self) -> Result<bool> {
+        // find an arbitrary .wkw file
+        let walker = WalkDir::new(self.root)
+                             .min_depth(3).max_depth(3)
+                             .into_iter()
+                             .filter_entry(|e| is_wkw_file(e));
+
+        // this header will be used as template
+        let ref mut dataset_header = self.header.clone();
+
+        for entry in walker {
+            let entry = entry.unwrap();
+            let entry_path = entry.path();
+
+            let mut file_handle = fs::File::open(entry_path).unwrap();
+            let wkw_file = File::new(&mut file_handle).unwrap();
+            let wkw_header = wkw_file.header();
+
+            // we want to test for equality up to offset
+            dataset_header.data_offset = wkw_header.data_offset;
+
+            if wkw_header != dataset_header {
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
+    }
+
     // NOTE(amotta): A lot of the error handling in this function
     // could be simplified if there existed an automatic conversion
     // from io::Error to the wkw::Error.

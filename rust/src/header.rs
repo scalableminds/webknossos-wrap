@@ -13,13 +13,13 @@ struct HeaderRaw {
     data_offset: u64
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum BlockType { Raw, LZ4, LZ4HC }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum VoxelType { U8, U16, U32, U64, F32, F64 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Header {
     pub version: u8,
     pub block_len_log2: u8,
