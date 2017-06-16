@@ -1,4 +1,4 @@
-use ::{Box3, Vec3};
+use ::{Box3, Result, Vec3};
 
 #[derive(PartialEq, Debug)]
 pub struct Morton(u64);
@@ -55,84 +55,65 @@ impl From<u64> for Morton {
 }
 
 pub struct Iter {
-    log2: u32,
-    off: Vec<Vec3>,
-    z_idx: u32,
+    max_log: u32,
+    cur_log: u32,
+    cur_idx: u64,
     query: Box3
 }
 
 impl Iter {
-    pub fn new(log2: u32, query: Box3) -> Iter {
-        let mut off = Vec::with_capacity(log2 as usize);
-        off.push(Vec3::from(0u32));
+    pub fn new(log2: u32, query: Box3) -> Result<Iter> {
+        let query = Box3::new(query.min(), query.max() - 1)?;
 
-        Iter {
-            log2: log2 - 1,
-            off: off,
-            z_idx: 0,
+        Ok(Iter {
+            max_log: log2,
+            cur_log: log2 - 1,
+            cur_idx: 0,
             query: query
-        }
+        })
     }
 }
 
 impl Iterator for Iter {
-    type Item = u32;
+    type Item = u64;
 
-    fn next(&mut self) -> Option<u32> {
-        while !self.off.is_empty() {
-            let off = self.off[self.off.len() - 1];
-            let level = self.off.len() as u32 - 1;
+    fn next(&mut self) -> Option<u64> {
+        while self.cur_log < self.max_log {
+            let off = Vec3::from(Morton(self.cur_idx >> 3)) << (self.cur_log + 1);
+            let bbox = Box3::from(Vec3::from((1 << self.cur_log) - 1)) + off;
 
-            let len = 1 << (self.log2 - level);
-            let bbox = Box3::from(Vec3::from(len)) + off;
-
-            for z_idx in (self.z_idx & 0b111)..8 {
+            for z_idx in (self.cur_idx & 0b111)..8 {
                 let cur_off = Vec3::from(Morton(z_idx as u64));
-                let cur_box = bbox + cur_off * len;
+                let cur_box = bbox + (cur_off << self.cur_log);
+                let cur_idx = (self.cur_idx & !0b111) | (z_idx & 0b111);
 
-                let cur_z_idx = (self.z_idx << 3) + z_idx;
-                println!("{:?}", cur_box);
-                println!("{:?}", self.query);
-
-                // check if there is overlap with query
                 let cur_overlap =
-                    self.query.min() < cur_box.max()
-                 && self.query.max() >= cur_box.min();
-                 println!("{:?}", cur_overlap);
+                    self.query.max() >= cur_box.min()
+                 && self.query.min() <= cur_box.max();
 
-                if cur_overlap {
-                    if level < self.log2 {
-                        if z_idx < 0b111 {
-                            self.off.push(cur_box.min());
-                            self.z_idx = (self.z_idx << 3) + z_idx + 1;
-                        }
+                if cur_overlap && self.cur_log > 0 {
+                    // need to dive deeper
+                    self.cur_log = self.cur_log - 1;
+                    self.cur_idx = cur_idx << 3;
+                    break;
+                } else {
+                    // need to visit next field
+                    self.cur_idx = cur_idx + 1;
 
-                        return self.next();
-                    } else {
-                        return Some(z_idx);
+                    while self.cur_idx & 0b111 == 0 {
+                        self.cur_idx = self.cur_idx >> 3;
+                        self.cur_log = self.cur_log + 1;
                     }
                 }
-            }
 
-            self.off.pop().unwrap();
+                if cur_overlap {
+                    return Some(cur_idx);
+                }
+            }
         }
 
         None
     }
-}
-
-#[test]
-fn test_iterator_1() {
-    let query = Box3::from(Vec3::from(4u32));
-    let mut iter = Iter::new(3, query);
-
-    println!("Let's go!");
-
-    for z in iter {
-        println!("{:?}", z);
-    }
-
-    assert!(true);
 }
 
 #[test]
