@@ -31,6 +31,10 @@ impl Box3 {
 }
 
 impl Vec3 {
+    pub fn is_zero(&self) -> bool {
+        self == &Vec3::from(0u32)
+    }
+
     pub fn is_cube_diagonal(&self) -> bool {
         self.x == self.y &&
         self.x == self.z &&
@@ -43,10 +47,8 @@ impl Vec3 {
         self.z.is_power_of_two()
     }
 
-    pub fn is_multiple_of(&self, other: &Vec3) -> bool {
-        self.x % other.x == 0 &&
-        self.y % other.y == 0 &&
-        self.z % other.z == 0
+    pub fn is_multiple_of(&self, other: Vec3) -> bool {
+        self.rem(other).is_zero()
     }
 }
 
