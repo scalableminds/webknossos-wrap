@@ -87,7 +87,7 @@ impl<'a> File<'a> {
             let cur_pos = cur_blk_ids << self.header.block_len_log2 as u32;
 
             // copy to target
-            mat.copy_from(&buf_mat, &cur_pos)?;
+            mat.copy_from(&buf_mat, cur_pos)?;
         }
 
         Ok(mat.as_slice().len())

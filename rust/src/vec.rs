@@ -33,57 +33,45 @@ impl Vec {
     }
 }
 
+// based on bluss' ndarray
+macro_rules! impl_binary_op(
+    ($trt:ident, $operator:tt, $mth:ident) => (
+
+impl $trt<Vec> for Vec {
+    type Output = Vec;
+
+    fn $mth(self, rhs: Vec) -> Vec {
+        Vec {
+            x: self.x $operator rhs.x,
+            y: self.y $operator rhs.y,
+            z: self.z $operator rhs.z
+        }
+    }
+}
+
+impl $trt<u32> for Vec {
+    type Output = Vec;
+
+    fn $mth(self, rhs: u32) -> Vec {
+        Vec {
+            x: self.x $operator rhs,
+            y: self.y $operator rhs,
+            z: self.z $operator rhs
+        }
+    }
+}
+    ) // macro_rules rule
+); // macro_rules
+
+impl_binary_op!(Add, +, add);
+impl_binary_op!(Sub, -, sub);
+impl_binary_op!(Mul, *, mul);
+impl_binary_op!(Div, /, div);
+impl_binary_op!(Shl, <<, shl);
+impl_binary_op!(Shr, >>, shr);
+
 impl From<u32> for Vec {
     fn from(s: u32) -> Vec {
         Vec { x: s, y: s, z: s }
-    }
-}
-
-impl<'a> Add<&'a Vec> for Vec {
-    type Output = Vec;
-    fn add(self, rhs: &Vec) -> Self::Output {
-        Vec { x: self.x + rhs.x, y: self.y + rhs.y, z: self.z + rhs.z }
-    }
-}
-
-impl Add<u32> for Vec {
-    type Output = Vec;
-    fn add(self, rhs: u32) -> Self::Output {
-        Vec { x: self.x + rhs, y: self.y + rhs, z: self.z + rhs }
-    }
-}
-
-impl Sub<u32> for Vec {
-    type Output = Vec;
-    fn sub(self, rhs: u32) -> Self::Output {
-        Vec { x: self.x - rhs, y: self.y - rhs, z: self.z - rhs }
-    }
-}
-
-impl Mul<u32> for Vec {
-    type Output = Vec;
-    fn mul(self, rhs: u32) -> Self::Output {
-        Vec { x: self.x * rhs, y: self.y * rhs, z: self.z * rhs }
-    }
-}
-
-impl Div<u32> for Vec {
-    type Output = Self;
-    fn div(self, rhs: u32) -> Self::Output {
-        Vec { x: self.x / rhs, y: self.y / rhs, z: self.z / rhs }
-    }
-}
-
-impl Shl<u32> for Vec {
-    type Output = Self;
-    fn shl(self, rhs: u32) -> Self:: Output {
-        Vec { x: self.x << rhs, y: self.y << rhs, z: self.z << rhs }
-    }
-}
-
-impl Shr<u32> for Vec {
-    type Output = Self;
-    fn shr(self, rhs: u32) -> Self:: Output {
-        Vec { x: self.x >> rhs, y: self.y >> rhs, z: self.z >> rhs }
     }
 }
