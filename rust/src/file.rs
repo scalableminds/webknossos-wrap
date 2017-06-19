@@ -89,8 +89,13 @@ impl<'a> File<'a> {
         debug_assert!(src_pos < file_len_vx_vec);
 
         let dst_len = dst_mat.shape();
-        let src_end = file_len_vx_vec.elem_min(dst_len - dst_pos);
+        let src_end = file_len_vx_vec.elem_min(src_pos + dst_len - dst_pos);
         let src_box = Box3::new(src_pos, src_end)?;
+
+        // bounding box in boxes
+        let src_box_boxes = Box3::new(
+            src_box.min() >> file_len_log2,
+           (src_box.max() >> file_len_log2) + 1)?;
 
         // allocate buffer
         let block_size = self.header.block_size();
@@ -99,22 +104,19 @@ impl<'a> File<'a> {
         let mut buf_vec = vec![0u8; block_size];
         let mut buf = buf_vec.as_mut_slice();
 
-        let iter = Iter::new(file_len_log2, src_box)?;
+        let iter = Iter::new(file_len_log2, src_box_boxes)?;
         for cur_idx in iter {
             // box for current block
             let cur_idx_vec = Vec3::from(Morton::from(cur_idx));
             let cur_block_box = Box3::new(cur_idx_vec, cur_idx_vec + 1)? << block_len_log2;
 
-            println!("cur_block_box = {:?}", cur_block_box);
-            println!("src_pos = {:?}", src_pos);
-            println!("src_end = {:?}", src_end);
             let cur_box = Box3::new(
                 cur_block_box.min().elem_max(src_pos),
                 cur_block_box.max().elem_min(src_end)
             )?;
 
             // source and destination offsets
-            let cur_dst_pos = cur_box.min() - dst_pos;
+            let cur_dst_pos = cur_box.min() - src_pos + dst_pos;
             let cur_src_box = cur_box - cur_block_box.min();
 
             // read data
@@ -124,8 +126,6 @@ impl<'a> File<'a> {
             // copy data
             let src_mat = Mat::new(buf, block_len_vec, voxel_size)?;
             dst_mat.copy_from(cur_dst_pos, &src_mat, cur_src_box);
-
-            println!("cur_idx = {:?}", cur_idx);
         }
 
         Ok(1 as usize)
