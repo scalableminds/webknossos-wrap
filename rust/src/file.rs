@@ -18,10 +18,7 @@ impl<'a> File<'a> {
 
         // create file
         let header = Header::from_bytes(buf)?;
-        let mut wkw_file = File { file: file, header: header, block_idx: None };
-
-        // seek to first block
-        wkw_file.seek_block(0 as u64)?;
+        let wkw_file = File { file: file, header: header, block_idx: None };
 
         Ok(wkw_file)
     }
