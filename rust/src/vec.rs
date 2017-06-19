@@ -16,14 +16,16 @@ pub struct Box3 {
 
 impl Box3 {
     pub fn new(min: Vec3, max: Vec3) -> Result<Box3> {
-        if min <= max {
-            Ok(Box3 {
-                min: min,
-                max: max
-            })
-        } else {
-            Err("Minimum and maximum are in conflict")
+        if max < min {
+            println!("min = {:?}", min);
+            println!("max = {:?}", max);
+            return Err("Minimum and maximum are in conflict");
         }
+
+        Ok(Box3 {
+            min: min,
+            max: max
+        })
     }
 
     pub fn min(&self) -> Vec3 { self.min }
