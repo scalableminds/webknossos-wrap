@@ -28,57 +28,6 @@ impl<'a> File<'a> {
 
     pub fn header(&'a self) -> &'a Header { &self.header }
 
-    pub fn aligned_blocks(&self, mat: &Mat, off: &Vec3) -> Option<(u64, u64)> {
-        if self.is_aligned(mat, off) {
-            let block_len_log2 = self.header.block_len_log2 as u32;
-
-            let block_off_vec = off.clone() >> block_len_log2;
-            let block_off = u64::from(Morton::from(&block_off_vec));
-
-            let block_side_len = mat.shape().x >> block_len_log2;
-            let block_count = block_side_len * block_side_len * block_side_len;
-
-            Some((block_off, block_count as u64))
-        } else {
-            None
-        }
-    }
-
-    pub fn is_aligned(&self, mat: &Mat, off: &Vec3) -> bool {
-        mat.shape().is_cube_diagonal()
-        && mat.shape().x.is_power_of_two()
-        && mat.shape().x >= self.header.block_len() as u32
-        && off.is_multiple_of(mat.shape())
-    }
-
-    pub fn read_aligned_mat(
-        &mut self,
-        block_off: u64,
-        block_count: u64,
-        mat: &mut Mat
-    ) -> Result<usize> {
-
-        let mut buf = vec![0 as u8; self.header.block_size()];
-        let buf_shape = Vec3::from(self.header.block_len() as u32);
-        let buf_width = self.header.voxel_size as usize;
-
-        self.seek_block(block_off)?;
-
-        for cur_idx in 0..block_count {
-            self.read_block(buf.as_mut_slice())?;
-
-            // determine target position
-            let cur_blk_ids = Vec3::from(Morton::from(cur_idx as u64));
-            let cur_pos = cur_blk_ids << self.header.block_len_log2 as u32;
-
-            // copy to target
-            let buf_mat = Mat::new(buf.as_mut_slice(), buf_shape, buf_width)?;
-            mat.copy_all_from(cur_pos, &buf_mat)?;
-        }
-
-        Ok(mat.as_slice().len())
-    }
-
     pub fn read_mat(&mut self, src_pos: Vec3, dst_mat: &mut Mat, dst_pos: Vec3) -> Result<usize> {
         let file_len_vx = self.header.file_len_vx();
         let file_len_log2 = self.header.file_len_log2 as u32;
