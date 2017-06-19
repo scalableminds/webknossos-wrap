@@ -85,10 +85,17 @@ impl<'a> File<'a> {
             return Err("Buffer has invalid size");
         }
 
+        if self.block_idx.is_none() {
+            return Err("File is not block aligned");
+        }
+
         if self.file.read(buf).unwrap() != block_size {
+            self.block_idx = None;
             return Err("Could not read whole block");
         }
 
+        // advance to next block
+        self.block_idx.map(|idx| idx + 1);
         Ok(block_size)
     }
 
