@@ -33,9 +33,8 @@ impl<'a> File<'a> {
         let file_len_log2 = self.header.file_len_log2 as u32;
         let block_len_log2 = self.header.block_len_log2 as u32;
 
-        let block_len_vec = Vec3::from(1u32) << block_len_log2;
         let file_len_vx_vec = Vec3::from(file_len_vx);
-        debug_assert!(src_pos < file_len_vx_vec);
+        assert!(src_pos < file_len_vx_vec);
 
         let dst_len = dst_mat.shape();
         let src_end = file_len_vx_vec.elem_min(src_pos + dst_len - dst_pos);
@@ -49,16 +48,18 @@ impl<'a> File<'a> {
         // allocate buffer
         let block_size = self.header.block_size();
         let voxel_size = self.header.voxel_size as usize;
-        let buf_shape = Vec3::from(1u32) << block_len_log2;
+        let buf_shape = Vec3::from(1u32 << block_len_log2);
         let mut buf_vec = vec![0u8; block_size];
         let mut buf = buf_vec.as_mut_slice();
 
         let iter = Iter::new(file_len_log2, src_box_boxes)?;
-        for cur_idx in iter {
+        for cur_block_idx in iter {
             // box for current block
-            let cur_idx_vec = Vec3::from(Morton::from(cur_idx));
-            let cur_block_box = Box3::new(cur_idx_vec, cur_idx_vec + 1)? << block_len_log2;
+            let cur_block_ids = Vec3::from(Morton::from(cur_block_idx));
 
+            let cur_block_box = Box3::new(
+                cur_block_ids << block_len_log2,
+               (cur_block_ids + 1) << block_len_log2)?;
             let cur_box = Box3::new(
                 cur_block_box.min().elem_max(src_pos),
                 cur_block_box.max().elem_min(src_end)
@@ -69,12 +70,12 @@ impl<'a> File<'a> {
             let cur_src_box = cur_box - cur_block_box.min();
 
             // read data
-            self.seek_block(cur_idx)?;
+            self.seek_block(cur_block_idx)?;
             self.read_block(buf)?;
 
             // copy data
-            let src_mat = Mat::new(buf, block_len_vec, voxel_size)?;
-            dst_mat.copy_from(cur_dst_pos, &src_mat, cur_src_box);
+            let src_mat = Mat::new(buf, buf_shape, voxel_size)?;
+            dst_mat.copy_from(cur_dst_pos, &src_mat, cur_src_box)?;
         }
 
         Ok(1 as usize)
