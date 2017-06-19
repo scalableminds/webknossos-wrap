@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use std::cmp::{min, max, Ordering};
 use ::Result;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -40,17 +40,6 @@ impl From<Vec3> for Box3 {
     }
 }
 
-impl Add<Vec3> for Box3 {
-    type Output = Box3;
-
-    fn add(self, rhs: Vec3) -> Box3 {
-        Box3 {
-            min: self.min + rhs,
-            max: self.max + rhs
-        }
-    }
-}
-
 impl Vec3 {
     pub fn is_zero(&self) -> bool {
         self == &Vec3::from(0u32)
@@ -70,6 +59,22 @@ impl Vec3 {
 
     pub fn is_multiple_of(&self, other: Vec3) -> bool {
         self.rem(other).is_zero()
+    }
+
+    pub fn elem_max(&self, other: Vec3) -> Vec3 {
+        Vec3 {
+            x: max(self.x, other.x),
+            y: max(self.y, other.y),
+            z: max(self.z, other.z)
+        }
+    }
+
+    pub fn elem_min(&self, other: Vec3) -> Vec3 {
+        Vec3 {
+            x: min(self.x, other.x),
+            y: min(self.y, other.y),
+            z: min(self.z, other.z)
+        }
     }
 }
 
@@ -99,6 +104,39 @@ impl $trt<u32> for Vec3 {
             x: self.x $operator rhs,
             y: self.y $operator rhs,
             z: self.z $operator rhs
+        }
+    }
+}
+
+impl $trt<Box3> for Box3 {
+    type Output = Box3;
+
+    fn $mth(self, rhs: Box3) -> Box3 {
+        Box3 {
+            min: self.min $operator rhs.min,
+            max: self.max $operator rhs.max
+        }
+    }
+}
+
+impl $trt<Vec3> for Box3 {
+    type Output = Box3;
+
+    fn $mth(self, rhs: Vec3) -> Box3 {
+        Box3 {
+            min: self.min $operator rhs,
+            max: self.max $operator rhs
+        }
+    }
+}
+
+impl $trt<u32> for Box3 {
+    type Output = Box3;
+
+    fn $mth(self, rhs: u32) -> Box3 {
+        Box3 {
+            min: self.min $operator rhs,
+            max: self.max $operator rhs
         }
     }
 }

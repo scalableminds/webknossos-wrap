@@ -97,4 +97,11 @@ impl Header {
     pub fn block_len(&self) -> u16 { 1u16 << self.block_len_log2 }
     pub fn block_vol(&self) -> u64 { 1u64 << (3 * self.block_len_log2) }
     pub fn block_size(&self) -> usize { self.voxel_size as usize * self.block_vol() as usize }
+
+    pub fn file_len(&self) -> u16 { 1u16 << self.file_len_log2 }
+    pub fn file_vol(&self) -> u64 { 1u64 << (3 * self.file_len_log2) }
+
+    pub fn file_len_vx(&self) -> u32 { 1u32 << (self.block_len_log2 + self.file_len_log2) }
+    pub fn file_vol_vx(&self) -> u64 { 1u64 << (3 * (self.block_len_log2 + self.file_len_log2)) }
+    pub fn file_size(&self) -> usize { self.voxel_size as usize * self.file_vol_vx() as usize }
 }

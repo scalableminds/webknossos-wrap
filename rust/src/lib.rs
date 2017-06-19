@@ -2,7 +2,7 @@ pub use ::dataset::Dataset;
 pub use ::file::File;
 pub use ::header::Header;
 pub use ::mat::Mat;
-pub use ::morton::Morton;
+pub use ::morton::{Morton, Iter};
 pub use ::vec::{Box3, Vec3};
 pub use ::result::Result;
 
