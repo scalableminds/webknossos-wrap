@@ -1,7 +1,7 @@
 extern crate walkdir;
 use dataset::walkdir::{DirEntry, WalkDir, WalkDirIterator};
 
-use ::{File, Header, Result};
+use ::{File, Header, Result, Vec3, Box3, Mat};
 use std::path::{Path, PathBuf};
 use std::ffi::OsStr;
 use std::io::{Read, Write};
@@ -78,6 +78,48 @@ impl<'a> Dataset<'a> {
     }
 
     pub fn header(&'a self) -> &'a Header { &self.header }
+
+    pub fn read_mat(&self, src_pos: Vec3, mat: &mut Mat) -> Result<usize> {
+        let bbox = Box3::from(mat.shape()) + src_pos;
+        let file_len_vx_log2 = self.header.file_len_vx_log2() as u32;
+
+        // find files to load
+        let bbox_files = Box3::new(
+            bbox.min() >> file_len_vx_log2,
+          ((bbox.max() - 1) >> file_len_vx_log2) + 1
+        )?;
+
+        for cur_z in bbox_files.min().z..bbox_files.max().z {
+            for cur_y in bbox_files.min().y..bbox_files.max().y {
+                for cur_x in bbox_files.min().x..bbox_files.max().x {
+                    // file path to wkw file
+                    let mut cur_path = PathBuf::from(self.root);
+                    cur_path.push(format!("z{}", cur_z));
+                    cur_path.push(format!("y{}", cur_y));
+                    cur_path.push(format!("x{}.wkw", cur_x));
+
+                    // bounding box
+                    let cur_file_ids = Vec3 { x: cur_x, y: cur_y, z: cur_z };
+                    let cur_file_box = Box3::new(
+                        cur_file_ids << file_len_vx_log2,
+                       (cur_file_ids + 1) << file_len_vx_log2)?;
+                    let cur_box = cur_file_box.intersect(bbox);
+
+                    // offsets
+                    let cur_src_pos = cur_box.min() - cur_file_box.min();
+                    let cur_dst_pos = cur_box.min() - src_pos;
+
+                    // try to open file
+                    if let Ok(mut file_handle) = fs::File::open(cur_path) {
+                        let mut file = File::new(&mut file_handle)?;
+                        file.read_mat(cur_src_pos, mat, cur_dst_pos)?;
+                    }
+                }
+            }
+        }
+
+        Ok(1 as usize)
+    }
 
     pub fn verify_headers(&self) -> Result<bool> {
         // find an arbitrary .wkw file
