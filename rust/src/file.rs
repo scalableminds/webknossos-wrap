@@ -57,10 +57,7 @@ impl<'a> File<'a> {
             let cur_block_box = Box3::new(
                 cur_block_ids << block_len_log2,
                (cur_block_ids + 1) << block_len_log2)?;
-            let cur_box = Box3::new(
-                cur_block_box.min().elem_max(src_pos),
-                cur_block_box.max().elem_min(src_end)
-            )?;
+            let cur_box = cur_block_box.intersect(src_box);
 
             // source and destination offsets
             let cur_dst_pos = cur_box.min() - src_pos + dst_pos;

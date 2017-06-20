@@ -17,8 +17,6 @@ pub struct Box3 {
 impl Box3 {
     pub fn new(min: Vec3, max: Vec3) -> Result<Box3> {
         if max < min {
-            println!("min = {:?}", min);
-            println!("max = {:?}", max);
             return Err("Minimum and maximum are in conflict");
         }
 
@@ -31,6 +29,13 @@ impl Box3 {
     pub fn min(&self) -> Vec3 { self.min }
     pub fn max(&self) -> Vec3 { self.max }
     pub fn width(&self) -> Vec3 { self.max - self.min }
+
+    pub fn intersect(&self, rhs: Box3) -> Box3 {
+        Box3 {
+            min: self.min.elem_max(rhs.min),
+            max: self.max.elem_min(rhs.max)
+        }
+    }
 }
 
 impl From<Vec3> for Box3 {
