@@ -149,17 +149,17 @@ impl<'a> Dataset<'a> {
 
         Ok(true)
     }
-    
+
     pub fn read_header(root: &Path) -> Result<Header> {
         let mut header_path = PathBuf::from(root);
         header_path.push(HEADER_FILE_NAME);
 
         let mut header_file_opt = fs::File::open(header_path);
-        let mut header_file = match header_file_opt.as_mut() {
+        let header_file = match header_file_opt.as_mut() {
             Ok(header_file) => header_file,
             Err(_) => return Err("Could not open header file")
         };
 
-        Header::read(&mut header_file)
+        Header::read(header_file)
     }
 }
