@@ -56,9 +56,8 @@ impl Header {
     }
 
     pub fn read_jump_table(&mut self, file: &mut fs::File) -> Result<()> {
-        let block_count = self.file_len() as usize;
-
         // allocate jump table
+        let block_count = self.file_vol() as usize;
         let mut jump_table = Vec::with_capacity(block_count);
 
         let result = unsafe {
