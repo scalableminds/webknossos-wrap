@@ -86,6 +86,7 @@ impl<'a> File<'a> {
         Ok(1 as usize)
     }
 
+    // TODO(amotta): Move to header
     fn block_size(&self, block_idx: u64) -> Result<usize> {
             match self.header.block_type {
                 BlockType::Raw => Ok(self.header.block_size() as usize),
