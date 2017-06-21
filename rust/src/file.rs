@@ -83,26 +83,23 @@ impl<'a> File<'a> {
         Ok(1 as usize)
     }
 
-    fn block_len(&self, block_idx: u64) -> Result<usize> {
+    fn block_size(&self, block_idx: u64) -> Result<usize> {
             match self.header.block_type {
+                BlockType::Raw => Ok(self.header.block_size() as usize),
                 BlockType::LZ4 | BlockType::LZ4HC => {
                     let jump_table = self.header.jump_table.as_ref().unwrap();
 
                     if block_idx == 0 {
-                        let block_len =
-                            jump_table[0]
-                          - self.header.data_offset;
-                        Ok(block_len as usize)
+                        let block_size = jump_table[0] - self.header.data_offset;
+                        Ok(block_size as usize)
                     } else if block_idx < self.header.file_vol() {
-                        let block_len =
-                            jump_table[block_idx as usize]
-                          - jump_table[block_idx as usize - 1];
-                        Ok(block_len as usize)
+                        let block_idx = block_idx as usize;
+                        let block_size = jump_table[block_idx] - jump_table[block_idx - 1];
+                        Ok(block_size as usize)
                     } else {
                         Err("Block index out of bounds")
                     }
-                },
-                _ => Ok(self.header.block_len() as usize)
+                }
             }
     }
 
@@ -133,9 +130,9 @@ impl<'a> File<'a> {
         };
 
         let block_idx = self.block_idx.unwrap();
-        let block_len = self.block_len(block_idx)?;
+        let block_size = self.block_size(block_idx)?;
 
-        if bytes_read != block_len {
+        if bytes_read != block_size {
             self.block_idx = None;
             return Err("Could not read whole raw block");
         }
@@ -145,24 +142,20 @@ impl<'a> File<'a> {
 
     fn read_block_lz4(&mut self, buf: &mut [u8]) -> Result<usize> {
         let block_idx = self.block_idx.ok_or("Block index missing")?;
-        let block_size_lz4 = self.block_len(block_idx)?;
+        let block_size_lz4 = self.block_size(block_idx)?;
         let block_size_raw = self.header.block_size();
 
-        let ref mut buf_lz4 = self.block_buf.as_mut().ok_or("Block buffer missing")?;
+        let buf_lz4_orig = &mut *self.block_buf.as_mut().ok_or("Block buffer missing")?;
+        let buf_lz4 = &mut buf_lz4_orig[..block_size_lz4];
 
         // read compressed block
-        let bytes_read = match self.file.read(buf_lz4) {
-            Err(_) => return Err("Error while reading LZ4 block"),
-            Ok(bytes_read) => bytes_read
-        };
-
-        if bytes_read != block_size_lz4 {
+        if self.file.read_exact(buf_lz4).is_err() {
             self.block_idx = None;
-            return Err("Could not read whole LZ4 block");
+            return Err("Error while reading LZ4 block");
         }
 
         // decompress block
-        let byte_written = lz4::decompress_safe(&buf_lz4[..bytes_read], buf)?;
+        let byte_written = lz4::decompress_safe(buf_lz4, buf)?;
 
         if byte_written != block_size_raw {
             return Err("Decompression produced invalid length");
@@ -176,14 +169,40 @@ impl<'a> File<'a> {
             return Ok(block_idx)
         }
 
-        // calculate byte offset
-        let block_size = self.header.block_size() as u64;
-        let offset = self.header.data_offset + block_idx * block_size;
+        // determine block offset
+        let offset = self.block_offset(block_idx)?;
 
         // seek to byte offset
-        self.file.seek(SeekFrom::Start(offset)).unwrap();
-        self.block_idx = Some(block_idx);
+        match self.file.seek(SeekFrom::Start(offset)) {
+            Err(_) => Err("Could not seek block"),
+            Ok(_) => {
+                self.block_idx = Some(block_idx);
+                Ok(block_idx)
+            }
+        }
+    }
 
-        Ok(block_idx)
+    fn block_offset(&self, block_idx: u64) -> Result<u64> {
+        if block_idx >= self.header.file_vol() {
+            return Err("Block index out of bounds");
+        }
+
+        let offset = match self.header.block_type {
+            BlockType::Raw => {
+                let block_size = self.header.block_size() as u64;
+                self.header.data_offset + block_idx * block_size
+            },
+            BlockType::LZ4 | BlockType::LZ4HC => {
+                if block_idx == 0 {
+                    self.header.data_offset
+                } else {
+                    let ref jump_table =
+                        *self.header.jump_table.as_ref().ok_or("Jump table missing")?;
+                    jump_table[block_idx as usize - 1]
+                }
+            }
+        };
+
+        Ok(offset)
     }
 }
