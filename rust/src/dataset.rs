@@ -149,10 +149,7 @@ impl<'a> Dataset<'a> {
 
         Ok(true)
     }
-
-    // NOTE(amotta): A lot of the error handling in this function
-    // could be simplified if there existed an automatic conversion
-    // from io::Error to the wkw::Error.
+    
     pub fn read_header(root: &Path) -> Result<Header> {
         let mut header_path = PathBuf::from(root);
         header_path.push(HEADER_FILE_NAME);
