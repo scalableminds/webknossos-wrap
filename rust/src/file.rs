@@ -87,7 +87,8 @@ impl<'a> File<'a> {
             match self.header.block_type {
                 BlockType::Raw => Ok(self.header.block_size() as usize),
                 BlockType::LZ4 | BlockType::LZ4HC => {
-                    let jump_table = self.header.jump_table.as_ref().unwrap();
+                    let ref jump_table =
+                        *self.header.jump_table.as_ref().ok_or("Jump table missing")?;
 
                     if block_idx == 0 {
                         let block_size = jump_table[0] - self.header.data_offset;
