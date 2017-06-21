@@ -157,13 +157,12 @@ impl<'a> Dataset<'a> {
         let mut header_path = PathBuf::from(root);
         header_path.push(HEADER_FILE_NAME);
 
-        let header_file_opt = fs::File::open(header_path);
+        let mut header_file_opt = fs::File::open(header_path);
+        let mut header_file = match header_file_opt.as_mut() {
+            Ok(header_file) => header_file,
+            Err(_) => return Err("Could not open header file")
+        };
 
-        if header_file_opt.is_err() {
-            return Err("Could not open header file");
-        }
-
-        let mut header_file = header_file_opt.unwrap();
         Header::read(&mut header_file)
     }
 }
