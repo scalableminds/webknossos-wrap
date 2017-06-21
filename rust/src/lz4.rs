@@ -4,12 +4,19 @@ use ::Result;
 
 #[link(name = "lz4")]
 extern {
+    // upper bound
+    fn LZ4_compressBound(input_size: c_int) -> c_int;
+
     // decompression
     fn LZ4_decompress_safe(
         src_buf: *const u8,
         dst_buf: *mut u8,
         compressed_size: c_int,
         max_decompressed_size: c_int) -> c_int;
+}
+
+pub fn compress_bound(input_size: usize) -> usize {
+    unsafe { LZ4_compressBound(input_size as c_int) as usize }
 }
 
 pub fn decompress_safe(src_buf: &[u8], dst_buf: &mut [u8]) -> Result<usize> {

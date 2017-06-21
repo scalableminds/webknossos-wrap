@@ -16,8 +16,11 @@ impl<'a> File<'a> {
         let header = Header::read(file)?;
 
         let block_buf = match header.block_type {
-            BlockType::LZ4 | BlockType::LZ4HC =>
-                Some(vec![0u8; header.block_size()].into_boxed_slice()),
+            BlockType::LZ4 | BlockType::LZ4HC => {
+                let buf_size = header.max_block_size();
+                let buf_vec = vec![0u8; buf_size];
+                Some(buf_vec.into_boxed_slice())
+            },
             _ => None
         };
 
@@ -88,7 +91,7 @@ impl<'a> File<'a> {
                 BlockType::Raw => Ok(self.header.block_size() as usize),
                 BlockType::LZ4 | BlockType::LZ4HC => {
                     let ref jump_table =
-                        *self.header.jump_table.as_ref().ok_or("Jump table missing")?;
+                        *self.header.jump_table.as_ref().unwrap();
 
                     if block_idx == 0 {
                         let block_size = jump_table[0] - self.header.data_offset;

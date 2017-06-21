@@ -1,3 +1,4 @@
+use lz4;
 use std::{fs, mem, slice};
 use std::io::Read;
 use result::Result;
@@ -79,6 +80,15 @@ impl Header {
         }
 
         Ok(())
+    }
+
+    pub fn max_block_size(&self) -> usize {
+        let block_size = self.block_size();
+
+        match self.block_type {
+            BlockType::Raw => block_size,
+            BlockType::LZ4 | BlockType::LZ4HC => lz4::compress_bound(block_size)
+        }
     }
 
     fn from_bytes(buf: [u8; 16]) -> Result<Header> {
