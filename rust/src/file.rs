@@ -1,24 +1,32 @@
+use lz4;
 use std::fs;
 use std::io::{Read, Seek, SeekFrom};
-use ::{Header, Iter, Mat, Morton, Result, Vec3, Box3};
+use ::{Header, BlockType, Iter, Mat, Morton, Result, Vec3, Box3};
 
 #[derive(Debug)]
 pub struct File<'a> {
     file: &'a fs::File,
     header: Header,
-    block_idx: Option<u64>
+    block_idx: Option<u64>,
+    block_buf: Option<Box<[u8]>>
 }
 
 impl<'a> File<'a> {
     pub fn new(file: &'a mut fs::File) -> Result<File> {
-        let mut buf = [0u8; 16];
-        if file.read(&mut buf).unwrap() != 16 {
-            return Err("Could not read file header");
-        }
+        let header = Header::read(file)?;
 
-        // create file
-        let header = Header::from_bytes(buf)?;
-        let wkw_file = File { file: file, header: header, block_idx: None };
+        let block_buf = match header.block_type {
+            BlockType::LZ4 | BlockType::LZ4HC =>
+                Some(vec![0u8; header.block_size()].into_boxed_slice()),
+            _ => None
+        };
+
+        let wkw_file = File {
+            file: file,
+            header: header,
+            block_idx: None,
+            block_buf: block_buf
+        };
 
         Ok(wkw_file)
     }
@@ -75,10 +83,31 @@ impl<'a> File<'a> {
         Ok(1 as usize)
     }
 
-    fn read_block(&mut self, buf: &mut [u8]) -> Result<usize> {
-        let block_size = self.header.block_size();
+    fn block_len(&self, block_idx: u64) -> Result<usize> {
+            match self.header.block_type {
+                BlockType::LZ4 | BlockType::LZ4HC => {
+                    let jump_table = self.header.jump_table.as_ref().unwrap();
 
-        if buf.len() != block_size {
+                    if block_idx == 0 {
+                        let block_len =
+                            jump_table[0]
+                          - self.header.data_offset;
+                        Ok(block_len as usize)
+                    } else if block_idx < self.header.file_vol() {
+                        let block_len =
+                            jump_table[block_idx as usize]
+                          - jump_table[block_idx as usize - 1];
+                        Ok(block_len as usize)
+                    } else {
+                        Err("Block index out of bounds")
+                    }
+                },
+                _ => Ok(self.header.block_len() as usize)
+            }
+    }
+
+    fn read_block(&mut self, buf: &mut [u8]) -> Result<usize> {
+        if buf.len() != self.header.block_size() {
             return Err("Buffer has invalid size");
         }
 
@@ -86,14 +115,60 @@ impl<'a> File<'a> {
             return Err("File is not block aligned");
         }
 
-        if self.file.read(buf).unwrap() != block_size {
-            self.block_idx = None;
-            return Err("Could not read whole block");
-        }
+        let result = match self.header.block_type {
+            BlockType::Raw => self.read_block_raw(buf),
+            BlockType::LZ4 | BlockType::LZ4HC => self.read_block_lz4(buf)
+        };
 
         // advance to next block
         self.block_idx.map(|idx| idx + 1);
-        Ok(block_size)
+
+        result
+    }
+
+    fn read_block_raw(&mut self, buf: &mut [u8]) -> Result<usize> {
+        let bytes_read = match self.file.read(buf) {
+            Err(_) => return Err("Error while reading raw block"),
+            Ok(bytes_read) => bytes_read
+        };
+
+        let block_idx = self.block_idx.unwrap();
+        let block_len = self.block_len(block_idx)?;
+
+        if bytes_read != block_len {
+            self.block_idx = None;
+            return Err("Could not read whole raw block");
+        }
+
+        Ok(bytes_read)
+    }
+
+    fn read_block_lz4(&mut self, buf: &mut [u8]) -> Result<usize> {
+        let block_idx = self.block_idx.ok_or("Block index missing")?;
+        let block_size_lz4 = self.block_len(block_idx)?;
+        let block_size_raw = self.header.block_size();
+
+        let ref mut buf_lz4 = self.block_buf.as_mut().ok_or("Block buffer missing")?;
+
+        // read compressed block
+        let bytes_read = match self.file.read(buf_lz4) {
+            Err(_) => return Err("Error while reading LZ4 block"),
+            Ok(bytes_read) => bytes_read
+        };
+
+        if bytes_read != block_size_lz4 {
+            self.block_idx = None;
+            return Err("Could not read whole LZ4 block");
+        }
+
+        // decompress block
+        let byte_written = lz4::decompress_safe(&buf_lz4[..bytes_read], buf)?;
+
+        if byte_written != block_size_raw {
+            return Err("Decompression produced invalid length");
+        }
+
+        Ok(byte_written)
     }
 
     fn seek_block(&mut self, block_idx: u64) -> Result<u64> {

@@ -164,14 +164,6 @@ impl<'a> Dataset<'a> {
         }
 
         let mut header_file = header_file_opt.unwrap();
-
-        let mut buf = [0u8; 16];
-        let read_opt = header_file.read(&mut buf);
-
-        if read_opt.is_err() || read_opt.unwrap() != buf.len() {
-            return Err("Header file is too small")
-        }
-
-        Header::from_bytes(buf)
+        Header::read(&mut header_file)
     }
 }

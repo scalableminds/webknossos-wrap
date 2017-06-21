@@ -1,4 +1,5 @@
-use std::mem;
+use std::{fs, mem, slice};
+use std::io::Read;
 use result::Result;
 
 #[repr(C)]
@@ -19,7 +20,7 @@ pub enum BlockType { Raw, LZ4, LZ4HC }
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum VoxelType { U8, U16, U32, U64, F32, F64 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Header {
     pub version: u8,
     pub block_len_log2: u8,
@@ -27,11 +28,62 @@ pub struct Header {
     pub block_type: BlockType,
     pub voxel_type: VoxelType,
     pub voxel_size: u8,
-    pub data_offset: u64
+    pub data_offset: u64,
+    pub jump_table: Option<Box<[u64]>>
 }
 
 impl Header {
-    pub fn from_bytes(buf: [u8; 16]) -> Result<Header> {
+    pub fn read(file: &mut fs::File) -> Result<Header> {
+        let mut buf = [0u8; 16];
+
+        if file.read_exact(&mut buf).is_err() {
+            return Err("Could not read raw header");
+        }
+
+        // build header from bytes
+        let mut header = Header::from_bytes(&buf)?;
+
+        // in case of the header file, we're done
+        if header.data_offset == 0 {
+            return Ok(header);
+        }
+
+        // read jump table
+        match header.block_type {
+            BlockType::LZ4 | BlockType::LZ4HC => header.read_jump_table(file)?,
+            _ => ()
+        }
+
+        Ok(header)
+    }
+
+    pub fn read_jump_table(&mut self, file: &mut fs::File) -> Result<()> {
+        let block_count = self.file_len() as usize;
+
+        // allocate jump table
+        let mut jump_table = Vec::with_capacity(block_count);
+
+        unsafe {
+            // slice of unsigned 64-bit integers
+            let buf_u64 = jump_table.as_mut_slice();
+
+            // slice of unsigned 8-bit integers
+            let buf_u8_len = buf_u64.len() << 3;
+            let buf_u8_ptr = buf_u64.as_mut_ptr();
+            let buf_u8 = slice::from_raw_parts_mut(buf_u8_ptr as *mut u8, buf_u8_len);
+
+            if file.read_exact(buf_u8).is_err() {
+                return Err("Could not read jump table");
+            }
+        }
+
+        // update header
+        self.jump_table = Some(jump_table.into_boxed_slice());
+
+        Ok(())
+    }
+
+    fn from_bytes(buf: &[u8]) -> Result<Header> {
         let raw: HeaderRaw = unsafe { mem::transmute(buf) };
 
         if &raw.magic != "WKW".as_bytes() {
@@ -69,7 +121,8 @@ impl Header {
             block_type: block_type,
             voxel_type: voxel_type,
             voxel_size: raw.voxel_size,
-            data_offset: raw.data_offset
+            data_offset: raw.data_offset,
+            jump_table: None
         })
     }
 
@@ -101,7 +154,8 @@ impl Header {
     pub fn file_len(&self) -> u16 { 1u16 << self.file_len_log2 }
     pub fn file_vol(&self) -> u64 { 1u64 << (3 * self.file_len_log2) }
 
-    pub fn file_len_vx(&self) -> u32 { 1u32 << (self.block_len_log2 + self.file_len_log2) }
-    pub fn file_vol_vx(&self) -> u64 { 1u64 << (3 * (self.block_len_log2 + self.file_len_log2)) }
+    pub fn file_len_vx_log2(&self) -> u8 { self.file_len_log2 + self.block_len_log2 }
+    pub fn file_len_vx(&self) -> u32 { 1u32 << self.file_len_vx_log2() as u32 }
+    pub fn file_vol_vx(&self) -> u64 { 1u64 << (3 * self.file_len_vx_log2() as u64) }
     pub fn file_size(&self) -> usize { self.voxel_size as usize * self.file_vol_vx() as usize }
 }
