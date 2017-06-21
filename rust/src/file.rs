@@ -174,7 +174,7 @@ impl<'a> File<'a> {
         }
 
         // determine block offset
-        let offset = self.block_offset(block_idx)?;
+        let offset = self.header.block_offset(block_idx)?;
 
         // seek to byte offset
         match self.file.seek(SeekFrom::Start(offset)) {
@@ -184,29 +184,5 @@ impl<'a> File<'a> {
                 Ok(block_idx)
             }
         }
-    }
-
-    fn block_offset(&self, block_idx: u64) -> Result<u64> {
-        if block_idx >= self.header.file_vol() {
-            return Err("Block index out of bounds");
-        }
-
-        let offset = match self.header.block_type {
-            BlockType::Raw => {
-                let block_size = self.header.block_size() as u64;
-                self.header.data_offset + block_idx * block_size
-            },
-            BlockType::LZ4 | BlockType::LZ4HC => {
-                if block_idx == 0 {
-                    self.header.data_offset
-                } else {
-                    let ref jump_table =
-                        *self.header.jump_table.as_ref().ok_or("Jump table missing")?;
-                    jump_table[block_idx as usize - 1]
-                }
-            }
-        };
-
-        Ok(offset)
     }
 }

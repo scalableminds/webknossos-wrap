@@ -82,6 +82,29 @@ impl Header {
         Ok(())
     }
 
+    pub fn block_offset(&self, block_idx: u64) -> Result<u64> {
+        if block_idx >= self.file_vol() {
+            return Err("Block index out of bounds");
+        }
+
+        let offset = match self.block_type {
+            BlockType::Raw => {
+                let block_size = self.block_size() as u64;
+                self.data_offset + block_idx * block_size
+            },
+            BlockType::LZ4 | BlockType::LZ4HC => {
+                if block_idx == 0 {
+                    self.data_offset
+                } else {
+                    let ref jump_table = *self.jump_table.as_ref().unwrap();
+                    jump_table[block_idx as usize - 1]
+                }
+            }
+        };
+
+        Ok(offset)
+    }
+
     pub fn max_block_size(&self) -> usize {
         let block_size = self.block_size();
 
