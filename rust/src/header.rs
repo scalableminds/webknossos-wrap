@@ -36,12 +36,10 @@ impl Header {
     pub fn read(file: &mut fs::File) -> Result<Header> {
         let mut buf = [0u8; 16];
 
-        if file.read_exact(&mut buf).is_err() {
-            return Err("Could not read raw header");
-        }
-
-        // build header from bytes
-        let mut header = Header::from_bytes(&buf)?;
+        let mut header = match file.read_exact(&mut buf) {
+            Err(_) => return Err("Could not read raw header"),
+            Ok(_) => Self::from_bytes(&buf)?
+        };
 
         // in case of the header file, we're done
         if header.data_offset == 0 {
