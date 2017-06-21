@@ -38,7 +38,7 @@ impl Header {
 
         let mut header = match file.read_exact(&mut buf) {
             Err(_) => return Err("Could not read raw header"),
-            Ok(_) => Self::from_bytes(&buf)?
+            Ok(_) => Self::from_bytes(buf)?
         };
 
         // in case of the header file, we're done
@@ -81,7 +81,7 @@ impl Header {
         Ok(())
     }
 
-    fn from_bytes(buf: &[u8]) -> Result<Header> {
+    fn from_bytes(buf: [u8; 16]) -> Result<Header> {
         let raw: HeaderRaw = unsafe { mem::transmute(buf) };
 
         if &raw.magic != "WKW".as_bytes() {
