@@ -9,6 +9,7 @@ pub use ::result::Result;
 pub mod dataset;
 pub mod file;
 pub mod header;
+pub mod lz4;
 pub mod mat;
 pub mod morton;
 pub mod result;

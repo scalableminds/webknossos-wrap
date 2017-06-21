@@ -5,6 +5,7 @@ authors = ["Alessandro Motta <alessandro.motta@brain.mpg.de>"]
 
 [dependencies]
 walkdir = "1"
+libc = "0.2.24"
 
 [lib]
 name = "wkwrap"
