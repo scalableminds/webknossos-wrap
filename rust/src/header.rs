@@ -61,22 +61,23 @@ impl Header {
         // allocate jump table
         let mut jump_table = Vec::with_capacity(block_count);
 
-        unsafe {
+        let result = unsafe {
             // slice of unsigned 64-bit integers
-            let buf_u64 = jump_table.as_mut_slice();
+            jump_table.set_len(block_count);
 
             // slice of unsigned 8-bit integers
-            let buf_u8_len = buf_u64.len() << 3;
-            let buf_u8_ptr = buf_u64.as_mut_ptr();
+            let buf_u8_len = jump_table.len() << 3;
+            let buf_u8_ptr = jump_table.as_mut_ptr();
             let buf_u8 = slice::from_raw_parts_mut(buf_u8_ptr as *mut u8, buf_u8_len);
 
-            if file.read_exact(buf_u8).is_err() {
-                return Err("Could not read jump table");
-            }
-        }
+            // read jump table
+            file.read_exact(buf_u8)
+        };
 
-        // update header
-        self.jump_table = Some(jump_table.into_boxed_slice());
+        match result {
+            Ok(_) => self.jump_table = Some(jump_table.into_boxed_slice()),
+            Err(_) => return Err("Could not read jump table")
+        }
 
         Ok(())
     }
