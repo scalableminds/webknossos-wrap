@@ -4,7 +4,7 @@ use dataset::walkdir::{DirEntry, WalkDir, WalkDirIterator};
 use ::{File, Header, Result, Vec3, Box3, Mat};
 use std::path::{Path, PathBuf};
 use std::ffi::OsStr;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::fs;
 
 #[derive(Debug)]
