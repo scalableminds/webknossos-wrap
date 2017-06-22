@@ -8,7 +8,7 @@ pub struct Vec3 {
     pub z: u32
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Box3 {
     min: Vec3,
     max: Vec3
