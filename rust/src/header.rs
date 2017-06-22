@@ -108,8 +108,8 @@ impl Header {
 
             // slice of unsigned 8-bit integers
             let buf_u8_len = jump_table.len() << 3;
-            let buf_u8_ptr = jump_table.as_mut_ptr();
-            let buf_u8 = slice::from_raw_parts_mut(buf_u8_ptr as *mut u8, buf_u8_len);
+            let buf_u8_ptr = jump_table.as_mut_ptr() as *mut u8;
+            let buf_u8 = slice::from_raw_parts_mut(buf_u8_ptr, buf_u8_len);
 
             // read jump table
             file.read_exact(buf_u8)
