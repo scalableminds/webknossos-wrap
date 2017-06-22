@@ -1,20 +1,18 @@
 use lz4;
-use std::fs;
+use std::{fs, path};
 use std::io::{Read, Seek, SeekFrom};
 use ::{Header, BlockType, Iter, Mat, Morton, Result, Vec3, Box3};
 
 #[derive(Debug)]
-pub struct File<'a> {
-    file: &'a fs::File,
+pub struct File {
+    file: fs::File,
     header: Header,
     block_idx: Option<u64>,
     block_buf: Option<Box<[u8]>>
 }
 
-impl<'a> File<'a> {
-    pub fn new(file: &'a mut fs::File) -> Result<File> {
-        let header = Header::read(file)?;
-
+impl File {
+    fn new(mut file: fs::File, header: Header) -> File {
         let block_buf = match header.block_type {
             BlockType::LZ4 | BlockType::LZ4HC => {
                 let buf_size = header.max_block_size_on_disk();
@@ -24,17 +22,27 @@ impl<'a> File<'a> {
             _ => None
         };
 
-        let wkw_file = File {
+        File {
             file: file,
             header: header,
             block_idx: None,
             block_buf: block_buf
-        };
-
-        Ok(wkw_file)
+        }
     }
 
-    pub fn header(&'a self) -> &'a Header { &self.header }
+    pub fn open(path: &path::Path) -> Result<File> {
+        let mut file = match fs::File::open(path) {
+            Ok(file) => file,
+            Err(_) => return Err("Could not open file")
+        };
+
+        // read header
+        let header = Header::read(&mut file)?;
+        
+        Ok(Self::new(file, header))
+    }
+
+    pub fn header(&self) -> &Header { &self.header }
 
     pub fn read_mat(&mut self, src_pos: Vec3, dst_mat: &mut Mat, dst_pos: Vec3) -> Result<usize> {
         let file_len_vx = self.header.file_len_vx();
@@ -103,7 +111,7 @@ impl<'a> File<'a> {
 
         // advance block index
         self.block_idx = Some(block_idx);
-        
+
         Ok(bytes_read)
     }
 

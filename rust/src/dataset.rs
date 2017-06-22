@@ -41,8 +41,7 @@ pub fn recover_header(root: &Path) -> Result<()> {
     };
 
     // open wkw file
-    let mut wkw_file_handle = fs::File::open(wkw_file_entry.path()).unwrap();
-    let wkw_file = File::new(&mut wkw_file_handle).unwrap();
+    let wkw_file = File::open(wkw_file_entry.path()).unwrap();
 
     // build header for meta file
     let mut wkw_header = wkw_file.header().clone();
@@ -110,8 +109,7 @@ impl<'a> Dataset<'a> {
                     let cur_dst_pos = cur_box.min() - src_pos;
 
                     // try to open file
-                    if let Ok(mut file_handle) = fs::File::open(cur_path) {
-                        let mut file = File::new(&mut file_handle)?;
+                    if let Ok(mut file) = File::open(&cur_path) {
                         file.read_mat(cur_src_pos, mat, cur_dst_pos)?;
                     }
                 }
@@ -135,8 +133,7 @@ impl<'a> Dataset<'a> {
             let entry = entry.unwrap();
             let entry_path = entry.path();
 
-            let mut file_handle = fs::File::open(entry_path).unwrap();
-            let wkw_file = File::new(&mut file_handle).unwrap();
+            let wkw_file = File::open(&entry_path).unwrap();
             let wkw_header = wkw_file.header();
 
             // we want to test for equality up to offset
