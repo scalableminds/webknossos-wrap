@@ -149,7 +149,7 @@ impl<'a> Dataset<'a> {
                         let cur_src_pos = cur_box.min() - dst_pos;
                         let cur_dst_pos = cur_box.min() - cur_file_box.min();
 
-                        if let Ok(mut file) = File::open_or_create(cur_path, &self.header) {
+                        if let Ok(mut file) = File::open_or_create(&cur_path, &self.header) {
                             file.write_mat(cur_dst_pos, mat, cur_src_pos)?;
                         }
                     }
