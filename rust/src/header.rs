@@ -105,7 +105,27 @@ impl Header {
         Ok(offset)
     }
 
-    pub fn max_block_size(&self) -> usize {
+    pub fn block_size_on_disk(&self, block_idx: u64) -> Result<usize> {
+        match self.block_type {
+            BlockType::Raw => Ok(self.block_size() as usize),
+            BlockType::LZ4 | BlockType::LZ4HC => {
+                let ref jump_table = *self.jump_table.as_ref().unwrap();
+
+                if block_idx == 0 {
+                    let block_size = jump_table[0] - self.data_offset;
+                    Ok(block_size as usize)
+                } else if block_idx < self.file_vol() {
+                    let block_idx = block_idx as usize;
+                    let block_size = jump_table[block_idx] - jump_table[block_idx - 1];
+                    Ok(block_size as usize)
+                } else {
+                    Err("Block index out of bounds")
+                }
+            }
+        }
+    }
+
+    pub fn max_block_size_on_disk(&self) -> usize {
         let block_size = self.block_size();
 
         match self.block_type {
