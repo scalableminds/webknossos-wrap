@@ -1,6 +1,6 @@
 use lz4;
 use std::{fs, path};
-use std::io::{Read, Seek, SeekFrom};
+use std::io::{Read, Seek, SeekFrom, Write};
 use ::{Header, BlockType, Iter, Mat, Morton, Result, Vec3, Box3};
 
 #[derive(Debug)]
@@ -135,6 +135,50 @@ impl File {
     }
 
     pub fn write_mat(&mut self, dst_pos: Vec3, src_mat: &Mat, src_pos: Vec3) -> Result<usize> {
+        let file_len_vx = self.header.file_len_vx();
+        let file_len_log2 = self.header.file_len_log2 as u32;
+        let block_len_log2 = self.header.block_len_log2 as u32;
+
+        let file_len_vx_vec = Vec3::from(file_len_vx);
+        assert!(src_pos < file_len_vx_vec);
+
+        let src_len = src_mat.shape();
+        let dst_end = file_len_vx_vec.elem_min(src_len - src_pos + dst_pos);
+        let dst_box = Box3::new(dst_pos, dst_end)?;
+
+        // bounding box in boxes
+        let dst_box_boxes = Box3::new(
+            dst_box.min() >> file_len_log2,
+           (dst_box.max() >> file_len_log2) + 1)?;
+
+        // allocate buffer
+        let buf_shape = Vec3::from(1u32 << block_len_log2);
+        let voxel_size = self.header.voxel_size as usize;
+
+        let mut buf = vec![0u8; self.header.block_size()];
+        let mut buf_mat = Mat::new(buf.as_mut_slice(), buf_shape, voxel_size)?;
+
+        let iter = Iter::new(file_len_log2, dst_box_boxes)?;
+        for cur_block_idx in iter {
+            // box for current block
+            let cur_block_ids = Vec3::from(Morton::from(cur_block_idx));
+
+            let cur_block_box = Box3::new(
+                cur_block_ids << block_len_log2,
+               (cur_block_ids + 1) << block_len_log2)?;
+            let cur_box = cur_block_box.intersect(dst_box);
+
+            let cur_dst_pos = cur_box.min() - cur_block_box.min();
+            let cur_src_box = cur_box - dst_pos + src_pos;
+
+            // fill buffer
+            buf_mat.copy_from(cur_dst_pos, src_mat, cur_src_box)?;
+
+            // write data
+            self.seek_block(cur_block_idx)?;
+            self.write_block(buf_mat.as_slice())?;
+        }
+
         Ok(1 as usize)
     }
 
@@ -187,6 +231,23 @@ impl File {
         Ok(bytes_read)
     }
 
+    fn write_block(&mut self, buf: &[u8]) -> Result<usize> {
+        let block_idx = match self.block_idx {
+            Some(block_idx) => block_idx,
+            None => return Err("File is not block aligned")
+        };
+
+        let bytes_written = match self.header.block_type {
+            BlockType::Raw => self.write_block_raw(buf)?,
+            BlockType::LZ4 | BlockType::LZ4HC => return Err("Unsupported")
+        };
+
+        // advance
+        self.block_idx = Some(block_idx + 1);
+
+        Ok(bytes_written)
+    }
+
     fn read_block_raw(&mut self, buf: &mut [u8]) -> Result<usize> {
         match self.file.read_exact(buf) {
             Ok(_) => Ok(buf.len()),
@@ -194,6 +255,13 @@ impl File {
                 self.block_idx = None;
                 Err("Could not read raw block")
             }
+        }
+    }
+
+    fn write_block_raw(&mut self, buf: &[u8]) -> Result<usize> {
+        match self.file.write_all(buf) {
+            Ok(_) => Ok(buf.len()),
+            Err(_) => Err("Could not write raw block")
         }
     }
 
