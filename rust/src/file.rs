@@ -91,36 +91,30 @@ impl<'a> File<'a> {
             return Err("Buffer has invalid size");
         }
 
-        if self.block_idx.is_none() {
-            return Err("File is not block aligned");
-        }
-
-        let result = match self.header.block_type {
-            BlockType::Raw => self.read_block_raw(buf),
-            BlockType::LZ4 | BlockType::LZ4HC => self.read_block_lz4(buf)
+        let block_idx = match self.block_idx {
+            Some(block_idx) => block_idx,
+            None => return Err("File is not block aligned")
         };
 
-        // advance to next block
-        self.block_idx.map(|idx| idx + 1);
+        let bytes_read = match self.header.block_type {
+            BlockType::Raw => self.read_block_raw(buf)?,
+            BlockType::LZ4 | BlockType::LZ4HC => self.read_block_lz4(buf)?
+        };
 
-        result
+        // advance block index
+        self.block_idx = Some(block_idx);
+        
+        Ok(bytes_read)
     }
 
     fn read_block_raw(&mut self, buf: &mut [u8]) -> Result<usize> {
-        let bytes_read = match self.file.read(buf) {
-            Err(_) => return Err("Error while reading raw block"),
-            Ok(bytes_read) => bytes_read
-        };
-
-        let block_idx = self.block_idx.unwrap();
-        let block_size = self.header.block_size_on_disk(block_idx)?;
-
-        if bytes_read != block_size {
-            self.block_idx = None;
-            return Err("Could not read whole raw block");
+        match self.file.read_exact(buf) {
+            Ok(_) => Ok(buf.len()),
+            Err(_) => {
+                self.block_idx = None;
+                Err("Could not read raw block")
+            }
         }
-
-        Ok(bytes_read)
     }
 
     fn read_block_lz4(&mut self, buf: &mut [u8]) -> Result<usize> {
@@ -140,11 +134,10 @@ impl<'a> File<'a> {
         // decompress block
         let byte_written = lz4::decompress_safe(buf_lz4, buf)?;
 
-        if byte_written != block_size_raw {
-            return Err("Decompression produced invalid length");
+        match byte_written == block_size_raw {
+            true => Ok(byte_written),
+            false => Err("Unexpected length after decompression")
         }
-
-        Ok(byte_written)
     }
 
     fn seek_block(&mut self, block_idx: u64) -> Result<u64> {
