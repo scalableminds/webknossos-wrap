@@ -12,7 +12,7 @@ pub struct File {
 }
 
 impl File {
-    fn new(mut file: fs::File, header: Header) -> File {
+    fn new(file: fs::File, header: Header) -> File {
         let block_buf = match header.block_type {
             BlockType::LZ4 | BlockType::LZ4HC => {
                 let buf_size = header.max_block_size_on_disk();
