@@ -65,22 +65,21 @@ impl File {
             Err(_) => return Err("Could not open file")
         };
 
-        let header = match Header::read(&mut file) {
-            Ok(header) => header,
-            Err(_) => {
-                // seek to header
-                if file.seek(SeekFrom::Start(0)).is_err() {
-                    return Err("Could not seek header");
-                }
-
-                // write header
-                let header = Header::from_template(header);
-                header.write(&mut file)?;
-                header
-            }
+        // check if file was created
+        let (header, created) = match Header::read(&mut file) {
+            Ok(header) => (header, false),
+            Err(_) => (Header::from_template(header), true)
         };
 
-        Ok(Self::new(file, header))
+        // create structure
+        let mut file = Self::new(file, header);
+
+        if created {
+            file.truncate()?;
+            file.write_header()?;
+        }
+
+        Ok(file)
     }
 
     pub fn header(&self) -> &Header { &self.header }
@@ -137,6 +136,34 @@ impl File {
 
     pub fn write_mat(&mut self, dst_pos: Vec3, src_mat: &Mat, src_pos: Vec3) -> Result<usize> {
         Ok(1 as usize)
+    }
+
+    fn truncate(&mut self) -> Result<()> {
+        match self.header.block_type {
+            BlockType::Raw => {
+                let header_size = self.header.size_on_disk();
+                let body_size = self.header.file_size();
+                let size = header_size + body_size;
+
+                match self.file.set_len(size as u64) {
+                    Ok(_) => Ok(()),
+                    Err(_) => Err("Could not truncate file")
+                }
+            },
+            _ => Ok(())
+        }
+    }
+
+    fn seek_header(&mut self) -> Result<()> {
+        match self.file.seek(SeekFrom::Start(0)) {
+            Ok(0) => Ok(()),
+            _ => Err("Could not seek header"),
+        }
+    }
+
+    fn write_header(&mut self) -> Result<()> {
+        self.seek_header()?;
+        self.header.write(&mut self.file)
     }
 
     fn read_block(&mut self, buf: &mut [u8]) -> Result<usize> {
