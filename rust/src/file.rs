@@ -43,22 +43,22 @@ impl File {
     }
 
     pub fn open_or_create(path: &path::Path, header: &Header) -> Result<File> {
+        // create parent directory, if needed
+        if let Some(parent) = path.parent() {
+            if fs::create_dir_all(parent).is_err() {
+                return Err("Could not create parent directory");
+            }
+        }
+
+        // create parent directory, if needed
+        if let Some(parent) = path.parent() {
+            if fs::create_dir_all(parent).is_err() {
+                return Err("Could not create parent directory");
+            }
+        }
+
         let mut open_opts = fs::OpenOptions::new();
         open_opts.read(true).write(true).create(true);
-
-        // create parent directory, if needed
-        if let Some(parent) = path.parent() {
-            if fs::create_dir_all(parent).is_err() {
-                return Err("Could not create parent directory");
-            }
-        }
-
-        // create parent directory, if needed
-        if let Some(parent) = path.parent() {
-            if fs::create_dir_all(parent).is_err() {
-                return Err("Could not create parent directory");
-            }
-        }
 
         let mut file = match open_opts.open(path) {
             Ok(file) => file,
@@ -68,6 +68,12 @@ impl File {
         let header = match Header::read(&mut file) {
             Ok(header) => header,
             Err(_) => {
+                // seek to header
+                if file.seek(SeekFrom::Start(0)).is_err() {
+                    return Err("Could not seek header");
+                }
+
+                // write header
                 let header = Header::from_template(header);
                 header.write(&mut file)?;
                 header
