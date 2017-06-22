@@ -43,8 +43,22 @@ impl File {
     }
 
     pub fn open_or_create(path: &path::Path, header: &Header) -> Result<File> {
+        match path.is_file() {
+            true => Self::open(path),
+            false => Self::create(path, header)
+        }
+    }
+
+    fn create(path: &path::Path, header: &Header) -> Result<File> {
         let mut open_opts = fs::OpenOptions::new();
         open_opts.read(true).write(true).create(true);
+
+        // create parent directory, if needed
+        if let Some(parent) = path.parent() {
+            if fs::create_dir_all(parent).is_err() {
+                return Err("Could not create parent directory");
+            }
+        }
 
         let mut file = match open_opts.open(path) {
             Ok(file) => file,
@@ -61,6 +75,7 @@ impl File {
         };
 
         Ok(Self::new(file, header))
+
     }
 
     pub fn header(&self) -> &Header { &self.header }
