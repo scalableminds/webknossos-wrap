@@ -168,10 +168,16 @@ impl File {
                (cur_block_ids + 1) << block_len_log2)?;
             let cur_box = cur_block_box.intersect(dst_box);
 
-            let cur_dst_pos = cur_box.min() - cur_block_box.min();
-            let cur_src_box = cur_box - dst_pos + src_pos;
+            if cur_box != cur_block_box {
+                // reuse existing data
+                self.seek_block(cur_block_idx)?;
+                self.read_block(buf_mat.as_mut_slice())?;
+            }
 
-            // fill buffer
+            let cur_src_box = cur_box - dst_pos + src_pos;
+            let cur_dst_pos = cur_box.min() - cur_block_box.min();
+
+            // fill / modify buffer
             buf_mat.copy_from(cur_dst_pos, src_mat, cur_src_box)?;
 
             // write data
