@@ -38,7 +38,28 @@ impl File {
 
         // read header
         let header = Header::read(&mut file)?;
-        
+
+        Ok(Self::new(file, header))
+    }
+
+    pub fn open_or_create(path: &path::Path, header: &Header) -> Result<File> {
+        let mut open_opts = fs::OpenOptions::new();
+        open_opts.read(true).write(true).create(true);
+
+        let mut file = match open_opts.open(path) {
+            Ok(file) => file,
+            Err(_) => return Err("Could not open file")
+        };
+
+        let header = match Header::read(&mut file) {
+            Ok(header) => header,
+            Err(_) => {
+                let header = Header::from_template(header);
+                header.write(&mut file)?;
+                header
+            }
+        };
+
         Ok(Self::new(file, header))
     }
 
