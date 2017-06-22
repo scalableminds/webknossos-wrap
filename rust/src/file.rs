@@ -115,6 +115,10 @@ impl File {
         Ok(1 as usize)
     }
 
+    pub fn write_mat(&mut self, dst_pos: Vec3, src_mat: &Mat, src_pos: Vec3) -> Result<usize> {
+        Ok(1 as usize)
+    }
+
     fn read_block(&mut self, buf: &mut [u8]) -> Result<usize> {
         if buf.len() != self.header.block_size() {
             return Err("Buffer has invalid size");
