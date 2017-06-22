@@ -1,6 +1,6 @@
 use lz4;
 use std::{fs, mem, slice};
-use std::io::Read;
+use std::io::{Read, Write};
 use result::Result;
 
 #[repr(C)]
@@ -34,6 +34,36 @@ pub struct Header {
 }
 
 impl Header {
+    pub fn from_template(template: &Header) -> Header {
+        assert!(template.jump_table.is_none());
+
+        let mut header = template.clone();
+        header.data_offset = header.size_on_disk() as u64;
+
+        // read jump table
+        header.jump_table = match header.block_type {
+            BlockType::LZ4 | BlockType::LZ4HC => {
+                let file_len = header.file_len() as usize;
+                let jump_table = vec![0u64; file_len];
+                Some(jump_table.into_boxed_slice())
+            },
+            _ => None
+        };
+
+        header
+    }
+
+    pub fn size_on_disk(&self) -> usize {
+        let header_len = 16;
+
+        let jump_table_len = match self.block_type {
+            BlockType::Raw => 0,
+            BlockType::LZ4 | BlockType::LZ4HC => self.file_vol() << 3
+        } as usize;
+
+        header_len + jump_table_len
+    }
+
     pub fn read(file: &mut fs::File) -> Result<Header> {
         let mut buf = [0u8; 16];
 
@@ -48,15 +78,26 @@ impl Header {
         }
 
         // read jump table
-        match header.block_type {
-            BlockType::LZ4 | BlockType::LZ4HC => header.read_jump_table(file)?,
-            _ => ()
-        }
+        header.jump_table = match header.block_type {
+            BlockType::LZ4 | BlockType::LZ4HC => Some(header.read_jump_table(file)?),
+            _ => None
+        };
 
         Ok(header)
     }
 
-    pub fn read_jump_table(&mut self, file: &mut fs::File) -> Result<()> {
+    pub fn write(&self, file: &mut fs::File) -> Result<()> {
+        if file.write_all(&self.to_bytes()).is_err() {
+            return Err("Could not write header");
+        }
+
+        match self.jump_table {
+            Some(_) => self.write_jump_table(file),
+            None => Ok(())
+        }
+    }
+
+    fn read_jump_table(&mut self, file: &mut fs::File) -> Result<Box<[u64]>> {
         // allocate jump table
         let block_count = self.file_vol() as usize;
         let mut jump_table = Vec::with_capacity(block_count);
@@ -75,12 +116,15 @@ impl Header {
         };
 
         match result {
-            Ok(_) => self.jump_table = Some(jump_table.into_boxed_slice()),
-            Err(_) => return Err("Could not read jump table")
+            Ok(_) => Ok(jump_table.into_boxed_slice()),
+            Err(_) => Err("Could not read jump table")
         }
-
-        Ok(())
     }
+
+    fn write_jump_table(&self, file: &mut fs::File) -> Result<()> {
+        Err("Not implemented yet")
+    }
+
 
     pub fn block_offset(&self, block_idx: u64) -> Result<u64> {
         if block_idx >= self.file_vol() {
