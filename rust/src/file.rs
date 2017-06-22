@@ -182,7 +182,7 @@ impl File {
         };
 
         // advance block index
-        self.block_idx = Some(block_idx);
+        self.block_idx = Some(block_idx + 1);
 
         Ok(bytes_read)
     }
