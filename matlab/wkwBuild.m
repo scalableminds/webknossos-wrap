@@ -3,6 +3,7 @@ function wkwBuild()
     %   Benedikt Staffler <benedikt.staffler@brain.mpg.de>
     %   Alessandro Motta <alessandro.motta@brain.mpg.de>
     
+    buildWithCargo('wkw_init', 'wkwInit');
     buildWithCargo('wkw_load', 'wkwLoadRoi');
     buildWithCargo('wkw_save', 'wkwSaveRoi');
 end
