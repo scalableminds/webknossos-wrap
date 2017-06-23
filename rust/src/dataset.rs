@@ -41,26 +41,9 @@ pub fn recover_header(root: &Path) -> Result<()> {
 
     // open wkw file
     let file = File::open(wkw_file_entry.path())?;
-    let header = file.header().clone();
+    let mut header = file.header().clone();
 
-    create_header_file(root, header)
-}
-
-pub fn create_header_file(root: &Path, mut header: Header) -> Result<()> {
-    header.data_offset = 0;
-    header.jump_table = None;
-
-    // build path to header file
-    let mut header_path = PathBuf::from(root);
-    header_path.push(HEADER_FILE_NAME);
-
-    // create header file
-    let mut file = match fs::File::create(header_path) {
-        Err(_) => return Err("Could not create header file"),
-        Ok(file) => file
-    };
-
-    header.write(&mut file)
+    Dataset::create_header_file(root, &mut header)
 }
 
 impl<'a> Dataset<'a> {
@@ -76,6 +59,38 @@ impl<'a> Dataset<'a> {
             root: root.as_os_str(),
             header: header
         })
+    }
+
+    pub fn create(root: &'a Path, mut header: Header) -> Result<Dataset<'a>> {
+        if root.exists() {
+            return Err("Directory already exists");
+        }
+
+        // create directory
+        if fs::create_dir_all(root).is_err() {
+            return Err("Could not create directory");
+        }
+
+        // create header file
+        Self::create_header_file(root, &mut header)?;
+        Self::new(root)
+    }
+
+    fn create_header_file(root: &Path, header: &mut Header) -> Result<()> {
+        header.data_offset = 0;
+        header.jump_table = None;
+
+        // build path to header file
+        let mut header_path = PathBuf::from(root);
+        header_path.push(HEADER_FILE_NAME);
+
+        // create header file
+        let mut file = match fs::File::create(header_path) {
+            Err(_) => return Err("Could not create header file"),
+            Ok(file) => file
+        };
+
+        header.write(&mut file)
     }
 
     pub fn header(&'a self) -> &'a Header { &self.header }
