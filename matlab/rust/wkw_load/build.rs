@@ -1,3 +1,6 @@
+use std::env;
+
 fn main() {
-    println!("cargo:rustc-link-search=native=/usr/local/matlab/r2016b/bin/glnxa64")
+    let lib_root = env::var("MEXLIBROOT").expect("MEXLIBROOT not set");
+    println!("cargo:rustc-link-search={}", lib_root)
 }

@@ -2,6 +2,11 @@ function wkwBuild()
     % Written by
     %   Benedikt Staffler <benedikt.staffler@brain.mpg.de>
     %   Alessandro Motta <alessandro.motta@brain.mpg.de>
+
+    % export path to library
+    matlabRoot = matlabroot();
+    mexLibRoot = fullfile(matlabRoot, 'bin', 'glnxa64');
+    setenv('MEXLIBROOT', mexLibRoot);
     
     buildWithCargo('wkw_init', 'wkwInit');
     buildWithCargo('wkw_load', 'wkwLoadRoi');
