@@ -21,6 +21,17 @@ pub enum BlockType { Raw, LZ4, LZ4HC }
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum VoxelType { U8, U16, U32, U64, F32, F64 }
 
+pub fn voxel_type_size(voxel_type: VoxelType) -> usize {
+    match voxel_type {
+        VoxelType::U8 => 1,
+        VoxelType::U16 => 2,
+        VoxelType::U32 => 4,
+        VoxelType::U64 => 8,
+        VoxelType::F32 => 4,
+        VoxelType::F64 => 8
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Header {
     pub version: u8,
@@ -176,6 +187,10 @@ impl Header {
             BlockType::Raw => block_size,
             BlockType::LZ4 | BlockType::LZ4HC => lz4::compress_bound(block_size)
         }
+    }
+
+    pub fn voxel_type_size(&self) -> usize {
+        voxel_type_size(self.voxel_type)
     }
 
     fn from_bytes(buf: [u8; 16]) -> Result<Header> {
