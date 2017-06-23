@@ -4,6 +4,19 @@ use ::wkwrap;
 
 use std::mem;
 
+pub fn mx_array_to_wkwrap_vec(pm: MxArray) -> Result<wkwrap::Vec3> {
+    let buf = mx_array_to_f64_slice(pm)?;
+
+    match buf.len() == 3 {
+        true => Ok(wkwrap::Vec3 {
+            x: buf[0] as u32,
+            y: buf[1] as u32,
+            z: buf[2] as u32
+        }),
+        false => Err("Size mismatch")
+    }
+}
+
 pub fn mx_array_size_to_wkwrap_vec(pm: MxArray) -> Result<wkwrap::Vec3> {
     let size = mx_array_size_to_usize_slice(pm);
 
