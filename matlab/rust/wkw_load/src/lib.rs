@@ -30,15 +30,31 @@ mex_function!(nlhs, lhs, nrhs, rhs, {
     let dataset_path = Path::new(wkw_path);
     let dataset = wkwrap::Dataset::new(dataset_path)?;
 
-    // allocate output
+    // prepare allocation
     let shape = bbox.width();
     let voxel_size = dataset.header().voxel_size as usize;
     let voxel_type = dataset.header().voxel_type;
-    
+
+    let (type_size, class) = match voxel_type {
+        wkwrap::VoxelType::U8 => (1 as usize, MxClassId::Uint8),
+        wkwrap::VoxelType::U32 => (4 as usize, MxClassId::Uint32),
+        _ => return Err("Unsupported voxel type")
+    };
+
+    let size_last = match voxel_size % type_size == 0 {
+        true => voxel_size / type_size,
+        false => return Err("Invalid voxel size")
+    };
+
+    // create MATLAB array
+    let arr_shape = [shape.x as usize, shape.y as usize, shape.z as usize, size_last];
+    let arr = create_uninit_numeric_array(&arr_shape, class, MxComplexity::Real)?;
+
     // read data
-    let (arr, mut mat) = create_wkwrap_mat(shape, voxel_size, voxel_type)?;
+    let mut mat = mx_array_mut_to_wkwrap_mat(arr)?;
     dataset.read_mat(bbox.min(), &mut mat)?;
 
+    // set output
     lhs[0] = arr;
 
     Ok(())

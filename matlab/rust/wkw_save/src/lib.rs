@@ -8,16 +8,12 @@ use std::slice;
 use std::path::Path;
 
 #[no_mangle]
-mex_function!(nlhs, plhs, nrhs, prhs, {
-    if nrhs != 3 {
-        return Err("Invalid number of input arguments");
-    }
+mex_function!(_nlhs, _lhs, nrhs, rhs, {
+    let rhs = match nrhs == 3 {
+        true => slice::from_raw_parts(rhs, nrhs as usize),
+        false => return Err("Invalid number of input arguments")
+    };
 
-    if nlhs != 0 {
-        return Err("Invalid number of output arguments!");
-    }
-
-    let rhs = slice::from_raw_parts(prhs, 3);
     let wkw_path = mx_array_to_str(rhs[0])?;
     let pos = mx_array_to_wkwrap_vec(rhs[1])?;
     let data = mx_array_to_wkwrap_mat(rhs[2])?;
