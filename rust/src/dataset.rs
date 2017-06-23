@@ -3,12 +3,11 @@ use dataset::walkdir::{DirEntry, WalkDir, WalkDirIterator};
 
 use ::{File, Header, Result, Vec3, Box3, Mat};
 use std::path::{Path, PathBuf};
-use std::ffi::OsStr;
 use std::fs;
 
 #[derive(Debug)]
 pub struct Dataset<'a> {
-    root: &'a OsStr,
+    root: &'a Path,
     header: Header
 }
 
@@ -56,7 +55,7 @@ impl<'a> Dataset<'a> {
         let header = Self::read_header(root)?;
 
         Ok(Dataset {
-            root: root.as_os_str(),
+            root: root,
             header: header
         })
     }
