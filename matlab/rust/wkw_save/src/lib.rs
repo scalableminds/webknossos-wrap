@@ -10,19 +10,21 @@ use std::path::Path;
 #[no_mangle]
 mex_function!(nlhs, plhs, nrhs, prhs, {
     if nrhs != 3 {
-        mexErrMsgTxt("Invalid number of input arguments!\0".as_ptr());
+        return Err("Invalid number of input arguments");
     }
 
     if nlhs != 0 {
-        mexErrMsgTxt("Invalid number of output arguments!\0".as_ptr());
+        return Err("Invalid number of output arguments!");
     }
 
     let rhs = slice::from_raw_parts(prhs, 3);
-    let wkw_path = mx_array_to_str(rhs[0]).unwrap();
-    let pos = mx_array_to_wkwrap_vec(rhs[1]).unwrap();
-    let data = mx_array_to_wkwrap_mat(rhs[2]).unwrap();
+    let wkw_path = mx_array_to_str(rhs[0])?;
+    let pos = mx_array_to_wkwrap_vec(rhs[1])?;
+    let data = mx_array_to_wkwrap_mat(rhs[2])?;
 
     let dataset_path = Path::new(wkw_path);
-    let dataset = wkwrap::Dataset::new(dataset_path).unwrap();
-    dataset.write_mat(pos, &data).unwrap();
+    let dataset = wkwrap::Dataset::new(dataset_path)?;
+    dataset.write_mat(pos, &data)?;
+
+    Ok(())
 });

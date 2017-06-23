@@ -28,7 +28,7 @@ Written by
 
 #[macro_export]
 macro_rules! mex_function {
-    ($_nlhs:ident, $_plhs:ident, $_nrhs:ident, $_prhs:ident, $_body:expr) => {
+    ($_nlhs:ident, $_plhs:ident, $_nrhs:ident, $_prhs:ident, $_body:block) => {
 
 #[no_mangle]
 pub unsafe extern fn mexfilerequiredapiversion(
@@ -41,11 +41,18 @@ pub unsafe extern fn mexfilerequiredapiversion(
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub unsafe extern fn mexFunction(
-    $_nlhs: c_int, $_plhs: *mut MxArrayMut,
-    $_nrhs: c_int, $_prhs: *const MxArray
+pub extern fn mexFunction(
+    nlhs: c_int, plhs: *mut MxArrayMut,
+    nrhs: c_int, prhs: *const MxArray
 ) {
-    $_body
+    unsafe fn body(
+        $_nlhs: c_int, $_plhs: *mut MxArrayMut,
+        $_nrhs: c_int, $_prhs: *const MxArray) -> Result<()> $_body
+
+    match unsafe { body(nlhs, plhs, nrhs, prhs) } {
+        Ok(_) => (),
+        Err(msg) => die(msg)
+    }
 }
     }
 }
