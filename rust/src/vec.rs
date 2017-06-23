@@ -30,6 +30,10 @@ impl Box3 {
     pub fn max(&self) -> Vec3 { self.max }
     pub fn width(&self) -> Vec3 { self.max - self.min }
 
+    pub fn vol(&self) -> u64 {
+        self.width().product()
+    }
+
     pub fn intersect(&self, rhs: Box3) -> Box3 {
         Box3 {
             min: self.min.elem_max(rhs.min),
@@ -50,6 +54,10 @@ impl From<Vec3> for Box3 {
 impl Vec3 {
     pub fn is_zero(&self) -> bool {
         self == &Vec3::from(0u32)
+    }
+
+    pub fn product(&self) -> u64 {
+        self.x as u64 * self.y as u64 * self.z as u64
     }
 
     pub fn is_cube_diagonal(&self) -> bool {

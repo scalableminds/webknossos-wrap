@@ -28,6 +28,8 @@ impl<'a> Mat<'a> {
 
     pub fn as_slice(&self) -> &[u8] { self.data }
     pub fn as_mut_slice(&mut self) -> &mut [u8] { self.data }
+    pub fn as_mut_ptr(&mut self) -> *mut u8 { self.data.as_mut_ptr() }
+    
     pub fn shape(&self) -> Vec3 { self.shape }
     pub fn width(&self) -> usize { self.width }
 
