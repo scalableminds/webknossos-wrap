@@ -20,7 +20,7 @@ function buildWithCargo(oldName, newName)
     % rename library
     libDir = fullfile(cargoDir, 'target', 'release');
     libPath = fullfile(libDir, strcat('lib', oldName, '.so'));
-    mexPath = fullfile(thisDir, strcat(newName, mexext()));
+    mexPath = fullfile(thisDir, strcat(newName, '.', mexext()));
     
     movefile(libPath, mexPath);
     
