@@ -9,6 +9,9 @@ pub enum MxArrayT {}
 pub type MxArray = *const MxArrayT;
 pub type MxArrayMut = *mut MxArrayT;
 
+// HACK(amotta): This is only true for the new, 64bit API
+pub type MwSize = size_t;
+
 #[link(name = "mx")]
 extern {
     // creation
@@ -18,6 +21,7 @@ extern {
         class_id: c_int,
         complex_flag: c_int
     ) -> MxArrayMut;
+    pub fn mxMalloc(n: MwSize) -> *mut c_void;
 
     // access
     pub fn mxGetPr(pm: MxArray) -> *mut c_double;

@@ -108,3 +108,25 @@ pub fn create_uninit_numeric_array(
         false => Ok(arr)
     }
 }
+
+pub fn malloc(n: usize) -> Result<&'static mut [u8]> {
+    let ptr = unsafe { mxMalloc(n as MwSize) } as *mut u8;
+
+    match ptr.is_null() {
+        true => Err("Failed to allocate memory"),
+        false => Ok(unsafe { slice::from_raw_parts_mut(ptr, n) })
+    }
+}
+
+pub fn die(msg: &str) {
+    let bytes = msg.as_bytes();
+    let len = bytes.len();
+
+    // build zero-terminated string
+    let mut buf = malloc(len + 1).unwrap();
+    buf[..len].copy_from_slice(bytes);
+    buf[len] = 0;
+
+    // die
+    unsafe { mexErrMsgTxt(buf.as_ptr()) }
+}
