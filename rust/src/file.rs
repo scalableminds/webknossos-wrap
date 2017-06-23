@@ -50,13 +50,6 @@ impl File {
             }
         }
 
-        // create parent directory, if needed
-        if let Some(parent) = path.parent() {
-            if fs::create_dir_all(parent).is_err() {
-                return Err("Could not create parent directory");
-            }
-        }
-
         let mut open_opts = fs::OpenOptions::new();
         open_opts.read(true).write(true).create(true);
 
