@@ -15,7 +15,7 @@ mex_function!(_nlhs, _lhs, nrhs, rhs, {
     };
 
     let wkw_path = mx_array_to_str(rhs[0])?;
-    let pos = mx_array_to_wkwrap_vec(rhs[1])?;
+    let pos = mx_array_to_wkwrap_vec(rhs[1])? - 1;
     let data = mx_array_to_wkwrap_mat(rhs[2])?;
 
     let dataset_path = Path::new(wkw_path);

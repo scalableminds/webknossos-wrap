@@ -23,7 +23,7 @@ mex_function!(nlhs, lhs, nrhs, rhs, {
     let bbox = mx_array_to_f64_slice(rhs[1])?;
 
     let bbox = wkwrap::Box3::new(
-        wkwrap::Vec3 { x: bbox[0] as u32, y: bbox[1] as u32, z: bbox[2] as u32 },
+        wkwrap::Vec3 { x: bbox[0] as u32 - 1, y: bbox[1] as u32 - 1, z: bbox[2] as u32 - 1 },
         wkwrap::Vec3 { x: bbox[3] as u32, y: bbox[4] as u32, z: bbox[5] as u32 }
     )?;
 
