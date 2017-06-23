@@ -7,11 +7,10 @@ function wkwTest()
     %% preparations
     thisDir = fileparts(mfilename('fullpath'));
     testDir = fullfile(thisDir, 'test');
-
-    % empty directory, if needed
-    if exist(testDir, 'dir'); rmdir(testDir, 's'); end;
-    mkdir(testDir); rmTestDir = onCleanup(@() rmdir(testDir, 's'));
-
+    
+    wkwInit(testDir, 32, 32, dataType, 1);
+    rmTestDir = onCleanup(@() rmdir(testDir, 's'));
+    
     % create RAM matrix
     data = zeros(repmat(clen, 1, 3), dataType);
 
@@ -34,7 +33,7 @@ function wkwTest()
 
         %% read data
         curBox = buildRandBox(clen);
-        curWkwData = wkwLoadRoi(testDir, curBox, dataType);
+        curWkwData = wkwLoadRoi(testDir, curBox);
         
         curRamData = data( ...
             curBox(1, 1):curBox(1, 2), ...
