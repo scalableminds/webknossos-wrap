@@ -4,7 +4,6 @@ use dataset::walkdir::{DirEntry, WalkDir, WalkDirIterator};
 use ::{File, Header, Result, Vec3, Box3, Mat};
 use std::path::{Path, PathBuf};
 use std::ffi::OsStr;
-use std::io::Write;
 use std::fs;
 
 #[derive(Debug)]
@@ -41,24 +40,27 @@ pub fn recover_header(root: &Path) -> Result<()> {
     };
 
     // open wkw file
-    let wkw_file = File::open(wkw_file_entry.path()).unwrap();
+    let file = File::open(wkw_file_entry.path())?;
+    let header = file.header().clone();
 
-    // build header for meta file
-    let mut wkw_header = wkw_file.header().clone();
-    wkw_header.data_offset = 0;
+    create_header_file(root, header)
+}
 
-    // convert to bytes
-    let wkw_header_bytes = wkw_header.to_bytes();
+pub fn create_header_file(root: &Path, mut header: Header) -> Result<()> {
+    header.data_offset = 0;
+    header.jump_table = None;
 
     // build path to header file
-    let mut header_file_path = PathBuf::from(root);
-    header_file_path.push(HEADER_FILE_NAME);
+    let mut header_path = PathBuf::from(root);
+    header_path.push(HEADER_FILE_NAME);
 
-    // write header
-    let mut header_file_handle = fs::File::create(header_file_path).unwrap();
-    header_file_handle.write(&wkw_header_bytes).unwrap();
+    // create header file
+    let mut file = match fs::File::create(header_path) {
+        Err(_) => return Err("Could not create header file"),
+        Ok(file) => file
+    };
 
-    Ok(())
+    header.write(&mut file)
 }
 
 impl<'a> Dataset<'a> {
