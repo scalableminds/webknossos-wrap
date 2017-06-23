@@ -92,13 +92,13 @@ pub enum MxClassId {
     Function, Opaque, Object, Index, Sparse
 }
 
-pub fn create_uninit_numeric_array(
+pub fn create_numeric_array(
     dims: &[usize],
     class: MxClassId,
     complexity: MxComplexity)
 -> Result<MxArrayMut> {
     let arr = unsafe {
-        mxCreateUninitNumericArray(
+        mxCreateNumericArray(
             dims.len() as size_t, dims.as_ptr(),
             class as c_int, complexity as c_int)
     };

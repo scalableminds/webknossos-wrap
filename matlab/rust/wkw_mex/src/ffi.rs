@@ -15,7 +15,7 @@ pub type MwSize = size_t;
 #[link(name = "mx")]
 extern {
     // creation
-    pub fn mxCreateUninitNumericArray(
+    pub fn mxCreateNumericArray(
         ndim: size_t,
         dims: *const size_t,
         class_id: c_int,

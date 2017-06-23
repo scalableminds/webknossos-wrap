@@ -48,7 +48,7 @@ mex_function!(nlhs, lhs, nrhs, rhs, {
 
     // create MATLAB array
     let arr_shape = [shape.x as usize, shape.y as usize, shape.z as usize, size_last];
-    let arr = create_uninit_numeric_array(&arr_shape, class, MxComplexity::Real)?;
+    let arr = create_numeric_array(&arr_shape, class, MxComplexity::Real)?;
 
     // read data
     let mut mat = mx_array_mut_to_wkwrap_mat(arr)?;
