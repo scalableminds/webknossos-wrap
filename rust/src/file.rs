@@ -90,7 +90,10 @@ impl File {
 
         // bounding boxes
         let src_box = Box3::new(src_pos, src_end)?;
-        let src_box_boxes = src_box >> block_len_log2;
+        let src_box_boxes = Box3::new(
+            src_box.min() >> block_len_log2,
+          ((src_box.max() - 1) >> block_len_log2) + 1
+        )?;
 
         // allocate buffer
         let block_size = self.header.block_size();
@@ -138,7 +141,10 @@ impl File {
 
         // bounding boxes
         let dst_box = Box3::new(dst_pos, dst_end)?;
-        let dst_box_boxes = dst_box >> block_len_log2;
+        let dst_box_boxes = Box3::new(
+            dst_box.min() >> block_len_log2,
+          ((dst_box.max() - 1) >> block_len_log2) + 1
+        )?;
 
         // allocate buffer
         let buf_shape = Vec3::from(1u32 << block_len_log2);
