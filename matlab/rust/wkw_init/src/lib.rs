@@ -39,7 +39,7 @@ mex_function!(_nlhs, _lhs, nrhs, rhs, {
 
     let voxel_type = match mx_array_to_str(rhs[3])? {
         "uint8" => wkwrap::VoxelType::U8,
-        "uint32" => wkwrap::VoxelType::U64,
+        "uint32" => wkwrap::VoxelType::U32,
         _ => return Err("Unsupported voxel type")
     };
 
