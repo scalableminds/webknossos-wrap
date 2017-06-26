@@ -87,12 +87,10 @@ impl File {
 
         let dst_len = dst_mat.shape();
         let src_end = file_len_vx_vec.elem_min(src_pos + dst_len - dst_pos);
-        let src_box = Box3::new(src_pos, src_end)?;
 
-        // bounding box in boxes
-        let src_box_boxes = Box3::new(
-            src_box.min() >> file_len_log2,
-           (src_box.max() >> file_len_log2) + 1)?;
+        // bounding boxes
+        let src_box = Box3::new(src_pos, src_end)?;
+        let src_box_boxes = src_box >> block_len_log2;
 
         // allocate buffer
         let block_size = self.header.block_size();
@@ -137,12 +135,10 @@ impl File {
 
         let src_len = src_mat.shape();
         let dst_end = file_len_vx_vec.elem_min(src_len - src_pos + dst_pos);
-        let dst_box = Box3::new(dst_pos, dst_end)?;
 
-        // bounding box in boxes
-        let dst_box_boxes = Box3::new(
-            dst_box.min() >> file_len_log2,
-           (dst_box.max() >> file_len_log2) + 1)?;
+        // bounding boxes
+        let dst_box = Box3::new(dst_pos, dst_end)?;
+        let dst_box_boxes = dst_box >> block_len_log2;
 
         // allocate buffer
         let buf_shape = Vec3::from(1u32 << block_len_log2);
