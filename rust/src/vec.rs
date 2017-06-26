@@ -30,14 +30,20 @@ impl Box3 {
     pub fn max(&self) -> Vec3 { self.max }
     pub fn width(&self) -> Vec3 { self.max - self.min }
 
+    pub fn is_empty(&self) -> bool {
+        (self.min.x == self.max.x)
+      | (self.min.y == self.max.y)
+      | (self.min.z == self.max.z)
+    }
+
     pub fn vol(&self) -> u64 {
         self.width().product()
     }
 
     pub fn intersect(&self, rhs: Box3) -> Box3 {
         Box3 {
-            min: self.min.elem_max(rhs.min),
-            max: self.max.elem_min(rhs.max)
+            min: self.min.elem_max(rhs.min).elem_min(self.max),
+            max: self.max.elem_min(rhs.max).elem_max(self.min)
         }
     }
 }
