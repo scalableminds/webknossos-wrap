@@ -29,13 +29,16 @@ impl<'a> Mat<'a> {
     pub fn as_slice(&self) -> &[u8] { self.data }
     pub fn as_mut_slice(&mut self) -> &mut [u8] { self.data }
     pub fn as_mut_ptr(&mut self) -> *mut u8 { self.data.as_mut_ptr() }
-    
+
     pub fn shape(&self) -> Vec3 { self.shape }
     pub fn width(&self) -> usize { self.width }
 
     fn offset(&self, pos: Vec3) -> usize {
-        pos.x as usize + self.shape.x as usize * (
-        pos.y as usize + self.shape.y as usize * pos.z as usize) * self.width
+        let offset_vx =
+            pos.x as usize + self.shape.x as usize * (
+            pos.y as usize + self.shape.y as usize * pos.z as usize);
+
+        offset_vx * self.width
     }
 
     pub fn copy_all_from(&mut self, dst_pos: Vec3, src: &Mat) -> Result<()> {
