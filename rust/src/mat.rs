@@ -41,11 +41,6 @@ impl<'a> Mat<'a> {
         offset_vx * self.width
     }
 
-    pub fn copy_all_from(&mut self, dst_pos: Vec3, src: &Mat) -> Result<()> {
-        let src_box = Box3::new(Vec3::from(0u32), src.shape)?;
-        self.copy_from(dst_pos, src, src_box)
-    }
-
     pub fn copy_from(&mut self, dst_pos: Vec3, src: &Mat, src_box: Box3) -> Result<()> {
         if self.width != src.width {
             return Err("Source and destination matrices do not match in width");

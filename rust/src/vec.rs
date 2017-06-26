@@ -16,14 +16,10 @@ pub struct Box3 {
 
 impl Box3 {
     pub fn new(min: Vec3, max: Vec3) -> Result<Box3> {
-        if max < min {
-            return Err("Minimum and maximum are in conflict");
+        match max < min {
+            true => Err("Minimum and maximum are in conflict"),
+            false => Ok(Box3 { min: min, max: max })
         }
-
-        Ok(Box3 {
-            min: min,
-            max: max
-        })
     }
 
     pub fn min(&self) -> Vec3 { self.min }
@@ -34,10 +30,6 @@ impl Box3 {
         (self.min.x == self.max.x)
       | (self.min.y == self.max.y)
       | (self.min.z == self.max.z)
-    }
-
-    pub fn vol(&self) -> u64 {
-        self.width().product()
     }
 
     pub fn intersect(&self, rhs: Box3) -> Box3 {
@@ -64,22 +56,6 @@ impl Vec3 {
 
     pub fn product(&self) -> u64 {
         self.x as u64 * self.y as u64 * self.z as u64
-    }
-
-    pub fn is_cube_diagonal(&self) -> bool {
-        self.x == self.y &&
-        self.x == self.z &&
-        self.y == self.z
-    }
-
-    pub fn is_power_of_two(&self) -> bool {
-        self.x.is_power_of_two() &&
-        self.y.is_power_of_two() &&
-        self.z.is_power_of_two()
-    }
-
-    pub fn is_multiple_of(&self, other: Vec3) -> bool {
-        self.rem(other).is_zero()
     }
 
     pub fn elem_max(&self, other: Vec3) -> Vec3 {
