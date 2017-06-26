@@ -1,3 +1,4 @@
+use std::cmp;
 use ::{Box3, Result, Vec3};
 
 #[derive(PartialEq, Debug)]
@@ -55,22 +56,52 @@ impl From<u64> for Morton {
 }
 
 pub struct Iter {
-    max_log: u32,
-    cur_log: u32,
-    cur_idx: u64,
-    query: Box3
+    idx: u64,
+    end: u64,
+    log2: u32,
+    bbox: Box3,
 }
 
 impl Iter {
-    pub fn new(log2: u32, query: Box3) -> Result<Iter> {
-        let query = Box3::new(query.min(), query.max() - 1)?;
-
+    pub fn new(log2: u32, bbox: Box3) -> Result<Iter> {
         Ok(Iter {
-            max_log: log2,
-            cur_log: log2 - 1,
-            cur_idx: 0,
-            query: query
+            idx: 0,
+            end: 0,
+            log2: log2,
+            bbox: bbox,
         })
+    }
+
+    fn find_range(&self) -> Option<(u64, u64)> {
+        let max_idx = 1 << (3 * self.log2 as u64);
+
+        // initialize state
+        let mut cur_idx = self.idx;
+        let mut cur_log2 = cmp::min(self.log2, cur_idx.trailing_zeros() / 3);
+
+        while cur_idx < max_idx {
+            let numel = 1 << (3 * cur_log2);
+            let off = Vec3::from(Morton(cur_idx));
+
+            let bbox = Box3::from(Vec3::from(1 << cur_log2)) + off;
+            let bbox_inter = bbox.intersect(self.bbox);
+
+            if bbox == bbox_inter {
+                // return range
+                let end_idx = cur_idx + numel;
+                return Some((cur_idx, end_idx));
+            } else if !bbox_inter.is_empty() {
+                // need to refine
+                debug_assert!(cur_log2 > 0);
+                cur_log2 = cur_log2 - 1;
+            } else {
+                // skip cube
+                cur_idx = cur_idx + numel;
+                cur_log2 = cur_idx.trailing_zeros() / 3;
+            }
+        }
+
+        None
     }
 }
 
@@ -78,41 +109,20 @@ impl Iterator for Iter {
     type Item = u64;
 
     fn next(&mut self) -> Option<u64> {
-        while self.cur_log < self.max_log {
-            let off = Vec3::from(Morton(self.cur_idx >> 3)) << (self.cur_log + 1);
-            let bbox = Box3::from(Vec3::from((1 << self.cur_log) - 1)) + off;
-
-            for z_idx in (self.cur_idx & 0b111)..8 {
-                let cur_off = Vec3::from(Morton(z_idx as u64));
-                let cur_box = bbox + (cur_off << self.cur_log);
-                let cur_idx = (self.cur_idx & !0b111) | (z_idx & 0b111);
-
-                let cur_overlap =
-                    self.query.max() >= cur_box.min()
-                 && self.query.min() <= cur_box.max();
-
-                if cur_overlap && self.cur_log > 0 {
-                    // need to dive deeper
-                    self.cur_log = self.cur_log - 1;
-                    self.cur_idx = cur_idx << 3;
-                    break;
-                } else {
-                    // need to visit next field
-                    self.cur_idx = cur_idx + 1;
-
-                    while self.cur_idx & 0b111 == 0 {
-                        self.cur_idx = self.cur_idx >> 3;
-                        self.cur_log = self.cur_log + 1;
-                    }
-                }
-
-                if cur_overlap {
-                    return Some(cur_idx);
-                }
+        if self.end == self.idx {
+            // find next range
+            match self.find_range() {
+                Some((start, end)) => {
+                    self.idx = start;
+                    self.end = end;
+                },
+                None => return None
             }
         }
 
-        None
+        // advance
+        self.idx = self.idx + 1;
+        Some(self.idx as u64 - 1)
     }
 }
 
