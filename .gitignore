@@ -16,3 +16,9 @@ project/plugins/project/
 .scala_dependencies
 .worksheet
 .idea/
+
+# MATLAB specific
+*.mex*
+
+# Rust specific
+Cargo.lock
