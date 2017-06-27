@@ -183,6 +183,33 @@ impl File {
         Ok(1 as usize)
     }
 
+    pub fn compress(&mut self, path: &path::Path) -> Result<()> {
+        // prepare header
+        let header = Header::compress(&self.header);
+
+        // make sure that output path does not exist yet
+        let mut file = match path.exists() {
+            true => return Err("Output file already exists"),
+            false => Self::open_or_create(path, &header)?
+        };
+
+        // prepare buffers and jump table
+        let mut buf_vec = vec![0u8; self.header.block_size()];
+        let mut buf = buf_vec.as_mut_slice();
+
+        // prepare files
+        self.seek_block(0)?;
+        file.seek_block(0)?;
+
+        for _idx in 0..header.file_vol() {
+            self.read_block(buf)?;
+            file.write_block(buf)?;
+        }
+
+        // write header (with jump table)
+        file.write_header()
+    }
+
     fn truncate(&mut self) -> Result<()> {
         match self.header.block_type {
             BlockType::Raw => {
@@ -239,9 +266,9 @@ impl File {
         };
 
         let bytes_written = match self.header.block_type {
-            BlockType::Raw => self.write_block_raw(buf)?,
-            BlockType::LZ4 | BlockType::LZ4HC => return Err("Unsupported")
-        };
+            BlockType::Raw => self.write_block_raw(buf),
+            BlockType::LZ4 | BlockType::LZ4HC => self.write_block_lz4(buf)
+        }?;
 
         // advance
         self.block_idx = Some(block_idx + 1);
@@ -264,6 +291,29 @@ impl File {
             Ok(_) => Ok(buf.len()),
             Err(_) => Err("Could not write raw block")
         }
+    }
+
+    fn write_block_lz4(&mut self, buf: &[u8]) -> Result<usize> {
+        // compress data
+        let mut buf_lz4 = &mut *self.block_buf.as_mut().unwrap();
+        let len_lz4 = lz4::compress_hc(buf, &mut buf_lz4)?;
+
+        // write data
+        if self.file.write_all(&buf_lz4[..len_lz4]).is_err() {
+            return Err("Could not write LZ4 block")
+        }
+
+        // update jump table
+        let jump_entry = match self.file.seek(SeekFrom::Current(0)) {
+            Ok(jump_entry) => jump_entry,
+            Err(_) => return Err("Could not determine jump entry")
+        };
+
+        let block_idx = self.block_idx.unwrap();
+        let mut jump_table = &mut *self.header.jump_table.as_mut().unwrap();
+        jump_table[block_idx as usize] = jump_entry;
+
+        Ok(len_lz4)
     }
 
     fn read_block_lz4(&mut self, buf: &mut [u8]) -> Result<usize> {
