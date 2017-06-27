@@ -46,8 +46,6 @@ pub struct Header {
 
 impl Header {
     pub fn from_template(template: &Header) -> Header {
-        assert!(template.jump_table.is_none());
-        
         let mut header = template.clone();
         header.init();
 
@@ -69,8 +67,8 @@ impl Header {
         // initialize jump table
         self.jump_table = match self.block_type {
             BlockType::LZ4 | BlockType::LZ4HC => {
-                let file_len = self.file_vol() as usize;
-                let jump_table = vec![0u64; file_len];
+                let file_vol = self.file_vol() as usize;
+                let jump_table = vec![0u64; file_vol];
                 Some(jump_table.into_boxed_slice())
             },
             _ => None
@@ -82,7 +80,8 @@ impl Header {
 
         let jump_table_len = match self.block_type {
             BlockType::Raw => 0,
-            BlockType::LZ4 | BlockType::LZ4HC => self.file_vol() << 3
+            BlockType::LZ4 | BlockType::LZ4HC =>
+                self.file_vol() * mem::size_of::<u64>()
         } as usize;
 
         header_len + jump_table_len
@@ -131,7 +130,7 @@ impl Header {
             jump_table.set_len(block_count);
 
             // slice of unsigned 8-bit integers
-            let buf_u8_len = jump_table.len() << 3;
+            let buf_u8_len = jump_table.len() * mem::size_of::<u64>();
             let buf_u8_ptr = jump_table.as_mut_ptr() as *mut u8;
             let buf_u8 = slice::from_raw_parts_mut(buf_u8_ptr, buf_u8_len);
 
@@ -145,8 +144,22 @@ impl Header {
         }
     }
 
-    fn write_jump_table(&self, _file: &mut fs::File) -> Result<()> {
-        unimplemented!();
+    fn write_jump_table(&self, file: &mut fs::File) -> Result<()> {
+        let jump_table = & *self.jump_table.as_ref().unwrap();
+
+        let result = unsafe {
+            let buf_u8_len = jump_table.len() * mem::size_of::<u64>();
+            let buf_u8_ptr = jump_table.as_ptr() as *const u8;
+            let buf_u8 = slice::from_raw_parts(buf_u8_ptr, buf_u8_len);
+
+            // write jump table
+            file.write_all(buf_u8)
+        };
+
+        match result {
+            Ok(_) => Ok(()),
+            Err(_) => Err("Could not write jump table")
+        }
     }
 
     pub fn block_offset(&self, block_idx: u64) -> Result<u64> {
