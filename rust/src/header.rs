@@ -132,10 +132,9 @@ impl Header {
         }
     }
 
-    fn write_jump_table(&self, file: &mut fs::File) -> Result<()> {
-        Err("Not implemented yet")
+    fn write_jump_table(&self, _file: &mut fs::File) -> Result<()> {
+        unimplemented!();
     }
-
 
     pub fn block_offset(&self, block_idx: u64) -> Result<u64> {
         if block_idx >= self.file_vol() {
