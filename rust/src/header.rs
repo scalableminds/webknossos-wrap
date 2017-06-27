@@ -69,7 +69,7 @@ impl Header {
         // initialize jump table
         self.jump_table = match self.block_type {
             BlockType::LZ4 | BlockType::LZ4HC => {
-                let file_len = self.file_len() as usize;
+                let file_len = self.file_vol() as usize;
                 let jump_table = vec![0u64; file_len];
                 Some(jump_table.into_boxed_slice())
             },
