@@ -47,21 +47,34 @@ pub struct Header {
 impl Header {
     pub fn from_template(template: &Header) -> Header {
         assert!(template.jump_table.is_none());
-
+        
         let mut header = template.clone();
-        header.data_offset = header.size_on_disk() as u64;
+        header.init();
 
-        // read jump table
-        header.jump_table = match header.block_type {
+        header
+    }
+
+    pub fn compress(template: &Header) -> Header {
+        let mut header = template.clone();
+        header.block_type = BlockType::LZ4HC;
+        header.init();
+
+        header
+    }
+
+    fn init(&mut self) {
+        // initialize data offset
+        self.data_offset = self.size_on_disk() as u64;
+
+        // initialize jump table
+        self.jump_table = match self.block_type {
             BlockType::LZ4 | BlockType::LZ4HC => {
-                let file_len = header.file_len() as usize;
+                let file_len = self.file_len() as usize;
                 let jump_table = vec![0u64; file_len];
                 Some(jump_table.into_boxed_slice())
             },
             _ => None
         };
-
-        header
     }
 
     pub fn size_on_disk(&self) -> usize {
