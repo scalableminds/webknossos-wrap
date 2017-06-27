@@ -15,6 +15,7 @@ end
 
 function buildWithCargo(oldName, newName)
     prevDir = pwd();
+    prevRestore = onCleanup(@() cd(prevDir));
     
     thisDir = fileparts(mfilename('fullpath'));
     cargoDir = fullfile(thisDir, 'rust', oldName);
