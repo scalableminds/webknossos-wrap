@@ -14,6 +14,7 @@ pub type MwSize = size_t;
 
 pub enum MxComplexity { Real, Complex }
 
+#[repr(C)]
 pub enum MxClassId {
     // from tyepdef enum { .. } mxClassID in
     // $MATLABROOT/extern/include/matrix.h:262 of MATLAB R2016b
