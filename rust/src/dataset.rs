@@ -75,6 +75,11 @@ impl<'a> Dataset<'a> {
         Self::new(root)
     }
 
+    pub fn compress(&self, path: &'a Path) -> Result<Dataset<'a>> {
+        let header = Header::compress(&self.header);
+        Self::create(path, header)
+    }
+
     fn create_header_file(root: &Path, header: &mut Header) -> Result<()> {
         header.data_offset = 0;
         header.jump_table = None;
