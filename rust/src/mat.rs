@@ -6,9 +6,9 @@ use ::header::voxel_type_size;
 #[derive(Debug)]
 pub struct Mat<'a> {
     data: &'a mut [u8],
-    shape: Vec3,
-    voxel_size: usize,
-    voxel_type: VoxelType
+    pub shape: Vec3,
+    pub voxel_size: usize,
+    pub voxel_type: VoxelType
 }
 
 impl<'a> Mat<'a> {
@@ -42,9 +42,6 @@ impl<'a> Mat<'a> {
     pub fn as_mut_slice(&mut self) -> &mut [u8] { self.data }
     pub fn as_mut_ptr(&mut self) -> *mut u8 { self.data.as_mut_ptr() }
 
-    pub fn shape(&self) -> Vec3 { self.shape }
-    pub fn voxel_size(&self) -> usize { self.voxel_size }
-
     fn offset(&self, pos: Vec3) -> usize {
         let offset_vx =
             pos.x as usize + self.shape.x as usize * (
@@ -54,12 +51,12 @@ impl<'a> Mat<'a> {
     }
 
     pub fn copy_from(&mut self, dst_pos: Vec3, src: &Mat, src_box: Box3) -> Result<()> {
-        if self.voxel_size != src.voxel_size {
-            return Err("Matrices mismatch in voxel size");
-        }
+        // make sure that matrices are matching
+        if self.voxel_size != src.voxel_size { return Err("Matrices mismatch in voxel size"); }
+        if self.voxel_type != src.voxel_type { return Err("Matrices mismatch in voxel type"); }
 
         if src_box.max() > src.shape { return Err("Reading out of bounds"); }
-        if dst_pos + src_box.width() > self.shape() { return Err("Writing out of bounds"); }
+        if dst_pos + src_box.width() > self.shape { return Err("Writing out of bounds"); }
 
         let src_ptr = unsafe { src.data.as_ptr().offset(src.offset(src_box.min()) as isize) };
         let dst_ptr = unsafe { self.data.as_mut_ptr().offset(self.offset(dst_pos) as isize) };

@@ -95,7 +95,7 @@ impl<'a> Dataset<'a> {
     pub fn header(&'a self) -> &'a Header { &self.header }
 
     pub fn read_mat(&self, src_pos: Vec3, mat: &mut Mat) -> Result<usize> {
-        let bbox = Box3::from(mat.shape()) + src_pos;
+        let bbox = Box3::from(mat.shape) + src_pos;
         let file_len_vx_log2 = self.header.file_len_vx_log2() as u32;
 
         // find files to load
@@ -136,7 +136,7 @@ impl<'a> Dataset<'a> {
     }
 
     pub fn write_mat(&self, dst_pos: Vec3, mat: &Mat) -> Result<usize> {
-            let bbox = Box3::from(mat.shape()) + dst_pos;
+            let bbox = Box3::from(mat.shape) + dst_pos;
             let file_len_vx_log2 = self.header.file_len_vx_log2() as u32;
 
             // find files to load

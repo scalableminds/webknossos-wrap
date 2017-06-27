@@ -85,7 +85,7 @@ impl File {
         let file_len_vx_vec = Vec3::from(file_len_vx);
         assert!(src_pos < file_len_vx_vec);
 
-        let dst_len = dst_mat.shape();
+        let dst_len = dst_mat.shape;
         let src_end = file_len_vx_vec.elem_min(src_pos + dst_len - dst_pos);
 
         // bounding boxes
@@ -131,32 +131,29 @@ impl File {
     }
 
     pub fn write_mat(&mut self, dst_pos: Vec3, src_mat: &Mat, src_pos: Vec3) -> Result<usize> {
-        let file_len_vx = self.header.file_len_vx();
-        let file_len_log2 = self.header.file_len_log2 as u32;
         let block_len_log2 = self.header.block_len_log2 as u32;
 
-        let file_len_vx_vec = Vec3::from(file_len_vx);
-        assert!(src_pos < file_len_vx_vec);
-
-        let src_len = src_mat.shape();
-        let dst_end = file_len_vx_vec.elem_min(src_len - src_pos + dst_pos);
+        let dst_end = Vec3::from(self.header.file_len_vx())
+                           .elem_min(src_mat.shape - src_pos + dst_pos);
+        let dst_box = Box3::new(dst_pos, dst_end)?;
 
         // bounding boxes
-        let dst_box = Box3::new(dst_pos, dst_end)?;
         let dst_box_boxes = Box3::new(
             dst_box.min() >> block_len_log2,
           ((dst_box.max() - 1) >> block_len_log2) + 1
         )?;
 
-        // allocate buffer
-        let buf_shape = Vec3::from(1u32 << block_len_log2);
-        let voxel_size = self.header.voxel_size as usize;
-        let voxel_type = self.header.voxel_type;
-
+        // build buffer matrix
         let mut buf = vec![0u8; self.header.block_size()];
-        let mut buf_mat = Mat::new(buf.as_mut_slice(), buf_shape, voxel_size, voxel_type)?;
+        let mut buf_mat = Mat::new(
+            buf.as_mut_slice(),
+            Vec3::from(1u32 << block_len_log2),
+            self.header.voxel_size as usize,
+            self.header.voxel_type)?;
 
-        let iter = Iter::new(file_len_log2, dst_box_boxes)?;
+        // build Morton-order iterator
+        let iter = Iter::new(self.header.file_len_log2 as u32, dst_box_boxes)?;
+
         for cur_block_idx in iter {
             // box for current block
             let cur_block_ids = Vec3::from(Morton::from(cur_block_idx));
