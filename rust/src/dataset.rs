@@ -136,6 +136,15 @@ impl<'a> Dataset<'a> {
     }
 
     pub fn write_mat(&self, dst_pos: Vec3, mat: &Mat) -> Result<usize> {
+            // validate input matrix
+            if mat.voxel_type != self.header.voxel_type {
+                return Err("Input matrix has invalid voxel type");
+            }
+
+            if mat.voxel_size != self.header.voxel_size as usize {
+                return Err("Input matrix has invalid voxel size");
+            }
+
             let bbox = Box3::from(mat.shape) + dst_pos;
             let file_len_vx_log2 = self.header.file_len_vx_log2() as u32;
 
