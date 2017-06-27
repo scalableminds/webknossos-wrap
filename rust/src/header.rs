@@ -81,7 +81,7 @@ impl Header {
         let jump_table_len = match self.block_type {
             BlockType::Raw => 0,
             BlockType::LZ4 | BlockType::LZ4HC =>
-                self.file_vol() * mem::size_of::<u64>()
+                self.file_vol() as usize * mem::size_of::<u64>()
         } as usize;
 
         header_len + jump_table_len
