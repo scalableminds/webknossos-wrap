@@ -8,6 +8,7 @@ function wkwBuild()
     mexLibRoot = fullfile(matlabRoot, 'bin', 'glnxa64');
     setenv('MEXLIBROOT', mexLibRoot);
     
+    buildWithCargo('wkw_compress', 'wkwCompress');
     buildWithCargo('wkw_init', 'wkwInit');
     buildWithCargo('wkw_load', 'wkwLoadRoi');
     buildWithCargo('wkw_save', 'wkwSaveRoi');
