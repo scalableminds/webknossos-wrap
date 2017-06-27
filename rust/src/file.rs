@@ -98,6 +98,8 @@ impl File {
         // allocate buffer
         let block_size = self.header.block_size();
         let voxel_size = self.header.voxel_size as usize;
+        let voxel_type = self.header.voxel_type;
+
         let buf_shape = Vec3::from(1u32 << block_len_log2);
         let mut buf_vec = vec![0u8; block_size];
         let mut buf = buf_vec.as_mut_slice();
@@ -121,7 +123,7 @@ impl File {
             self.read_block(buf)?;
 
             // copy data
-            let src_mat = Mat::new(buf, buf_shape, voxel_size)?;
+            let src_mat = Mat::new(buf, buf_shape, voxel_size, voxel_type)?;
             dst_mat.copy_from(cur_dst_pos, &src_mat, cur_src_box)?;
         }
 
@@ -149,9 +151,10 @@ impl File {
         // allocate buffer
         let buf_shape = Vec3::from(1u32 << block_len_log2);
         let voxel_size = self.header.voxel_size as usize;
+        let voxel_type = self.header.voxel_type;
 
         let mut buf = vec![0u8; self.header.block_size()];
-        let mut buf_mat = Mat::new(buf.as_mut_slice(), buf_shape, voxel_size)?;
+        let mut buf_mat = Mat::new(buf.as_mut_slice(), buf_shape, voxel_size, voxel_type)?;
 
         let iter = Iter::new(file_len_log2, dst_box_boxes)?;
         for cur_block_idx in iter {

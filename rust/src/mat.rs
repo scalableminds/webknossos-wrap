@@ -1,16 +1,23 @@
 use std::ptr;
 
-use ::{Box3, Result, Vec3};
+use ::{Box3, Result, Vec3, VoxelType};
+use ::header::voxel_type_size;
 
 #[derive(Debug)]
 pub struct Mat<'a> {
     data: &'a mut [u8],
     shape: Vec3,
-    voxel_size: usize
+    voxel_size: usize,
+    voxel_type: VoxelType
 }
 
 impl<'a> Mat<'a> {
-    pub fn new(data: &mut [u8], shape: Vec3, voxel_size: usize) -> Result<Mat> {
+    pub fn new(
+        data: &mut [u8],
+        shape: Vec3,
+        voxel_size: usize,
+        voxel_type: VoxelType
+    ) -> Result<Mat> {
         // make sure that slice is large enough
         let numel = shape.x as usize * shape.y as usize * shape.z as usize;
         let expected_len = numel * voxel_size;
@@ -19,10 +26,15 @@ impl<'a> Mat<'a> {
             return Err("Length of slice does not match expected size")
         }
 
+        if voxel_size % voxel_type_size(voxel_type) != 0 {
+            return Err("Voxel size must be a multiple of voxel type size")
+        }
+
         Ok(Mat {
             data: data,
             shape: shape,
-            voxel_size: voxel_size
+            voxel_size: voxel_size,
+            voxel_type: voxel_type
         })
     }
 
