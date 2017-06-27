@@ -12,6 +12,16 @@ pub type MxArrayMut = *mut MxArrayT;
 // HACK(amotta): This is only true for the new, 64bit API
 pub type MwSize = size_t;
 
+pub enum MxComplexity { Real, Complex }
+
+pub enum MxClassId {
+    // from tyepdef enum { .. } mxClassID in
+    // $MATLABROOT/extern/include/matrix.h:262 of MATLAB R2016b
+    Unknown, Cell, Struct, Logical, Char, Void, Double, Single,
+    Int8, Uint8, Int16, Uint16, Int32, Uint32, Int64, Uint64,
+    Function, Opaque, Object, Index, Sparse
+}
+
 #[link(name = "mx")]
 extern {
     // creation
@@ -31,6 +41,7 @@ extern {
     pub fn mxGetDimensions(pm: MxArray) -> *const size_t;
     pub fn mxGetNumberOfElements(pm: MxArray) -> size_t;
     pub fn mxGetElementSize(pm: MxArray) -> size_t;
+    pub fn mxGetClassID(pm: MxArray) -> MxClassId;
 
     // validation
     pub fn mxIsChar(pm: MxArray) -> c_bool;

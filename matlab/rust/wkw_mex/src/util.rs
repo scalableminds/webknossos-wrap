@@ -82,21 +82,11 @@ pub fn mx_array_size_to_usize_slice<'a>(pm: MxArray) -> &'a [usize] {
     }
 }
 
-pub enum MxComplexity { Real, Complex }
-
-pub enum MxClassId {
-    // from tyepdef enum { .. } mxClassID in
-    // $MATLABROOT/extern/include/matrix.h:262 of MATLAB R2016b
-    Unknown, Cell, Struct, Logical, Char, Void, Double, Single,
-    Int8, Uint8, Int16, Uint16, Int32, Uint32, Int64, Uint64,
-    Function, Opaque, Object, Index, Sparse
-}
-
 pub fn create_numeric_array(
     dims: &[usize],
     class: MxClassId,
-    complexity: MxComplexity)
--> Result<MxArrayMut> {
+    complexity: MxComplexity
+) -> Result<MxArrayMut> {
     let arr = unsafe {
         mxCreateNumericArray(
             dims.len() as size_t, dims.as_ptr(),
