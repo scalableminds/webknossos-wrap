@@ -6,14 +6,14 @@ use ::{Box3, Result, Vec3};
 pub struct Mat<'a> {
     data: &'a mut [u8],
     shape: Vec3,
-    width: usize
+    voxel_size: usize
 }
 
 impl<'a> Mat<'a> {
-    pub fn new(data: &mut [u8], shape: Vec3, width: usize) -> Result<Mat> {
+    pub fn new(data: &mut [u8], shape: Vec3, voxel_size: usize) -> Result<Mat> {
         // make sure that slice is large enough
         let numel = shape.x as usize * shape.y as usize * shape.z as usize;
-        let expected_len: usize = numel * width;
+        let expected_len = numel * voxel_size;
 
         if data.len() != expected_len {
             return Err("Length of slice does not match expected size")
@@ -22,7 +22,7 @@ impl<'a> Mat<'a> {
         Ok(Mat {
             data: data,
             shape: shape,
-            width: width
+            voxel_size: voxel_size
         })
     }
 
@@ -31,19 +31,19 @@ impl<'a> Mat<'a> {
     pub fn as_mut_ptr(&mut self) -> *mut u8 { self.data.as_mut_ptr() }
 
     pub fn shape(&self) -> Vec3 { self.shape }
-    pub fn width(&self) -> usize { self.width }
+    pub fn voxel_size(&self) -> usize { self.voxel_size }
 
     fn offset(&self, pos: Vec3) -> usize {
         let offset_vx =
             pos.x as usize + self.shape.x as usize * (
             pos.y as usize + self.shape.y as usize * pos.z as usize);
 
-        offset_vx * self.width
+        offset_vx * self.voxel_size
     }
 
     pub fn copy_from(&mut self, dst_pos: Vec3, src: &Mat, src_box: Box3) -> Result<()> {
-        if self.width != src.width {
-            return Err("Source and destination matrices do not match in width");
+        if self.voxel_size != src.voxel_size {
+            return Err("Matrices mismatch in voxel size");
         }
 
         if src_box.max() > src.shape { return Err("Reading out of bounds"); }
@@ -53,7 +53,7 @@ impl<'a> Mat<'a> {
         let dst_ptr = unsafe { self.data.as_mut_ptr().offset(self.offset(dst_pos) as isize) };
 
         let len = src_box.width();
-        let stripe_len = src.width * len.x as usize;
+        let stripe_len = src.voxel_size * len.x as usize;
 
         for cur_z in 0..len.z {
             for cur_y in 0..len.y {
