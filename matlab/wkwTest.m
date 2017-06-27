@@ -8,7 +8,7 @@ function wkwTest()
     thisDir = fileparts(mfilename('fullpath'));
     testDir = fullfile(thisDir, 'test');
     
-    wkwInit(testDir, 32, 32, dataType, 1);
+    wkwInit('new', testDir, 32, 32, dataType, 1);
     rmTestDir = onCleanup(@() rmdir(testDir, 's'));
     
     % create RAM matrix
