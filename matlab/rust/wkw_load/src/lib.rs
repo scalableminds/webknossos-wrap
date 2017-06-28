@@ -38,6 +38,7 @@ mex_function!(nlhs, lhs, nrhs, rhs, {
     let (type_size, class) = match voxel_type {
         wkwrap::VoxelType::U8 => (1 as usize, MxClassId::Uint8),
         wkwrap::VoxelType::U32 => (4 as usize, MxClassId::Uint32),
+        wkwrap::VoxelType::F32 => (4 as usize, MxClassId::Single),
         _ => return Err("Unsupported voxel type")
     };
 

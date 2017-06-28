@@ -39,6 +39,7 @@ unsafe fn new(nrhs: c_int, rhs: *const MxArray) -> Result<()> {
     let voxel_type = match mx_array_to_str(rhs[3])? {
         "uint8" => wkwrap::VoxelType::U8,
         "uint32" => wkwrap::VoxelType::U32,
+        "single" => wkwrap::VoxelType::F32,
         _ => return Err("Unsupported voxel type")
     };
 
