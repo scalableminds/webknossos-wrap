@@ -34,16 +34,17 @@ mex_function!(nlhs, lhs, nrhs, rhs, {
     let shape = bbox.width();
     let voxel_size = dataset.header().voxel_size as usize;
     let voxel_type = dataset.header().voxel_type;
+    let voxel_type_size = wkwrap::header::voxel_type_size(voxel_type);
 
-    let (type_size, class) = match voxel_type {
-        wkwrap::VoxelType::U8 => (1 as usize, MxClassId::Uint8),
-        wkwrap::VoxelType::U32 => (4 as usize, MxClassId::Uint32),
-        wkwrap::VoxelType::F32 => (4 as usize, MxClassId::Single),
+    let class = match voxel_type {
+        wkwrap::VoxelType::U8  => MxClassId::Uint8,
+        wkwrap::VoxelType::U32 => MxClassId::Uint32,
+        wkwrap::VoxelType::F32 => MxClassId::Single,
         _ => return Err("Unsupported voxel type")
     };
 
-    let size_last = match voxel_size % type_size == 0 {
-        true => voxel_size / type_size,
+    let size_last = match voxel_size % voxel_type_size == 0 {
+        true => voxel_size / voxel_type_size,
         false => return Err("Invalid voxel size")
     };
 
