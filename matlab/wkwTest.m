@@ -1,8 +1,8 @@
 function wkwTest()
     %% config
-    dataType = 'uint8';
+    dataType = 'single';
     roundCount = 50;
-    clen = 2048;
+    clen = 1536;
 
     %% preparations
     thisDir = fileparts(mfilename('fullpath'));
@@ -18,9 +18,7 @@ function wkwTest()
     for curIdx = 1:roundCount
         %% write data
         curBox = buildRandBox(clen);
-        curData = randi( ...
-            [intmin(dataType), intmax(dataType)], ...
-            1 + diff(curBox, 1, 2)', dataType);
+        curData = buildRandDataForBox(dataType, curBox);
 
         % update data
         data( ...
@@ -52,4 +50,16 @@ function box = buildRandBox(clen)
     box(1, 2) = box(1, 1) + randi([1, clen - box(1, 1)]);
     box(2, 2) = box(2, 1) + randi([1, clen - box(2, 1)]);
     box(3, 2) = box(3, 1) + randi([1, clen - box(3, 1)]);
+end
+
+function data = buildRandDataForBox(dataType, box)
+    boxSize = 1 + diff(box, 1, 2)';
+    
+    switch dataType
+        case {'uint8', 'uint16', 'uint32', 'uint64'}
+            dataTypeRange = [intmin(dataType), intmax(dataType)];
+            data = randi(dataTypeRange, boxSize, dataType);
+        case {'single', 'double'}
+            data = rand(boxSize, dataType);
+    end
 end
