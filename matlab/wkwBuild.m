@@ -23,6 +23,7 @@ function buildWithCargo(oldName, newName)
     
     % build project
     cd(cargoDir);
+    system('cargo update');
     system('cargo build --release');
     
     % rename library
