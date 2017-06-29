@@ -7,7 +7,6 @@ use wkw_mex::*;
 use std::slice;
 use std::path::Path;
 
-#[no_mangle]
 mex_function!(_nlhs, _lhs, nrhs, rhs, {
     let rhs = match nrhs == 2 {
         true => slice::from_raw_parts(rhs, nrhs as usize),

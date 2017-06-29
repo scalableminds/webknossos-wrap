@@ -2,17 +2,34 @@ use ::ffi::*;
 use ::util::*;
 use ::wkwrap;
 
-pub fn mx_array_to_wkwrap_vec(pm: MxArray) -> Result<wkwrap::Vec3> {
-    let buf = mx_array_to_f64_slice(pm)?;
-
+fn f64_slice_to_wkwrap_vec(buf: &[f64]) -> Result<wkwrap::Vec3> {
     match buf.len() == 3 {
         true => Ok(wkwrap::Vec3 {
-            x: buf[0] as u32,
-            y: buf[1] as u32,
-            z: buf[2] as u32
+            x: as_nat(buf[0]).or(Err("Invalid X value"))? as u32,
+            y: as_nat(buf[1]).or(Err("Invalid Y value"))? as u32,
+            z: as_nat(buf[2]).or(Err("Invalid Z value"))? as u32
         }),
         false => Err("Size mismatch")
     }
+}
+
+pub fn mx_array_to_wkwrap_box(pm: MxArray) -> Result<wkwrap::Box3> {
+    let buf = mx_array_to_f64_slice(pm)?;
+
+    // verify shape of array
+    if mx_array_size_to_usize_slice(pm) != &[3, 2] {
+        return Err("Bounding box has invalid shape");
+    }
+
+    wkwrap::Box3::new(
+        f64_slice_to_wkwrap_vec(&buf[0..3]).or(Err("Invalid lower bound"))? - 1,
+        f64_slice_to_wkwrap_vec(&buf[3..6]).or(Err("Invalid upper bound"))?
+    )
+}
+
+pub fn mx_array_to_wkwrap_vec(pm: MxArray) -> Result<wkwrap::Vec3> {
+    let buf = mx_array_to_f64_slice(pm)?;
+    f64_slice_to_wkwrap_vec(buf)
 }
 
 pub fn mx_array_size_to_wkwrap_vec(pm: MxArray) -> Result<wkwrap::Vec3> {
@@ -42,6 +59,17 @@ pub fn mx_class_id_to_voxel_type(class_id: MxClassId) -> Result<wkwrap::VoxelTyp
         MxClassId::Single => Ok(wkwrap::VoxelType::F32),
         MxClassId::Double => Ok(wkwrap::VoxelType::F64),
         _                 => Err("Unknown MxClassId")
+    }
+}
+
+pub fn voxel_type_to_mx_class_id(voxel_type: wkwrap::VoxelType) -> MxClassId {
+    match voxel_type {
+        wkwrap::VoxelType::U8  => MxClassId::Uint8,
+        wkwrap::VoxelType::U16 => MxClassId::Uint16,
+        wkwrap::VoxelType::U32 => MxClassId::Uint32,
+        wkwrap::VoxelType::U64 => MxClassId::Uint64,
+        wkwrap::VoxelType::F32 => MxClassId::Single,
+        wkwrap::VoxelType::F64 => MxClassId::Double
     }
 }
 

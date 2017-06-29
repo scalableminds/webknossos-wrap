@@ -6,6 +6,38 @@ use std::ffi::CStr;
 
 pub type Result<T> = std::result::Result<T, &'static str>;
 
+pub fn as_nat(f: f64) -> Result<u64> {
+    if f <= 0.0 {
+        return Err("Input must be positive");
+    }
+
+    match f % 1.0 == 0.0 {
+        true => Ok(f as u64),
+        false => Err("Input must be an integer")
+    }
+}
+
+pub fn as_log2(f: f64) -> Result<u8> {
+    let i = as_nat(f)?;
+
+    match i & (i - 1) == 0 {
+        true => Ok(i.trailing_zeros() as u8),
+        false => Err("Input must be a power of two")
+    }
+}
+
+pub fn str_slice_to_mx_class_id(class_id: &str) -> Result<MxClassId> {
+    match class_id {
+        "uint8"  => Ok(MxClassId::Uint8),
+        "uint16" => Ok(MxClassId::Uint16),
+        "uint32" => Ok(MxClassId::Uint32),
+        "uint64" => Ok(MxClassId::Uint64),
+        "single" => Ok(MxClassId::Single),
+        "double" => Ok(MxClassId::Double),
+        _        => Err("Unknown MxClassId name")
+    }
+}
+
 pub fn mx_array_to_str<'a>(pm: MxArray) -> Result<&'a str> {
     let pm_ptr = unsafe { mxArrayToUTF8String(pm) };
 
