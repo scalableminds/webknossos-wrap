@@ -16,9 +16,9 @@ pub struct Box3 {
 
 impl Box3 {
     pub fn new(min: Vec3, max: Vec3) -> Result<Box3> {
-        match max < min {
-            true => Err("Minimum and maximum are in conflict"),
-            false => Ok(Box3 { min: min, max: max })
+        match min < (max + 1) {
+            true => Ok(Box3 { min: min, max: max }),
+            false => Err("Minimum and maximum are in conflict"),
         }
     }
 
@@ -156,20 +156,11 @@ impl From<u32> for Vec3 {
 
 impl PartialOrd for Vec3 {
     fn partial_cmp(&self, rhs: &Vec3) -> Option<Ordering> {
-        let ords = [
-            self.x.cmp(&rhs.x),
-            self.y.cmp(&rhs.y),
-            self.z.cmp(&rhs.z)
-        ];
-
-        let any_lt = ords.iter().any(|s| s == &Ordering::Less);
-        let any_gt = ords.iter().any(|s| s == &Ordering::Greater);
-
-        match (any_lt, any_gt) {
-            (false, false) => Some(Ordering::Equal),
-            (false, true)  => Some(Ordering::Greater),
-            (true,  false) => Some(Ordering::Less),
-            (true,  true)  => None
+        match (self.x.cmp(&rhs.x), self.y.cmp(&rhs.y), self.z.cmp(&rhs.z)) {
+            (Ordering::Greater, Ordering::Greater, Ordering::Greater) => Some(Ordering::Greater),
+            (Ordering::Equal  , Ordering::Equal  , Ordering::Equal)   => Some(Ordering::Equal),
+            (Ordering::Less   , Ordering::Less   , Ordering::Less)    => Some(Ordering::Less),
+            _                                                         => None
         }
     }
 }

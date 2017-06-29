@@ -55,26 +55,37 @@ impl<'a> Mat<'a> {
         if self.voxel_size != src.voxel_size { return Err("Matrices mismatch in voxel size"); }
         if self.voxel_type != src.voxel_type { return Err("Matrices mismatch in voxel type"); }
 
-        if src_box.max() > src.shape { return Err("Reading out of bounds"); }
-        if dst_pos + src_box.width() > self.shape { return Err("Writing out of bounds"); }
-
-        let src_ptr = unsafe { src.data.as_ptr().offset(src.offset(src_box.min()) as isize) };
-        let dst_ptr = unsafe { self.data.as_mut_ptr().offset(self.offset(dst_pos) as isize) };
+        if !(src_box.max() < (src.shape + 1)) { return Err("Reading out of bounds"); }
+        if !(dst_pos + src_box.width() < (self.shape + 1)) { return Err("Writing out of bounds"); }
 
         let len = src_box.width();
         let stripe_len = src.voxel_size * len.x as usize;
 
-        for cur_z in 0..len.z {
-            for cur_y in 0..len.y {
-                unsafe {
-                    // TODO: optimize
-                    let cur_pos = Vec3 { x: 0u32, y: cur_y, z: cur_z };
-                    let src_ptr_cur = src_ptr.offset(src.offset(cur_pos) as isize);
-                    let dst_ptr_cur = dst_ptr.offset(self.offset(cur_pos) as isize);
+        let src_off_y = (src.shape.x as usize * src.voxel_size) as isize;
+        let src_off_z = (src.shape.x as usize * src.shape.y as usize * self.voxel_size) as isize;
 
+        let dst_off_y = (self.shape.x as usize * self.voxel_size) as isize;
+        let dst_off_z = (self.shape.x as usize * self.shape.y as usize * self.voxel_size) as isize;
+
+        unsafe {
+            let mut src_ptr = src.data.as_ptr().offset(src.offset(src_box.min()) as isize);
+            let mut dst_ptr = self.data.as_mut_ptr().offset(self.offset(dst_pos) as isize);
+
+            for _ in 0..len.z {
+                let mut src_ptr_cur = src_ptr;
+                let mut dst_ptr_cur = dst_ptr;
+
+                for _ in 0..len.y {
                     // copy data
                     ptr::copy_nonoverlapping(src_ptr_cur, dst_ptr_cur, stripe_len);
+
+                    // advance
+                    src_ptr_cur = src_ptr_cur.offset(src_off_y);
+                    dst_ptr_cur = dst_ptr_cur.offset(dst_off_y);
                 }
+
+                src_ptr = src_ptr.offset(src_off_z);
+                dst_ptr = dst_ptr.offset(dst_off_z);
             }
         }
 
