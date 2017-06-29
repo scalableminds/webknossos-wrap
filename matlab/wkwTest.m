@@ -1,18 +1,23 @@
 function wkwTest()
     %% config
-    dataType = 'single';
+    dataType = 'uint8';
     roundCount = 50;
-    clen = 1536;
-
+    blockLen = 32;
+    fileLen = 32;
+    
     %% preparations
     thisDir = fileparts(mfilename('fullpath'));
     testDir = fullfile(thisDir, 'test');
     
-    wkwInit('new', testDir, 32, 32, dataType, 1);
+    wkwInit('new', testDir, blockLen, fileLen, dataType, 1);
     rmTestDir = onCleanup(@() rmdir(testDir, 's'));
     
     % create RAM matrix
+    clen = 1.5 * fileLen * blockLen;
     data = zeros(repmat(clen, 1, 3), dataType);
+    
+    % initialize RNG
+    rng(0);
 
     %% run test
     for curIdx = 1:roundCount
