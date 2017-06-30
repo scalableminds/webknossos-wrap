@@ -16,9 +16,9 @@ function wkwCompressDir(inRoot, outRoot, taskCount)
         taskCount = 10;
     end
     
-    % prepare output
-    if exist(outRoot, 'dir')
-        error('Output directory must not exist');
+    % check output
+    if ~exist(fullfile(outRoot, 'header.wkw'), 'file')
+        error('Output directories is missing header file');
     end
     
     % make all directories
