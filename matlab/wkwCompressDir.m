@@ -7,7 +7,7 @@ function wkwCompressDir(inRoot, outRoot, taskCount)
     % Written by
     %   Alessandro Motta <alessandro.motta@brain.mpg.de>
     
-    wkwFiles = findWkwFiles(inRoot);
+    wkwFiles = findWkwFiles(inRoot, 2);
     inFiles = fullfile(inRoot, wkwFiles);
     outFiles = fullfile(outRoot, wkwFiles);
     
@@ -37,7 +37,7 @@ function wkwCompressDir(inRoot, outRoot, taskCount)
     assert(all(cellfun(@isempty, get(job.Tasks, {'Error'}))));
 end
 
-function files = findWkwFiles(inRoot)
+function files = findWkwFiles(inRoot, level)
     isDir = @(e) e.isdir;
     isVis = @(e) not(strncmpi(e.name, '.', 1));
     hasSuffix = @(p, n) strncmpi(fliplr(n), fliplr(p), numel(p));
@@ -48,19 +48,20 @@ function files = findWkwFiles(inRoot)
     visMask = arrayfun(isVis, entries);
     wkwMask = arrayfun(isWkw, entries);
     
-    % find dirs
-    dirs = entries(dirMask & visMask);
-    dirs = {dirs.name};
-    
-    % recurse into directories
-    recurse = @(d) fullfile(d, findWkwFiles(fullfile(inRoot, d)));
-    dirFiles = cellfun(recurse, dirs, 'UniformOutput', false);
-    dirFiles = cat(1, dirFiles{:});
-    
-    % find WKW files
-    files = entries(~dirMask & wkwMask);
-    files = {files.name};
-    
-    % build output
-    files = cat(1, files(:), dirFiles);
+    if level > 0
+        % find dirs
+        dirs = entries(dirMask & visMask);
+        dirs = {dirs.name};
+
+        % recurse into directories
+        recurse = @(d) fullfile( ...
+            d, findWkwFiles(fullfile(inRoot, d), level - 1));
+        files = cellfun(recurse, dirs, 'UniformOutput', false);
+        files = cat(1, files{:});
+    else
+        % find WKW files
+        files = entries(~dirMask & visMask & wkwMask);
+        files = {files.name};
+        files = files(:);
+    end
 end
