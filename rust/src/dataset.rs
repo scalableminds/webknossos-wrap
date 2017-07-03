@@ -61,14 +61,9 @@ impl<'a> Dataset<'a> {
     }
 
     pub fn create(root: &'a Path, mut header: Header) -> Result<Dataset<'a>> {
-        if root.exists() {
-            return Err("Directory already exists");
-        }
-
-        // create directory
-        if fs::create_dir_all(root).is_err() {
-            return Err("Could not create directory");
-        }
+        // create directory hierarchy
+        fs::create_dir_all(root)
+           .or(Err("Could not create dataset directory"))?;
 
         // create header file
         Self::create_header_file(root, &mut header)?;
@@ -88,11 +83,13 @@ impl<'a> Dataset<'a> {
         let mut header_path = PathBuf::from(root);
         header_path.push(HEADER_FILE_NAME);
 
+        if header_path.exists() {
+            return Err("Header file already exists");
+        }
+
         // create header file
-        let mut file = match fs::File::create(header_path) {
-            Err(_) => return Err("Could not create header file"),
-            Ok(file) => file
-        };
+        let mut file = fs::File::create(header_path)
+                                .or(Err("Could not create header file"))?;
 
         header.write(&mut file)
     }
