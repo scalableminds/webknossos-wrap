@@ -3,14 +3,14 @@
  */
 package com.scalableminds.webknossos.wrap
 
+import java.io._
+import java.nio.channels.FileChannel
+
+import com.google.common.io.{LittleEndianDataInputStream => DataInputStream}
 import com.newrelic.api.agent.NewRelic
-import com.scalableminds.webknossos.wrap.util.ResourceBox
 import com.scalableminds.webknossos.wrap.util.BoxHelpers._
 import com.scalableminds.webknossos.wrap.util.ExtendedTypes._
-import java.io.{File, RandomAccessFile}
-import java.nio.MappedByteBuffer
-import java.nio.channels.FileChannel
-import java.nio.file.{Files, Paths, StandardCopyOption}
+import com.scalableminds.webknossos.wrap.util.ResourceBox
 import net.jpountz.lz4.LZ4Factory
 import net.liftweb.common.{Box, Failure, Full}
 
@@ -18,13 +18,96 @@ object FileMode extends Enumeration {
   val Read, ReadWrite = Value
 }
 
-case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: RandomAccessFile) {
-  
+trait WKWMortonHelper {
+
+  protected def mortonEncode(x: Int, y: Int, z: Int): Int = {
+    var morton = 0
+    val bitLength = math.ceil(math.log(List(x, y, z).max + 1) / math.log(2)).toInt
+
+    (0 until bitLength).foreach { i =>
+      morton |= ((x & (1 << i)) << (2 * i)) |
+        ((y & (1 << i)) << (2 * i + 1)) |
+        ((z & (1 << i)) << (2 * i + 2))
+    }
+    morton
+  }
+
+  protected def mortonDecode(mortonIndex: Long): (Int, Int, Int) = {
+    var morton = mortonIndex
+    var x = 0
+    var y = 0
+    var z = 0
+    var bit = 0
+
+    while (morton > 0) {
+      x |= ((morton & 1) << bit).toInt
+      morton >>= 1
+      y |= ((morton & 1) << bit).toInt
+      morton >>= 1
+      z |= ((morton & 1) << bit).toInt
+      morton >>= 1
+      bit += 1
+    }
+    (x, y, z)
+  }
+}
+
+trait WKWCompressionHelper {
+
+  protected def error(msg: String): String =
+    s"""Error processing WKW file: ${msg}."""
+
+  protected def error(msg: String, expected: Any, actual: Any): String =
+    s"""Error processing WKW file: ${msg} [expected: ${expected}, actual: ${actual}]."""
+
   private lazy val lz4Decompressor = LZ4Factory.nativeInstance().fastDecompressor()
-  
+
   private lazy val lz4FastCompressor = LZ4Factory.nativeInstance().fastCompressor()
-  
+
   private lazy val lz4HighCompressor = LZ4Factory.nativeInstance().highCompressor()
+
+  protected def compressBlock(targetBlockType: BlockType.Value)(rawBlock: Array[Byte]): Box[Array[Byte]] = {
+    val t = System.currentTimeMillis
+    val result = targetBlockType match {
+      case BlockType.LZ4 | BlockType.LZ4HC =>
+        val compressor = if (targetBlockType == BlockType.LZ4) lz4FastCompressor else lz4HighCompressor
+        val maxCompressedLength = compressor.maxCompressedLength(rawBlock.length)
+        val compressedBlock = Array.ofDim[Byte](maxCompressedLength)
+        Try(compressor.compress(rawBlock, compressedBlock)).map { compressedLength =>
+          compressedBlock.slice(0, compressedLength)
+        }
+      case BlockType.Raw =>
+        Full(rawBlock)
+      case _ =>
+        Failure(error("Invalid targetBlockType for compression"))
+    }
+    NewRelic.recordResponseTimeMetric(s"Custom/WebknossosWrap/block-compress-time-${targetBlockType}", System.currentTimeMillis - t)
+    result
+  }
+
+  protected def decompressBlock(sourceBlockType: BlockType.Value, numBytesPerBlock: Int)(compressedBlock: Array[Byte]): Box[Array[Byte]] = {
+    val t = System.currentTimeMillis
+
+    val result = sourceBlockType match {
+      case BlockType.LZ4 | BlockType.LZ4HC =>
+        val rawBlock: Array[Byte] = Array.ofDim[Byte](numBytesPerBlock)
+        for {
+          bytesDecompressed <- Try(lz4Decompressor.decompress(compressedBlock, rawBlock, numBytesPerBlock))
+          _ <- Check(bytesDecompressed == compressedBlock.length) ?~! error("Decompressed unexpected number of bytes", compressedBlock.length, bytesDecompressed)
+        } yield {
+          rawBlock
+        }
+      case BlockType.Raw =>
+        Full(compressedBlock)
+      case _ =>
+        Failure(error("Invalid sourceBlockType for decompression"))
+    }
+    NewRelic.recordResponseTimeMetric(s"Custom/WebknossosWrap/block-decompress-time-${sourceBlockType}", System.currentTimeMillis - t)
+    result
+  }
+}
+
+class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: RandomAccessFile) extends WKWCompressionHelper with WKWMortonHelper {
 
   private val channel = underlyingFile.getChannel()
 
@@ -41,14 +124,6 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
       val length = Math.min(Int.MaxValue, underlyingFile.length - offset)
       new ExtendedMappedByteBuffer(channel.map(mapMode, offset, length))
     }
-  }
-
-  private def error(msg: String) = {
-    WKWFile.error(msg, new File(underlyingFile.getPath))
-  }
-
-  private def error(msg: String, expected: Any, actual: Any) = {
-    WKWFile.error(msg, expected, actual, new File(underlyingFile.getPath))
   }
 
   private def readFromUnderlyingBuffers(offset: Long, length: Int): Array[Byte] = {
@@ -83,18 +158,6 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
     }
   }
 
-  private def mortonEncode(x: Int, y: Int, z: Int): Int = {
-    var morton = 0
-    val bitLength = math.ceil(math.log(List(x, y, z).max + 1) / math.log(2)).toInt
-
-    (0 until bitLength).foreach { i =>
-      morton |= ((x & (1 << i)) << (2 * i)) |
-        ((y & (1 << i)) << (2 * i + 1)) |
-        ((z & (1 << i)) << (2 * i + 2))
-    }
-    morton
-  }
-
   private def computeMortonIndex(x: Int, y: Int, z: Int): Box[Int] = {
     for {
       _ <- Check(x >= 0 && x < header.numBlocksPerCubeDimension) ?~! error("X coordinate is out of range", s"[0, ${header.numBlocksPerCubeDimension})", x)
@@ -105,72 +168,17 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
     }
   }
 
-  private def compressBlock(targetBlockType: BlockType.Value = header.blockType)(rawBlock: Array[Byte]): Box[Array[Byte]] = {
-    val t = System.currentTimeMillis
-    val result = targetBlockType match {
-      case BlockType.LZ4 | BlockType.LZ4HC =>
-        val compressor = if (targetBlockType == BlockType.LZ4) lz4FastCompressor else lz4HighCompressor
-        val maxCompressedLength = compressor.maxCompressedLength(rawBlock.length)
-        val compressedBlock = Array.ofDim[Byte](maxCompressedLength)
-        Try(compressor.compress(rawBlock, compressedBlock)).map { compressedLength =>
-          compressedBlock.slice(0, compressedLength)
-        }
-      case BlockType.Raw =>
-        Full(rawBlock)
-      case _ =>
-        Failure(error("Invalid targetBlockType for compression"))
-    }
-    NewRelic.recordResponseTimeMetric(s"Custom/WebknossosWrap/block-compress-time-${header.blockType}", System.currentTimeMillis - t)
-    result
-  }
-
-  private def decompressBlock(sourceBlockType: BlockType.Value = header.blockType)(compressedBlock: Array[Byte]): Box[Array[Byte]] = {
-    val t = System.currentTimeMillis
-
-    val result = sourceBlockType match {
-      case BlockType.LZ4 | BlockType.LZ4HC =>
-        val rawBlock: Array[Byte] = Array.ofDim[Byte](header.numBytesPerBlock)
-        for {
-          bytesDecompressed <- Try(lz4Decompressor.decompress(compressedBlock, rawBlock, header.numBytesPerBlock))
-          _ <- Check(bytesDecompressed == compressedBlock.length) ?~! error("Decompressed unexpected number of bytes", compressedBlock.length, bytesDecompressed)
-        } yield {
-          rawBlock
-        }
-      case BlockType.Raw =>
-        Full(compressedBlock)
-      case _ =>
-        Failure(error("Invalid sourceBlockType for decompression"))
-    }
-    NewRelic.recordResponseTimeMetric(s"Custom/WebknossosWrap/block-decompress-time-${header.blockType}", System.currentTimeMillis - t)
-    result
-  }
-
-  private def readUncompressedBlock(mortonIndex: Int): Array[Byte] = {
-    val blockOffset = header.dataOffset + mortonIndex.toLong * header.numBytesPerBlock.toLong
-    readFromUnderlyingBuffers(blockOffset, header.numBytesPerBlock)
-  }
-
-  private def writeUncompressedBlock(mortonIndex: Int, blockData: Array[Byte]) = {
-    val blockOffset = header.dataOffset + mortonIndex.toLong * header.numBytesPerBlock.toLong
-    writeToUnderlyingBuffers(blockOffset, blockData)
-  }
-
-  private def readCompressedBlock(mortonIndex: Int): Box[Array[Byte]] = {
-    val blockOffset = header.jumpTable(mortonIndex)
-    val compressedLength = (header.jumpTable(mortonIndex + 1) - blockOffset).toInt
-    val compressedBlock = readFromUnderlyingBuffers(blockOffset, compressedLength)
-    decompressBlock()(compressedBlock)
-  }
-
   def readBlock(x: Int, y: Int, z: Int): Box[Array[Byte]] = {
     val t = System.currentTimeMillis
     for {
       _ <- Check(!underlyingFile.isClosed) ?~! error("File is already closed")
       mortonIndex <- computeMortonIndex(x, y, z)
-      data <- if (header.isCompressed) Try(readCompressedBlock(mortonIndex)) else Try(readUncompressedBlock(mortonIndex))
+      (offset, length) <- header.blockBoundaries(mortonIndex)
+      data <- Try(readFromUnderlyingBuffers(offset, length))
+      decompressedData <- if (header.isCompressed) Try(decompressBlock(header.blockType, header.numBytesPerBlock)(data)) else Try(data)
     } yield {
       NewRelic.recordResponseTimeMetric(s"Custom/WebknossosWrap/block-read-time-${header.blockType}", System.currentTimeMillis - t)
-      data
+      decompressedData
     }
   }
 
@@ -178,11 +186,12 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
     val t = System.currentTimeMillis
     for {
       _ <- Check(!underlyingFile.isClosed) ?~! error("File is already closed")
-      _ <- Check(fileMode == FileMode.ReadWrite) ?~! error("Cannot write to files opened read-only")
+      _ <- Check(fileMode == FileMode.ReadWrite) ?~! error("Cannot write to erad-only files")
       _ <- Check(!header.isCompressed) ?~! error("Cannot write to compressed files")
       _ <- Check(data.length == header.numBytesPerBlock) ?~! error("Data to be written has invalid length", header.numBytesPerBlock, data.length)
       mortonIndex <- computeMortonIndex(x, y, z)
-      _ <- Try(writeUncompressedBlock(mortonIndex, data))
+      (offset, _) <- header.blockBoundaries(mortonIndex)
+      _ <- Try(writeToUnderlyingBuffers(offset, data))
     } yield {
       NewRelic.recordResponseTimeMetric(s"Custom/WebknossosWrap/block-write-time-${header.blockType}", System.currentTimeMillis - t)
     }
@@ -192,81 +201,9 @@ case class WKWFile(header: WKWHeader, fileMode: FileMode.Value, underlyingFile: 
     channel.close()
     underlyingFile.close()
   }
-
-  private def moveFile(tempFile: File, targetFile: File): Unit = {
-    Files.move(tempFile.toPath, Paths.get(underlyingFile.getPath), StandardCopyOption.REPLACE_EXISTING)
-    close()
-  }
-
-  private def transcodeFile(targetBlockType: BlockType.Value)(file: RandomAccessFile): Box[Unit] = {
-    val toCompressed = BlockType.isCompressed(targetBlockType)
-    val jumpTableSize = if (toCompressed) header.numBlocksPerCube + 1 else 1
-    val tempHeader = header.copy(blockType = targetBlockType, jumpTable = Array.ofDim[Long](jumpTableSize))
-    tempHeader.writeToFile(file)
-
-    val dataOffset = file.getFilePointer
-    underlyingFile.seek(header.dataOffset)
-
-    val sourceBlockLengths = if (header.isCompressed) {
-      header.jumpTable.sliding(2).map(a => (a(1) - a(0)).toInt)
-    } else {
-      Array.fill(header.numBlocksPerCube)(header.numBytesPerBlock).toIterator
-    }
-
-    val targetBlockLengths = sourceBlockLengths.foldLeft[Box[Seq[Int]]](Full(Seq.empty)) {
-      case (Full(result), blockLength) =>
-        val blockData = Array.ofDim[Byte](blockLength)
-        underlyingFile.read(blockData)
-        for {
-          rawBlock <- decompressBlock(header.blockType)(blockData)
-          encodedBlock <- compressBlock(targetBlockType)(rawBlock)
-        } yield {
-          file.write(encodedBlock)
-          result :+ encodedBlock.length
-        }
-      case (failure, _) =>
-        failure
-    }
-
-    targetBlockLengths.map { blockLengths =>
-      val jumpTable = if (toCompressed) {
-        blockLengths.map(_.toLong).scan(dataOffset)(_ + _).toArray
-      } else {
-        Array(dataOffset)
-      }
-      val newHeader = tempHeader.copy(jumpTable = jumpTable)
-      file.seek(0)
-      newHeader.writeToFile(file)
-    }
-  }
-
-  def changeBlockType(targetBlockType: BlockType.Value): Box[WKWFile] = {
-    val tempFile = new File(underlyingFile.getPath + ".tmp")
-    val targetFile = new File(underlyingFile.getPath)
-
-    for {
-      _ <- Check(targetBlockType != header.blockType) ?~! error("File already has requested blockType")
-      _ <- ResourceBox.manage(new RandomAccessFile(tempFile, "rw"))(transcodeFile(targetBlockType))
-      _ <- Try(moveFile(tempFile, targetFile))
-      wkwFile <- WKWFile(targetFile, fileMode)
-    } yield {
-      wkwFile
-    }
-  }
-
-  def decompress: Box[WKWFile] = changeBlockType(BlockType.Raw)
-
-  def compress(targetBlockType: BlockType.Value): Box[WKWFile] = changeBlockType(targetBlockType)
 }
 
-object WKWFile {
-  private def error(msg: String, file: File): String = {
-    s"""Error processing WKW file: ${msg} [file: ${file.getPath}]."""
-  }
-
-  private def error(msg: String, expected: Any, actual: Any, file: File): String = {
-    s"""Error processing WKW file: ${msg} [expected: ${expected}, actual: ${actual}, file: ${file.getPath}]."""
-  }
+object WKWFile extends WKWCompressionHelper {
 
   private def fileModeString(file: File, isCompressed: Boolean, fileMode: FileMode.Value): Box[String] = {
     fileMode match {
@@ -274,7 +211,7 @@ object WKWFile {
         Full("r")
       case FileMode.ReadWrite =>
         if (isCompressed) {
-          Failure(error("Compressed files can only be opened read-only", file))
+          Failure(error("Compressed files can only be opened read-only"))
         } else {
           Full("rw")
         }
@@ -284,11 +221,53 @@ object WKWFile {
   def apply(file: File, fileMode: FileMode.Value = FileMode.Read): Box[WKWFile] = {
     for {
       header <- WKWHeader(file, true)
-      _ <- Check(header.expectedFileSize == file.length) ?~! error("Unexpected file size", header.expectedFileSize, file.length, file)
+      _ <- Check(header.expectedFileSize == file.length) ?~! error("Unexpected file size", header.expectedFileSize, file.length)
       mode <- fileModeString(file, header.isCompressed, fileMode)
       underlyingFile <- ResourceBox(new RandomAccessFile(file, mode))
     } yield {
       new WKWFile(header, fileMode, underlyingFile)
+    }
+  }
+
+  def read[T](is: InputStream)(f: (WKWHeader, Iterator[Array[Byte]]) => T): Box[T] = {
+    ResourceBox.manage(new DataInputStream(is)) { dataStream =>
+      for {
+        header <- WKWHeader(dataStream, true)
+      } yield {
+        val blockIterator = header.blockLengths.flatMap { blockLength =>
+          val data = Array.ofDim[Byte](blockLength)
+          dataStream.read(data)
+          if (header.isCompressed) decompressBlock(header.blockType, header.numBytesPerBlock)(data) else Full(data)
+        }
+        f(header, blockIterator)
+      }
+    }
+  }
+
+  def write(os: OutputStream, header: WKWHeader, blocks: Iterator[Array[Byte]]): Box[Unit] = {
+    val dataBuffer = new ByteArrayOutputStream()
+    (0 until header.numBlocksPerCube).foldLeft[Box[Array[Int]]](Full(Array.emptyIntArray)) {
+      case (Full(blockLengths), _) =>
+        if (blocks.hasNext) {
+          val data = blocks.next
+          for {
+            _ <- Check(data.length == header.numBytesPerBlock) ?~! error("Unexpected block size", header.numBytesPerBlock, data.length)
+            compressedBlock <- if (header.isCompressed) compressBlock(header.blockType)(data) else Full(data)
+            _ <- Try(dataBuffer.write(compressedBlock))
+          } yield {
+            blockLengths :+ compressedBlock.length
+          }
+        } else {
+          Failure("No more blocks in iterator.")
+        }
+      case (f, _) =>
+        f
+    }.map { blockLengths =>
+      val jumpTable = if (header.isCompressed) blockLengths.map(_.toLong).scan(header.dataOffset)(_ + _) else Array(header.dataOffset)
+      header.copy(jumpTable = jumpTable).writeTo(new DataOutputStream(os))
+      dataBuffer.flush()
+      dataBuffer.writeTo(os)
+      dataBuffer.close()
     }
   }
 }
