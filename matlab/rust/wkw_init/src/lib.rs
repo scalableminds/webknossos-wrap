@@ -20,7 +20,7 @@ unsafe fn new(nrhs: c_int, rhs: *const MxArray) -> Result<()> {
     let class_id = str_slice_to_mx_class_id(class_id_name)?;
     let voxel_type = mx_class_id_to_voxel_type(class_id)?;
 
-    let voxel_type_size = wkwrap::header::voxel_type_size(voxel_type);
+    let voxel_type_size = voxel_type.size();
     let block_type = wkwrap::BlockType::Raw;
 
     let num_elem = as_nat(mx_array_to_f64(rhs[4])?)?;

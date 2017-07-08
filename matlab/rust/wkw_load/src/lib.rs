@@ -28,7 +28,7 @@ mex_function!(nlhs, lhs, nrhs, rhs, {
     let shape = bbox.width();
     let voxel_size = dataset.header().voxel_size as usize;
     let voxel_type = dataset.header().voxel_type;
-    let voxel_type_size = wkwrap::header::voxel_type_size(voxel_type);
+    let voxel_type_size = voxel_type.size();
 
     let size_last = match voxel_size % voxel_type_size == 0 {
         true => voxel_size / voxel_type_size,

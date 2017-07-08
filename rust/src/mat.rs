@@ -1,7 +1,6 @@
 use std::ptr;
 
 use ::{Box3, Result, Vec3, VoxelType};
-use ::header::voxel_type_size;
 
 #[derive(Debug)]
 pub struct Mat<'a> {
@@ -26,7 +25,7 @@ impl<'a> Mat<'a> {
             return Err("Length of slice does not match expected size")
         }
 
-        if voxel_size % voxel_type_size(voxel_type) != 0 {
+        if voxel_size % voxel_type.size() != 0 {
             return Err("Voxel size must be a multiple of voxel type size")
         }
 
