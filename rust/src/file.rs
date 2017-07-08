@@ -251,15 +251,17 @@ impl File {
             None => return Err("File is not block aligned")
         };
 
-        let bytes_read = match self.header.block_type {
-            BlockType::Raw => self.read_block_raw(buf)?,
-            BlockType::LZ4 | BlockType::LZ4HC => self.read_block_lz4(buf)?
+        let result = match self.header.block_type {
+            BlockType::Raw => self.read_block_raw(buf),
+            BlockType::LZ4 | BlockType::LZ4HC => self.read_block_lz4(buf)
         };
 
-        // advance block index
-        self.block_idx = Some(block_idx + 1);
+        match result {
+            Ok(_) => self.block_idx = Some(block_idx + 1),
+            Err(_) => self.block_idx = None
+        };
 
-        Ok(bytes_read)
+        result
     }
 
     fn write_block(&mut self, buf: &[u8]) -> Result<usize> {
@@ -268,25 +270,24 @@ impl File {
             None => return Err("File is not block aligned")
         };
 
-        let bytes_written = match self.header.block_type {
+        let result = match self.header.block_type {
             BlockType::Raw => self.write_block_raw(buf),
             BlockType::LZ4 | BlockType::LZ4HC => self.write_block_lz4(buf)
-        }?;
+        };
 
         // advance
-        self.block_idx = Some(block_idx + 1);
+        match result {
+            Ok(_) => self.block_idx = Some(block_idx + 1),
+            Err(_) => self.block_idx = None
+        };
 
-        Ok(bytes_written)
+        result
     }
 
     fn read_block_raw(&mut self, buf: &mut [u8]) -> Result<usize> {
         match self.file.read_exact(buf) {
             Ok(_) => Ok(buf.len()),
-            Err(_) => {
-                // TODO(amotta): Factor out the resetting
-                self.block_idx = None;
-                Err("Could not read raw block")
-            }
+            Err(_) => Err("Could not read raw block")
         }
     }
 
@@ -326,10 +327,8 @@ impl File {
         let buf_lz4 = &mut buf_lz4_orig[..block_size_lz4];
 
         // read compressed block
-        if self.file.read_exact(buf_lz4).is_err() {
-            self.block_idx = None;
-            return Err("Error while reading LZ4 block");
-        }
+        self.file.read_exact(buf_lz4)
+                 .or(Err("Error while reading LZ4 block"))?;
 
         // decompress block
         let byte_written = lz4::decompress_safe(buf_lz4, buf)?;
