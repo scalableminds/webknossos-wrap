@@ -42,7 +42,7 @@ impl File {
         Ok(Self::new(file, header))
     }
 
-    pub fn open_or_create(path: &path::Path, header: &Header) -> Result<File> {
+    pub(crate) fn open_or_create(path: &path::Path, header: &Header) -> Result<File> {
         // create parent directory, if needed
         if let Some(parent) = path.parent() {
             if fs::create_dir_all(parent).is_err() {
@@ -75,9 +75,14 @@ impl File {
         Ok(file)
     }
 
-    pub fn header(&self) -> &Header { &self.header }
+    pub(crate) fn header(&self) -> &Header { &self.header }
 
-    pub fn read_mat(&mut self, src_pos: Vec3, dst_mat: &mut Mat, dst_pos: Vec3) -> Result<usize> {
+    pub(crate) fn read_mat(
+        &mut self,
+        src_pos: Vec3,
+        dst_mat: &mut Mat,
+        dst_pos: Vec3
+    ) -> Result<usize> {
         let file_len_vx = self.header.file_len_vx();
         let file_len_log2 = self.header.file_len_log2 as u32;
         let block_len_log2 = self.header.block_len_log2 as u32;
@@ -130,7 +135,12 @@ impl File {
         Ok(1 as usize)
     }
 
-    pub fn write_mat(&mut self, dst_pos: Vec3, src_mat: &Mat, src_pos: Vec3) -> Result<usize> {
+    pub(crate) fn write_mat(
+        &mut self,
+        dst_pos: Vec3,
+        src_mat: &Mat,
+        src_pos: Vec3
+    ) -> Result<usize> {
         let block_len_log2 = self.header.block_len_log2 as u32;
 
         let dst_end = Vec3::from(self.header.file_len_vx())

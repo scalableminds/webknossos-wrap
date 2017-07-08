@@ -1,7 +1,7 @@
 extern crate walkdir;
 use dataset::walkdir::{DirEntry, WalkDir, WalkDirIterator};
 
-use ::{File, Header, Result, Vec3, Box3, Mat};
+use ::{BlockType, File, Header, Result, Vec3, Box3, Mat};
 use std::path::{Path, PathBuf};
 use std::fs;
 
@@ -138,6 +138,13 @@ impl<'a> Dataset<'a> {
     }
 
     pub fn write_mat(&self, dst_pos: Vec3, mat: &Mat) -> Result<usize> {
+            // validate block type
+            match self.header.block_type {
+                BlockType::LZ4 => Err("Cannot write LZ4 blocks"),
+                BlockType::LZ4HC => Err("Cannot write LZ4HC blocks"),
+                _ => Ok(())
+            }?;
+
             // validate input matrix
             if mat.voxel_type != self.header.voxel_type {
                 return Err("Input matrix has invalid voxel type");
@@ -213,7 +220,7 @@ impl<'a> Dataset<'a> {
         Ok(true)
     }
 
-    pub fn read_header(root: &Path) -> Result<Header> {
+    pub(crate) fn read_header(root: &Path) -> Result<Header> {
         let mut header_path = PathBuf::from(root);
         header_path.push(HEADER_FILE_NAME);
 
