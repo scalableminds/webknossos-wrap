@@ -30,17 +30,21 @@ mex_function!(nlhs, lhs, nrhs, rhs, {
     let voxel_type = dataset.header().voxel_type;
     let voxel_type_size = voxel_type.size();
 
-    let size_last = match voxel_size % voxel_type_size == 0 {
+    let num_channels = match voxel_size % voxel_type_size == 0 {
         true => voxel_size / voxel_type_size,
         false => return Err("Invalid voxel size")
     };
 
-    // create MATLAB array
-    let arr_class = voxel_type_to_mx_class_id(voxel_type);
-    let arr_shape = [shape.x as usize, shape.y as usize, shape.z as usize, size_last];
-    let arr = create_numeric_array(&arr_shape, arr_class, MxComplexity::Real)?;
+    let class = voxel_type_to_mx_class_id(voxel_type);
+    let shape_arr = [num_channels, shape.x as usize, shape.y as usize, shape.z as usize];
+
+    let shape = match num_channels {
+        1 => &shape_arr[1..],
+        _ => &shape_arr[0..]
+    };
 
     // read data
+    let arr = create_numeric_array(shape, class, MxComplexity::Real)?;
     let mut mat = mx_array_mut_to_wkwrap_mat(arr)?;
     dataset.read_mat(bbox.min(), &mut mat)?;
 

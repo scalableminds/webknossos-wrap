@@ -31,12 +31,8 @@ impl File {
     }
 
     pub fn open(path: &path::Path) -> Result<File> {
-        let mut file = match fs::File::open(path) {
-            Ok(file) => file,
-            Err(_) => return Err("Could not open file")
-        };
-
-        // read header
+        let mut file = fs::File::open(path)
+                                .or(Err("Could not open WKW file"))?;
         let header = Header::read(&mut file)?;
 
         Ok(Self::new(file, header))
@@ -45,18 +41,15 @@ impl File {
     pub(crate) fn open_or_create(path: &path::Path, header: &Header) -> Result<File> {
         // create parent directory, if needed
         if let Some(parent) = path.parent() {
-            if fs::create_dir_all(parent).is_err() {
-                return Err("Could not create parent directory");
-            }
+            fs::create_dir_all(parent)
+               .or(Err("Could not create parent directory"))?;
         }
 
         let mut open_opts = fs::OpenOptions::new();
         open_opts.read(true).write(true).create(true);
 
-        let mut file = match open_opts.open(path) {
-            Ok(file) => file,
-            Err(_) => return Err("Could not open file")
-        };
+        let mut file = open_opts.open(path)
+                                .or(Err("Could not open file"))?;
 
         // check if file was created
         let (header, created) = match Header::read(&mut file) {
@@ -258,15 +251,17 @@ impl File {
             None => return Err("File is not block aligned")
         };
 
-        let bytes_read = match self.header.block_type {
-            BlockType::Raw => self.read_block_raw(buf)?,
-            BlockType::LZ4 | BlockType::LZ4HC => self.read_block_lz4(buf)?
+        let result = match self.header.block_type {
+            BlockType::Raw => self.read_block_raw(buf),
+            BlockType::LZ4 | BlockType::LZ4HC => self.read_block_lz4(buf)
         };
 
-        // advance block index
-        self.block_idx = Some(block_idx + 1);
+        match result {
+            Ok(_) => self.block_idx = Some(block_idx + 1),
+            Err(_) => self.block_idx = None
+        };
 
-        Ok(bytes_read)
+        result
     }
 
     fn write_block(&mut self, buf: &[u8]) -> Result<usize> {
@@ -275,24 +270,24 @@ impl File {
             None => return Err("File is not block aligned")
         };
 
-        let bytes_written = match self.header.block_type {
+        let result = match self.header.block_type {
             BlockType::Raw => self.write_block_raw(buf),
             BlockType::LZ4 | BlockType::LZ4HC => self.write_block_lz4(buf)
-        }?;
+        };
 
         // advance
-        self.block_idx = Some(block_idx + 1);
+        match result {
+            Ok(_) => self.block_idx = Some(block_idx + 1),
+            Err(_) => self.block_idx = None
+        };
 
-        Ok(bytes_written)
+        result
     }
 
     fn read_block_raw(&mut self, buf: &mut [u8]) -> Result<usize> {
         match self.file.read_exact(buf) {
             Ok(_) => Ok(buf.len()),
-            Err(_) => {
-                self.block_idx = None;
-                Err("Could not read raw block")
-            }
+            Err(_) => Err("Could not read raw block")
         }
     }
 
@@ -309,15 +304,12 @@ impl File {
         let len_lz4 = lz4::compress_hc(buf, &mut buf_lz4)?;
 
         // write data
-        if self.file.write_all(&buf_lz4[..len_lz4]).is_err() {
-            return Err("Could not write LZ4 block")
-        }
+        self.file.write_all(&buf_lz4[..len_lz4])
+                 .or(Err("Could not write LZ4 block"))?;
 
         // update jump table
-        let jump_entry = match self.file.seek(SeekFrom::Current(0)) {
-            Ok(jump_entry) => jump_entry,
-            Err(_) => return Err("Could not determine jump entry")
-        };
+        let jump_entry = self.file.seek(SeekFrom::Current(0))
+                                  .or(Err("Could not determine jump entry"))?;
 
         let block_idx = self.block_idx.unwrap();
         let mut jump_table = &mut *self.header.jump_table.as_mut().unwrap();
@@ -335,10 +327,8 @@ impl File {
         let buf_lz4 = &mut buf_lz4_orig[..block_size_lz4];
 
         // read compressed block
-        if self.file.read_exact(buf_lz4).is_err() {
-            self.block_idx = None;
-            return Err("Error while reading LZ4 block");
-        }
+        self.file.read_exact(buf_lz4)
+                 .or(Err("Error while reading LZ4 block"))?;
 
         // decompress block
         let byte_written = lz4::decompress_safe(buf_lz4, buf)?;

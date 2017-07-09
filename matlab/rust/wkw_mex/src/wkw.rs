@@ -32,19 +32,6 @@ pub fn mx_array_to_wkwrap_vec(pm: MxArray) -> Result<wkwrap::Vec3> {
     f64_slice_to_wkwrap_vec(buf)
 }
 
-pub fn mx_array_size_to_wkwrap_vec(pm: MxArray) -> Result<wkwrap::Vec3> {
-    let size = mx_array_size_to_usize_slice(pm);
-
-    match size.len() == 3 {
-        true => Ok(wkwrap::Vec3 {
-            x: size[0] as u32,
-            y: size[1] as u32,
-            z: size[2] as u32
-        }),
-        false => Err("Dimensionality mismatch")
-    }
-}
-
 pub fn mx_array_to_wkwrap_mat<'a>(pm: MxArray) -> Result<wkwrap::Mat<'a>> {
     // HACK(amotta): Ideally, we would also have wkwrap::MatMut
     mx_array_mut_to_wkwrap_mat(pm as MxArrayMut)
@@ -75,13 +62,26 @@ pub fn voxel_type_to_mx_class_id(voxel_type: wkwrap::VoxelType) -> MxClassId {
 
 pub fn mx_array_mut_to_wkwrap_mat<'a>(pm: MxArrayMut) -> Result<wkwrap::Mat<'a>> {
     let buf = mx_array_mut_to_u8_slice_mut(pm)?;
-    let shape = mx_array_size_to_wkwrap_vec(pm)?;
-
     let elem_size = unsafe { mxGetElementSize(pm) };
     let voxel_type = mx_class_id_to_voxel_type(unsafe { mxGetClassID(pm) })?;
 
+    let size = mx_array_size_to_usize_slice(pm);
+    let ndim = size.len();
+
+    let voxel_size = match ndim {
+        3 => Ok(elem_size),
+        4 => Ok(size[0] * elem_size),
+        _ => Err("Matrix must be three- or four-dimensional")
+    }?;
+
+    let shape = wkwrap::Vec3 {
+        x: size[ndim - 3] as u32,
+        y: size[ndim - 2] as u32,
+        z: size[ndim - 1] as u32
+    };
+
     match elem_size == 0 {
         true => Err("Failed to determine element size"),
-        false => wkwrap::Mat::new(buf, shape, elem_size, voxel_type)
+        false => wkwrap::Mat::new(buf, shape, voxel_size, voxel_type)
     }
 }

@@ -1,8 +1,11 @@
 function wkwInit(command, varargin) %#ok
     % wkwInit(command, varargin)
+    % wkwInit('new', rootDir, blockLen, fileLen, dataType, numChannels)
+    % wkwInit('compress', sourceDir, destinationDir)
     %
     %   Initializes a new WKW dataset. This functions supports multiple
     %   operation modes
+    %
     %
     % Creation of a brand new dataset with
     %   wkwInit('new', rootDir, blockLen, fileLen, dataType, numChannels)
@@ -22,8 +25,9 @@ function wkwInit(command, varargin) %#ok
     %     String. Datatype of the individual voxels. Can be 'uint8',
     %     'uint32', or 'single' (for now).
     %
-    %   numChanells
+    %   numChannels
     %     Double. Number of channels. (Default: 1)
+    %
     %
     % Creation of a compressed version of an existing dataset with
     %   wkwInit('compress', sourceDir, destinationDir)
