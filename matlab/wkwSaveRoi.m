@@ -9,8 +9,9 @@ function wkwSaveRoi(filePath, offset, data) %#ok
     %   1x3 double. Target position of the first voxel.
     %
     % data
-    %   KxLxM <T>. Three-dimensional matrix with data to save. Currently,
-    %   uint8 and uint32 are the only supported data types.
+    %   KxLxM or CxKxLxM <T>. Three- or four-dimensional matrix with data
+    %   to save. If the matrix is four-dimensional, the first dimension
+    %   must correspond to the number of channels in the WKW dataset.
     %
     % Example
     %   data = randi([0, intmax('uint8')], [123, 234, 345], 'uint8');
