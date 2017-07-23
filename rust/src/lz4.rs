@@ -2,7 +2,8 @@ extern crate libc;
 use self::libc::c_int;
 use ::Result;
 
-#[link(name = "lz4")]
+#[cfg_attr(target_os = "linux", link(name = "lz4", kind = "dylib"))]
+#[cfg_attr(target_os = "windows", link(name = "liblz4", kind = "dylib"))]
 extern {
     // upper bound
     fn LZ4_compressBound(input_size: c_int) -> c_int;

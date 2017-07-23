@@ -23,7 +23,8 @@ pub enum MxClassId {
     Function, Opaque, Object, Index, Sparse
 }
 
-#[link(name = "mx")]
+#[cfg_attr(target_os = "linux", link(name = "mx", kind = "dylib"))]
+#[cfg_attr(target_os = "windows", link(name = "libmx", kind = "dylib"))]
 extern {
     // creation
     pub fn mxCreateNumericArray(
@@ -51,7 +52,8 @@ extern {
     pub fn mxIsComplex(pm: MxArray) -> c_bool;
 }
 
-#[link(name = "mex")]
+#[cfg_attr(target_os = "linux", link(name = "mex", kind = "dylib"))]
+#[cfg_attr(target_os = "windows", link(name = "libmex", kind = "dylib"))]
 extern {
     pub fn mexErrMsgTxt(errormsg: *const c_uchar);
 }
