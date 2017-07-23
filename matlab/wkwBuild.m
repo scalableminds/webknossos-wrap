@@ -5,8 +5,23 @@ function wkwBuild()
 
     % export path to library
     matlabRoot = matlabroot();
-    mexLibRoot = fullfile(matlabRoot, 'bin', 'glnxa64');
-    setenv('MEXLIBROOT', mexLibRoot);
+    
+    % path to .so / .dll files
+    arch = computer('arch');
+    extraLinkPaths = {fullfile(matlabRoot, 'bin', arch)};
+    
+    if ispc
+        % on Windows, we also require
+        % - the corresponding .lib files
+        extraLinkPaths{end + 1} = ...
+            fullfile(matlabRoot, 'extern', 'lib', arch, 'microsoft');
+        
+        % - liblz4.dll and liblz4.lib
+        extraLinkPaths{end + 1} = fileparts(mfilename('fullpath'));
+    end
+    
+    % make link paths available for cargo
+    exportExtraLinkPaths(extraLinkPaths);
     
     buildWithCargo('wkw_compress', 'wkwCompress');
     buildWithCargo('wkw_init', 'wkwInit');
@@ -28,10 +43,22 @@ function buildWithCargo(oldName, newName)
     
     % rename library
     libDir = fullfile(cargoDir, 'target', 'release');
-    libPath = fullfile(libDir, strcat('lib', oldName, '.so'));
-    mexPath = fullfile(thisDir, strcat(newName, '.', mexext()));
     
-    movefile(libPath, mexPath);
+    if isunix
+        libPath = fullfile(libDir, strcat('lib', oldName, '.so'));
+    elseif ispc
+        libPath = fullfile(libDir, strcat(oldName, '.dll'));
+    else
+        error('Platform not supported');
+    end
+    
+    mexPath = fullfile(thisDir, strcat(newName, '.', mexext()));
+    copyfile(libPath, mexPath);
     
     cd(prevDir);
+end
+
+function exportExtraLinkPaths(paths)
+    extraLinkPathsStr = strjoin(paths, pathsep);
+    setenv('EXTRALINKPATHS', extraLinkPathsStr);
 end

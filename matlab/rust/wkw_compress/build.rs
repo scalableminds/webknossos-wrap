@@ -1,6 +1,10 @@
 use std::env;
 
 fn main() {
-    let lib_root = env::var("MEXLIBROOT").expect("MEXLIBROOT not set");
-    println!("cargo:rustc-link-search={}", lib_root)
+    let link_paths = env::var("EXTRALINKPATHS")
+	                    .expect("EXTRALINKPATHS not set");
+	
+	for link_path in link_paths.split(";") {
+		println!("cargo:rustc-link-search={}", link_path);
+	}
 }
