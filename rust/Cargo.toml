@@ -1,0 +1,16 @@
+[package]
+name = "wkwrap"
+version = "1.2.0"
+authors = ["Alessandro Motta <alessandro.motta@brain.mpg.de>"]
+
+[dependencies]
+walkdir = "1"
+libc = "0.2"
+
+[lib]
+name = "wkwrap"
+path = "src/lib.rs"
+
+[[bin]]
+name = "wkw"
+path = "src/main.rs"

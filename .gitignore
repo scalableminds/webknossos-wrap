@@ -18,11 +18,11 @@ project/plugins/project/
 .worksheet
 .idea/
 
-# mex specific
-*.mexw32
-*.mexw64
-*.mexa64
-*.mexmaci64
-
 # macOS specific
 .DS_Store
+
+# MATLAB specific
+*.mex*
+
+# Rust specific
+Cargo.lock

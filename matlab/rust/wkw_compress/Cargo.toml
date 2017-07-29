@@ -1,0 +1,18 @@
+[package]
+name = "wkw_compress"
+version = "1.2.0"
+authors = ["Alessandro Motta <alessandro.motta@brain.mpg.de>"]
+build = "build.rs"
+
+[dependencies.wkwrap]
+path = "../../../rust"
+
+[dependencies.wkw_mex]
+path = "../wkw_mex"
+
+[profile.release]
+lto = true
+
+[lib]
+name = "wkw_compress"
+crate-type = ["cdylib"]
