@@ -80,7 +80,7 @@ case class WKWHeader(
     }
   }
 
-  def writeTo(output: DataOutput) = {
+  def writeTo(output: DataOutput, isHeaderFile: Boolean = false): Unit = {
     output.write(WKWHeader.magicBytes)
     output.writeByte(WKWHeader.currentVersion)
     val numBlocksPerCubeDimensionLog2 = (math.log(numBlocksPerCubeDimension) / math.log(2)).toInt
@@ -90,11 +90,15 @@ case class WKWHeader(
     output.writeByte(blockType.id)
     output.writeByte(voxelType.id)
     output.writeByte(numBytesPerVoxel)
-    val realDataOffset = 8L + jumpTable.length * 8L
-    val jumpTableBuffer = ByteBuffer.allocate(jumpTable.length * 8)
-    jumpTableBuffer.order(ByteOrder.LITTLE_ENDIAN)
-    jumpTable.map(_ - dataOffset + realDataOffset).foreach(jumpTableBuffer.putLong)
-    output.write(jumpTableBuffer.array)
+    if (isHeaderFile) {
+      output.writeLong(0L)
+    } else {
+      val realDataOffset = 8L + jumpTable.length * 8L
+      val jumpTableBuffer = ByteBuffer.allocate(jumpTable.length * 8)
+      jumpTableBuffer.order(ByteOrder.LITTLE_ENDIAN)
+      jumpTable.map(_ - dataOffset + realDataOffset).foreach(jumpTableBuffer.putLong)
+      output.write(jumpTableBuffer.array)
+    }
   }
 }
 
