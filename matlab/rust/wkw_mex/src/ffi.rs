@@ -27,6 +27,7 @@ pub enum MxClassId {
 #[cfg_attr(target_os = "windows", link(name = "libmx", kind = "dylib"))]
 extern {
     // creation
+    #[link_name = "mxCreateNumericArray_730"]
     pub fn mxCreateNumericArray(
         ndim: size_t,
         dims: *const size_t,
@@ -39,7 +40,9 @@ extern {
     pub fn mxGetPr(pm: MxArray) -> *mut c_double;
     pub fn mxGetData(pm: MxArray) -> *mut c_void;
     pub fn mxArrayToUTF8String(pm: MxArray) -> *const c_char;
+    #[link_name = "mxGetNumberOfDimensions_730"]
     pub fn mxGetNumberOfDimensions(pm: MxArray) -> size_t;
+    #[link_name = "mxGetDimensions_730"]
     pub fn mxGetDimensions(pm: MxArray) -> *const size_t;
     pub fn mxGetNumberOfElements(pm: MxArray) -> size_t;
     pub fn mxGetElementSize(pm: MxArray) -> size_t;

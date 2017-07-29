@@ -1,6 +1,6 @@
 [package]
 name = "wkw_load"
-version = "1.2.0"
+version = "1.2.1"
 authors = ["Alessandro Motta <alessandro.motta@brain.mpg.de>"]
 build = "build.rs"
 
