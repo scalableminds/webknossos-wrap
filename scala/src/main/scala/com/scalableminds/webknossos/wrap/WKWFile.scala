@@ -127,7 +127,7 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
     }
   }
 
-  private def readFromUnderlyingBuffers(offset: Long, length: Int): Array[Byte] = {
+  private def readFromUnderlyingBuffers(offset: Long, length: Int): Box[Array[Byte]] = {
     val dest = Array.ofDim[Byte](length)
     val bufferIndex = (offset / Int.MaxValue).toInt
     val bufferOffset = (offset % Int.MaxValue).toInt
@@ -136,15 +136,16 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
     if (buffer.capacity - bufferOffset < length) {
       val firstPart: Int = buffer.capacity - bufferOffset
       val secondPart = length - firstPart
-      buffer.copyTo(bufferOffset, dest, 0, firstPart)
-      mappedBuffers(bufferIndex + 1).copyTo(0, dest, firstPart, secondPart)
+      for {
+        _ <- buffer.copyTo(bufferOffset, dest, 0, firstPart)
+        _ <- mappedBuffers(bufferIndex + 1).copyTo(0, dest, firstPart, secondPart)
+      } yield dest
     } else {
-      buffer.copyTo(bufferOffset, dest, 0, length)
+      buffer.copyTo(bufferOffset, dest, 0, length).map(_ => dest)
     }
-    dest
   }
 
-  private def writeToUnderlyingBuffers(offset: Long, data: Array[Byte]): Unit = {
+  private def writeToUnderlyingBuffers(offset: Long, data: Array[Byte]): Box[Unit] = {
     val bufferIndex = (offset / Int.MaxValue).toInt
     val bufferOffset = (offset % Int.MaxValue).toInt
     val buffer = mappedBuffers(bufferIndex)
@@ -152,8 +153,9 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
     if (buffer.capacity - bufferOffset < data.length) {
       val firstPart: Int = buffer.capacity - bufferOffset
       val secondPart = data.length - firstPart
-      buffer.copyFrom(bufferOffset, data, 0, firstPart)
-      mappedBuffers(bufferIndex + 1).copyFrom(0, data, firstPart, secondPart)
+      buffer.copyFrom(bufferOffset, data, 0, firstPart).flatMap { _ =>
+        mappedBuffers(bufferIndex + 1).copyFrom(0, data, firstPart, secondPart)
+      }
     } else {
       buffer.copyFrom(bufferOffset, data, 0, data.length)
     }
@@ -175,7 +177,7 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
       _ <- Check(!underlyingFile.isClosed) ?~! error("File is already closed")
       mortonIndex <- computeMortonIndex(x, y, z)
       (offset, length) <- header.blockBoundaries(mortonIndex)
-      data <- Try(readFromUnderlyingBuffers(offset, length))
+      data <- readFromUnderlyingBuffers(offset, length)
       decompressedData <- if (header.isCompressed) Try(decompressBlock(header.blockType, header.numBytesPerBlock)(data)) else Try(data)
     } yield {
       NewRelic.recordResponseTimeMetric(s"Custom/WebknossosWrap/block-read-time-${header.blockType}", System.currentTimeMillis - t)
@@ -192,7 +194,7 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
       _ <- Check(data.length == header.numBytesPerBlock) ?~! error("Data to be written has invalid length", header.numBytesPerBlock, data.length)
       mortonIndex <- computeMortonIndex(x, y, z)
       (offset, _) <- header.blockBoundaries(mortonIndex)
-      _ <- Try(writeToUnderlyingBuffers(offset, data))
+      _ <- writeToUnderlyingBuffers(offset, data)
     } yield {
       NewRelic.recordResponseTimeMetric(s"Custom/WebknossosWrap/block-write-time-${header.blockType}", System.currentTimeMillis - t)
     }
