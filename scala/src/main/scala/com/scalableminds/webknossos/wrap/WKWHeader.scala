@@ -12,7 +12,7 @@ import java.nio.{ByteBuffer, ByteOrder}
 import net.liftweb.common.{Box, Failure, Full}
 
 object BlockType extends Enumeration(1) {
-  val Raw, LZ4, LZ4HC= Value
+  val Raw, LZ4, LZ4HC = Value
 
   def isCompressed(blockType: BlockType.Value) = blockType == LZ4 || blockType == LZ4HC
 

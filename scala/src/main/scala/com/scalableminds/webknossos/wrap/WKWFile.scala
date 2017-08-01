@@ -5,6 +5,7 @@ package com.scalableminds.webknossos.wrap
 
 import java.io._
 import java.nio.channels.FileChannel
+import java.nio.file.{Files, Paths, StandardCopyOption}
 
 import com.google.common.io.{LittleEndianDataInputStream => DataInputStream}
 import com.newrelic.api.agent.NewRelic
@@ -201,6 +202,71 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
     channel.close()
     underlyingFile.close()
   }
+
+  private def moveFile(tempFile: File, targetFile: File): Unit = {
+    Files.move(tempFile.toPath, Paths.get(underlyingFile.getPath), StandardCopyOption.REPLACE_EXISTING)
+    close()
+  }
+
+  private def transcodeFile(targetBlockType: BlockType.Value)(file: RandomAccessFile): Box[Unit] = {
+    val toCompressed = BlockType.isCompressed(targetBlockType)
+    val jumpTableSize = if (toCompressed) header.numBlocksPerCube + 1 else 1
+    val tempHeader = header.copy(blockType = targetBlockType, jumpTable = Array.ofDim[Long](jumpTableSize))
+    tempHeader.writeTo(file)
+
+    val dataOffset = file.getFilePointer
+    underlyingFile.seek(header.dataOffset)
+
+    val sourceBlockLengths = if (header.isCompressed) {
+      header.jumpTable.sliding(2).map(a => (a(1) - a(0)).toInt)
+    } else {
+      Array.fill(header.numBlocksPerCube)(header.numBytesPerBlock).toIterator
+    }
+
+    val targetBlockLengths = sourceBlockLengths.foldLeft[Box[Seq[Int]]](Full(Seq.empty)) {
+      case (Full(result), blockLength) =>
+        val blockData = Array.ofDim[Byte](blockLength)
+        underlyingFile.read(blockData)
+        for {
+          rawBlock <- decompressBlock(header.blockType, header.numBytesPerBlock)(blockData)
+          encodedBlock <- compressBlock(targetBlockType)(rawBlock)
+        } yield {
+          file.write(encodedBlock)
+          result :+ encodedBlock.length
+        }
+      case (failure, _) =>
+        failure
+    }
+
+    targetBlockLengths.map { blockLengths =>
+      val jumpTable = if (toCompressed) {
+        blockLengths.map(_.toLong).scan(dataOffset)(_ + _).toArray
+      } else {
+        Array(dataOffset)
+      }
+      val newHeader = tempHeader.copy(jumpTable = jumpTable)
+      file.seek(0)
+      newHeader.writeTo(file)
+    }
+  }
+
+  def changeBlockType(targetBlockType: BlockType.Value): Box[WKWFile] = {
+    val tempFile = new File(underlyingFile.getPath + ".tmp")
+    val targetFile = new File(underlyingFile.getPath)
+
+    for {
+      _ <- Check(targetBlockType != header.blockType) ?~! error("File already has requested blockType")
+      _ <- ResourceBox.manage(new RandomAccessFile(tempFile, "rw"))(transcodeFile(targetBlockType))
+      _ <- Try(moveFile(tempFile, targetFile))
+      wkwFile <- WKWFile(targetFile, fileMode)
+    } yield {
+      wkwFile
+    }
+  }
+
+  def decompress: Box[WKWFile] = changeBlockType(BlockType.Raw)
+
+  def compress(targetBlockType: BlockType.Value): Box[WKWFile] = changeBlockType(targetBlockType)
 }
 
 object WKWFile extends WKWCompressionHelper {
