@@ -47,7 +47,7 @@ object ExtendedTypes {
 
     def copyTo(offset: Long, other: Array[Byte], destPos: Long, length: java.lang.Integer): Box[Unit] = {
       // Any regularly called log statements in here should be avoided as they drastically slow down this method.
-      if (offset + length < mappedData.limit()) {
+      if (offset + length <= mappedData.limit()) {
         Try {
           val memOffset: java.lang.Long = address + offset
           val targetOffset: java.lang.Long = destPos + arrayBaseOffset
