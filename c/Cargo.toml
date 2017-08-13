@@ -1,0 +1,10 @@
+[package]
+name = "wkw"
+version = "0.1.0"
+authors = ["Alessandro Motta <alessandro.motta@brain.mpg.de>"]
+
+[dependencies.wkwrap]
+path = "../rust"
+
+[lib]
+crate-type = ["cdylib"]
