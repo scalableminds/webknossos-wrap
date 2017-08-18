@@ -2,6 +2,8 @@ use ::ffi::*;
 use ::util::*;
 use ::wkwrap;
 
+use std::cmp;
+
 fn f64_slice_to_wkwrap_vec(buf: &[f64]) -> Result<wkwrap::Vec3> {
     match buf.len() == 3 {
         true => Ok(wkwrap::Vec3 {
@@ -65,14 +67,26 @@ pub fn mx_array_mut_to_wkwrap_mat<'a>(pm: MxArrayMut) -> Result<wkwrap::Mat<'a>>
     let elem_size = unsafe { mxGetElementSize(pm) };
     let voxel_type = mx_class_id_to_voxel_type(unsafe { mxGetClassID(pm) })?;
 
-    let size = mx_array_size_to_usize_slice(pm);
-    let ndim = size.len();
+    let size_mx = mx_array_size_to_usize_slice(pm);
+    let ndim_mx = size_mx.len();
 
-    let voxel_size = match ndim {
-        3 => Ok(elem_size),
-        4 => Ok(size[0] * elem_size),
-        _ => Err("Matrix must be three- or four-dimensional")
-    }?;
+    if ndim_mx < 1 || ndim_mx > 4 {
+        return Err("Matrix must be one-, two- or three-dimensional");
+    }
+
+    // MATLAB silently drops trailing singleton dimensions. If, for example, a
+    // three-dimensional matrix with size [512, 1, 1] is created, then
+    // mxGetNumberOfDimensions (and thus also mx_array_size_to_usize_slice)
+    // only report a single dimension.
+    let mut size = [1usize; 4];
+    size[..ndim_mx].copy_from_slice(size_mx);
+    let ndim = cmp::max(3, ndim_mx);
+
+    let voxel_size = if ndim < 4 {
+        elem_size
+    } else {
+        elem_size * size[0]
+    };
 
     let shape = wkwrap::Vec3 {
         x: size[ndim - 3] as u32,
