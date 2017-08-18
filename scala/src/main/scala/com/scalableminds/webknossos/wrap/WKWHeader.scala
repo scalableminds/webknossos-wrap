@@ -147,7 +147,7 @@ object WKWHeader {
   }
 
   def apply(file: File, readJumpTable: Boolean = false): Box[WKWHeader] = {
-    ResourceBox.manage(new DataInputStream(new FileInputStream(file)))(apply(_, readJumpTable))
+    ResourceBox.manage(new DataInputStream(new BufferedInputStream(new FileInputStream(file))))(apply(_, readJumpTable))
   }
 
   def apply(numBlocksPerCubeDimension: Int, numVoxelsPerBlockDimension: Int, blockType: BlockType.Value, voxelType: VoxelType.Value, numChannels: Int) = {
