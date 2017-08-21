@@ -68,8 +68,6 @@ impl File {
         Ok(file)
     }
 
-    pub(crate) fn header(&self) -> &Header { &self.header }
-
     pub(crate) fn read_mat(
         &mut self,
         src_pos: Vec3,
