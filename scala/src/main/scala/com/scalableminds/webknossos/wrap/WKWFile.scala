@@ -9,11 +9,11 @@ import java.nio.file.{Files, Paths, StandardCopyOption}
 
 import com.google.common.io.{LittleEndianDataInputStream => DataInputStream}
 import com.newrelic.api.agent.NewRelic
-import com.scalableminds.webknossos.wrap.util.BoxHelpers._
 import com.scalableminds.webknossos.wrap.util.ExtendedTypes._
-import com.scalableminds.webknossos.wrap.util.ResourceBox
+import com.scalableminds.webknossos.wrap.util.{BoxImplicits, ResourceBox}
 import net.jpountz.lz4.LZ4Factory
 import net.liftweb.common.{Box, Failure, Full}
+import net.liftweb.util.Helpers.tryo
 
 object FileMode extends Enumeration {
   val Read, ReadWrite = Value
@@ -53,7 +53,7 @@ trait WKWMortonHelper {
   }
 }
 
-trait WKWCompressionHelper {
+trait WKWCompressionHelper extends BoxImplicits {
 
   protected def error(msg: String): String =
     s"""Error processing WKW file: ${msg}."""
@@ -74,7 +74,7 @@ trait WKWCompressionHelper {
         val compressor = if (targetBlockType == BlockType.LZ4) lz4FastCompressor else lz4HighCompressor
         val maxCompressedLength = compressor.maxCompressedLength(rawBlock.length)
         val compressedBlock = Array.ofDim[Byte](maxCompressedLength)
-        Try(compressor.compress(rawBlock, compressedBlock)).map { compressedLength =>
+        tryo(compressor.compress(rawBlock, compressedBlock)).map { compressedLength =>
           compressedBlock.slice(0, compressedLength)
         }
       case BlockType.Raw =>
@@ -93,8 +93,8 @@ trait WKWCompressionHelper {
       case BlockType.LZ4 | BlockType.LZ4HC =>
         val rawBlock: Array[Byte] = Array.ofDim[Byte](numBytesPerBlock)
         for {
-          bytesDecompressed <- Try(lz4Decompressor.decompress(compressedBlock, rawBlock, numBytesPerBlock))
-          _ <- Check(bytesDecompressed == compressedBlock.length) ?~! error("Decompressed unexpected number of bytes", compressedBlock.length, bytesDecompressed)
+          bytesDecompressed <- tryo(lz4Decompressor.decompress(compressedBlock, rawBlock, numBytesPerBlock))
+          _ <- (bytesDecompressed == compressedBlock.length) ?~! error("Decompressed unexpected number of bytes", compressedBlock.length, bytesDecompressed)
         } yield {
           rawBlock
         }
@@ -163,9 +163,9 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
 
   private def computeMortonIndex(x: Int, y: Int, z: Int): Box[Int] = {
     for {
-      _ <- Check(x >= 0 && x < header.numBlocksPerCubeDimension) ?~! error("X coordinate is out of range", s"[0, ${header.numBlocksPerCubeDimension})", x)
-      _ <- Check(y >= 0 && y < header.numBlocksPerCubeDimension) ?~! error("Y coordinate is out of range", s"[0, ${header.numBlocksPerCubeDimension})", y)
-      _ <- Check(z >= 0 && z < header.numBlocksPerCubeDimension) ?~! error("Z coordinate is out of range", s"[0, ${header.numBlocksPerCubeDimension})", z)
+      _ <- (x >= 0 && x < header.numBlocksPerCubeDimension) ?~! error("X coordinate is out of range", s"[0, ${header.numBlocksPerCubeDimension})", x)
+      _ <- (y >= 0 && y < header.numBlocksPerCubeDimension) ?~! error("Y coordinate is out of range", s"[0, ${header.numBlocksPerCubeDimension})", y)
+      _ <- (z >= 0 && z < header.numBlocksPerCubeDimension) ?~! error("Z coordinate is out of range", s"[0, ${header.numBlocksPerCubeDimension})", z)
     } yield {
       mortonEncode(x, y, z)
     }
@@ -174,11 +174,11 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
   def readBlock(x: Int, y: Int, z: Int): Box[Array[Byte]] = {
     val t = System.currentTimeMillis
     for {
-      _ <- Check(!underlyingFile.isClosed) ?~! error("File is already closed")
+      _ <- (!underlyingFile.isClosed) ?~! error("File is already closed")
       mortonIndex <- computeMortonIndex(x, y, z)
       (offset, length) <- header.blockBoundaries(mortonIndex)
       data <- readFromUnderlyingBuffers(offset, length)
-      decompressedData <- if (header.isCompressed) Try(decompressBlock(header.blockType, header.numBytesPerBlock)(data)) else Try(data)
+      decompressedData <- decompressBlock(header.blockType, header.numBytesPerBlock)(data)
     } yield {
       NewRelic.recordResponseTimeMetric(s"Custom/WebknossosWrap/block-read-time-${header.blockType}", System.currentTimeMillis - t)
       decompressedData
@@ -188,10 +188,10 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
   def writeBlock(x: Int, y: Int, z: Int, data: Array[Byte]): Box[Unit] = {
     val t = System.currentTimeMillis
     for {
-      _ <- Check(!underlyingFile.isClosed) ?~! error("File is already closed")
-      _ <- Check(fileMode == FileMode.ReadWrite) ?~! error("Cannot write to erad-only files")
-      _ <- Check(!header.isCompressed) ?~! error("Cannot write to compressed files")
-      _ <- Check(data.length == header.numBytesPerBlock) ?~! error("Data to be written has invalid length", header.numBytesPerBlock, data.length)
+      _ <- (!underlyingFile.isClosed) ?~! error("File is already closed")
+      _ <- (fileMode == FileMode.ReadWrite) ?~! error("Cannot write to erad-only files")
+      _ <- (!header.isCompressed) ?~! error("Cannot write to compressed files")
+      _ <- (data.length == header.numBytesPerBlock) ?~! error("Data to be written has invalid length", header.numBytesPerBlock, data.length)
       mortonIndex <- computeMortonIndex(x, y, z)
       (offset, _) <- header.blockBoundaries(mortonIndex)
       _ <- writeToUnderlyingBuffers(offset, data)
@@ -257,9 +257,9 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
     val targetFile = new File(underlyingFile.getPath)
 
     for {
-      _ <- Check(targetBlockType != header.blockType) ?~! error("File already has requested blockType")
+      _ <- (targetBlockType != header.blockType) ?~! error("File already has requested blockType")
       _ <- ResourceBox.manage(new RandomAccessFile(tempFile, "rw"))(transcodeFile(targetBlockType))
-      _ <- Try(moveFile(tempFile, targetFile))
+      _ <- tryo(moveFile(tempFile, targetFile))
       wkwFile <- WKWFile(targetFile, fileMode)
     } yield {
       wkwFile
@@ -289,7 +289,7 @@ object WKWFile extends WKWCompressionHelper {
   def apply(file: File, fileMode: FileMode.Value = FileMode.Read): Box[WKWFile] = {
     for {
       header <- WKWHeader(file, true)
-      _ <- Check(header.expectedFileSize == file.length) ?~! error("Unexpected file size", header.expectedFileSize, file.length)
+      _ <- (header.expectedFileSize == file.length) ?~! error("Unexpected file size", header.expectedFileSize, file.length)
       mode <- fileModeString(file, header.isCompressed, fileMode)
       underlyingFile <- ResourceBox(new RandomAccessFile(file, mode))
     } yield {
@@ -319,9 +319,9 @@ object WKWFile extends WKWCompressionHelper {
         if (blocks.hasNext) {
           val data = blocks.next
           for {
-            _ <- Check(data.length == header.numBytesPerBlock) ?~! error("Unexpected block size", header.numBytesPerBlock, data.length)
+            _ <- (data.length == header.numBytesPerBlock) ?~! error("Unexpected block size", header.numBytesPerBlock, data.length)
             compressedBlock <- if (header.isCompressed) compressBlock(header.blockType)(data) else Full(data)
-            _ <- Try(dataBuffer.write(compressedBlock))
+            _ <- tryo(dataBuffer.write(compressedBlock))
           } yield {
             blockLengths :+ compressedBlock.length
           }

@@ -3,13 +3,13 @@
  */
 package com.scalableminds.webknossos.wrap.util
 
-import net.liftweb.common.{Box, Failure, Full}
+import net.liftweb.common.{Box, Failure}
+import net.liftweb.util.Helpers.tryo
 import resource._
-import com.scalableminds.webknossos.wrap.util.BoxHelpers._
 
 object ResourceBox {
   def apply[R : Resource](resource: => R): Box[R] = {
-    Try(resource) ~> "Exception during resource creation"
+    tryo(resource) ~> "Exception during resource creation"
   }
 
   def manage[R : Resource, T](resource: => R)(f: R => Box[T]): Box[T] = {
