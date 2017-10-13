@@ -32,6 +32,17 @@ pub extern fn dataset_open(root_ptr: *const c_char) -> *const Dataset {
 }
 
 #[no_mangle]
+pub extern fn dataset_close(dataset_ptr: *const Dataset) {
+    assert!(!dataset_ptr.is_null());
+
+    #[allow(unused_variables)]
+    let dataset = unsafe { Box::from_raw(dataset_ptr as *mut wkwrap::Dataset) };
+
+    // NOTE(amotta): At this point the liftime or the `dataset` binding will end
+    // and the Rust language will make sure that the Dataset structure is cleared.
+}
+
+#[no_mangle]
 pub extern fn dataset_get_header(dataset_ptr: *const Dataset, header_ptr: *mut Header) {
     assert!(!dataset_ptr.is_null());
     assert!(!header_ptr.is_null());
@@ -78,3 +89,4 @@ pub extern fn dataset_read(
 
     std::mem::forget(dataset);
 }
+
