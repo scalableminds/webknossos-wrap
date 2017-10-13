@@ -15,7 +15,11 @@ ffi.cdef("""
     void   dataset_read(const void * dataset, uint32_t * bbox, void * data);
     void   dataset_get_header(const void * dataset, struct header * header);
 """)
-C = ffi.dlopen("/home/amotta/Code/webknossos-wrap/c/target/debug/libwkw.so")
+
+import os
+this_dir = os.path.dirname(__file__)
+path_libwkw = os.path.join(this_dir, '../c/target/debug/libwkw.so')
+C = ffi.dlopen(path_libwkw)
 
 root = ffi.new("char[]", b"/home/amotta/Desktop/wkw")
 dataset = C.dataset_open(root)
