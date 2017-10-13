@@ -12,6 +12,7 @@ ffi.cdef("""
     };
 
     void * dataset_open(const char * root);
+    void   dataset_close(const void * dataset);
     void   dataset_read(const void * dataset, uint32_t * bbox, void * data);
     void   dataset_get_header(const void * dataset, struct header * header);
 """)
@@ -46,6 +47,8 @@ data = np.zeros(bbox[:, 1] - bbox[:, 0], dtype='uint8', order='F')
 
 bbox_ptr = ffi.cast("uint32_t *", bbox.ctypes.data)
 data_ptr = ffi.cast("void *", data.ctypes.data)
-C.dataset_read(dataset, bbox_ptr, data_ptr);
+C.dataset_read(dataset, bbox_ptr, data_ptr)
 
 print("data: ", data)
+
+C.dataset_close(dataset);
