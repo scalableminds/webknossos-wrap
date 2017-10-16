@@ -54,8 +54,8 @@ pub extern fn dataset_get_header(dataset_ptr: *const Dataset, header_ptr: *mut H
         (*header_ptr).version = header.version;
         (*header_ptr).block_len = 1u8 << header.block_len_log2;
         (*header_ptr).file_len = 1u8 << header.file_len_log2;
-        (*header_ptr).block_type = header.block_type as u8;
-        (*header_ptr).voxel_type = header.voxel_type as u8;
+        (*header_ptr).block_type = 1u8 + header.block_type as u8;
+        (*header_ptr).voxel_type = 1u8 + header.voxel_type as u8;
         (*header_ptr).voxel_size = header.voxel_size;
     }
 
