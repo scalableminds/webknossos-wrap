@@ -24,17 +24,77 @@ this_dir = os.path.dirname(__file__)
 path_libwkw = os.path.join(this_dir, '../c/target/debug/libwkw.so')
 C = ffi.dlopen(path_libwkw)
 
+class Header:
+    BLOCK_TYPE_RAW = 1
+    BLOCK_TYPE_LZ4 = 2
+    BLOCK_TYPE_LZ4HC = 3
+
+    VALID_BLOCK_TYPES = [BLOCK_TYPE_RAW, BLOCK_TYPE_LZ4, BLOCK_TYPE_LZ4HC]
+    VALID_VOXEL_TYPES = [np.uint8, np.uint16, np.uint32, np.uint64, np.float32, np.float64]
+
+    def __init__(self,
+                 voxel_type: type,
+                 voxel_size: int,
+                 version: int=1,
+                 block_len: int=32,
+                 file_len: int=32,
+                 block_type: int=1):
+        self.version = version
+
+        assert block_len & (block_len - 1) == 0
+        self.block_len = block_len
+
+        assert file_len & (file_len - 1) == 0
+        self.file_len = file_len
+
+        assert block_type in self.VALID_BLOCK_TYPES
+        self.block_type = block_type
+
+        assert voxel_type in self.VALID_VOXEL_TYPES
+        self.voxel_type = voxel_type
+
+        assert voxel_size > 0
+        assert voxel_size % np.dtype(voxel_type).itemsize == 0
+        self.numel = voxel_size // np.dtype(voxel_type).itemsize
+        self.voxel_size = voxel_size
+
+    @staticmethod
+    def from_c(header_c):
+        print(header_c)
+
+        assert header_c.voxel_type > 0
+        voxel_type = Header.VALID_VOXEL_TYPES[header_c.voxel_type - 1]
+
+        assert header_c.block_type > 0
+        block_type = Header.VALID_BLOCK_TYPES[header_c.block_type - 1]
+
+        return Header(version=header_c.version,
+                      block_len=header_c.block_len,
+                      file_len=header_c.file_len,
+                      block_type=block_type,
+                      voxel_type=voxel_type,
+                      voxel_size=header_c.voxel_size)
+
 class Dataset:
     def __init__(self, root: str, handle):
         self.root = root
         self.handle = handle
 
-        self.header = ffi.new("struct header *")
-        C.dataset_get_header(self.handle, self.header)
+        header_c = ffi.new("struct header *")
+        C.dataset_get_header(self.handle, header_c)
+        self.header = Header.from_c(header_c)
 
     def read(self, bbox):
-        data = np.zeros(bbox[:, 1] - bbox[:, 0], dtype='uint8', order='F')
-        bbox_ptr = ffi.cast("uint32_t *", bbox.ctypes.data)
+        assert isinstance(bbox, np.ndarray)
+        assert bbox.dtype == np.uint32
+        assert bbox.shape == (3, 2)
+
+        data = np.zeros(bbox[:, 1] - bbox[:, 0],
+                        dtype=self.header.voxel_type,
+                        order='F')
+
+        bbox_f = np.asfortranarray(bbox)
+        bbox_ptr = ffi.cast("uint32_t *", bbox_f.ctypes.data)
         data_ptr = ffi.cast("void *", data.ctypes.data)
         C.dataset_read(self.handle, bbox_ptr, data_ptr)
 
