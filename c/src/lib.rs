@@ -1,10 +1,14 @@
 extern crate wkwrap;
 use wkwrap as wkw;
 
-use std::ffi::CStr;
+#[macro_use]
+extern crate lazy_static;
+
+use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_void, c_ulong};
 
 use std::path::Path;
+use std::sync::Mutex;
 
 pub enum Dataset {}
 
@@ -18,16 +22,35 @@ pub struct Header {
     pub voxel_size: u8
 }
 
+lazy_static! {
+    static ref LAST_ERR_MSG: Mutex<Box<CStr>> = Mutex::new(
+        CString::new("".as_bytes()).unwrap().into_boxed_c_str());
+}
+
+#[no_mangle]
+pub extern fn get_last_error_msg() -> *const c_char {
+    LAST_ERR_MSG.lock().unwrap().as_ptr()
+}
+
+fn set_last_error_msg(msg: &str) {
+    let c_string = CString::new(msg.as_bytes()).unwrap();
+    *LAST_ERR_MSG.lock().unwrap() = c_string.into_boxed_c_str();
+}
+
 #[no_mangle]
 pub extern fn dataset_open(root_ptr: *const c_char) -> *const Dataset {
     let root_str = unsafe { CStr::from_ptr(root_ptr) }.to_str().unwrap();
     let root_path = Path::new(root_str);
 
-    let dataset = wkw::Dataset::new(root_path).unwrap();
-    let dataset_ptr = Box::from(dataset);
-
-    unsafe {
-        std::mem::transmute(dataset_ptr)
+    match wkw::Dataset::new(root_path) {
+        Ok(dataset) => {
+            let dataset_ptr = Box::from(dataset);
+            unsafe { std::mem::transmute(dataset_ptr) }
+        },
+        Err(msg) => {
+            set_last_error_msg(msg);
+            std::ptr::null::<Dataset>()
+        }
     }
 }
 
