@@ -18,11 +18,15 @@ ffi.cdef("""
     void   dataset_close(const void * dataset);
     void   dataset_read(const void * dataset, uint32_t * bbox, void * data);
     void   dataset_get_header(const void * dataset, struct header * header);
+    char * get_last_error_msg();
 """)
 
 this_dir = os.path.dirname(__file__)
 path_libwkw = os.path.join(this_dir, '../c/target/debug/libwkw.so')
 C = ffi.dlopen(path_libwkw)
+
+class WKWException(Exception):
+    pass
 
 class Header:
     BLOCK_TYPE_RAW = 1
@@ -106,7 +110,13 @@ class Dataset:
     @staticmethod
     def open(root: str):
         root_c = ffi.new("char[]", root.encode())
-        return Dataset(root, C.dataset_open(root_c))
+        handle = C.dataset_open(root_c)
+
+        if handle == ffi.NULL:
+            error_msg = ffi.string(C.get_last_error_msg())
+            raise WKWException(error_msg)
+        else:
+            return Dataset(root, C.dataset_open(root_c))
 
     def __enter__(self):
         return self
