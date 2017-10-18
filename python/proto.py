@@ -19,6 +19,7 @@ ffi.cdef("""
     void * dataset_open(const char * root);
     void   dataset_close(const dataset_t * handle);
     void   dataset_read(const dataset_t * handle, uint32_t * bbox, void * data);
+    void   dataset_write(const dataset_t * handle, uint32_t * bbox, void * data);
     void   dataset_get_header(const dataset_t * handle, struct header * header);
     char * get_last_error_msg();
 """)
@@ -106,6 +107,24 @@ class Dataset:
 
         return data
 
+    def write(self, off, data):
+        assert isinstance(off, np.ndarray)
+        assert off.dtype == np.uint32
+        assert off.size == 3
+
+        assert isinstance(data, np.ndarray)
+        assert data.dtype == self.header.voxel_type
+
+        bbox = np.zeros((3, 2), dtype='uint32', order='F')
+        bbox_ptr = ffi.cast("uint32_t *", bbox.ctypes.data)
+
+        bbox[:, 0] = off
+        bbox[:, 1] = off + data.shape
+
+        data_f = np.asfortranarray(data)
+        data_ptr = ffi.cast("void *", data_f.ctypes.data)
+        C.dataset_write(self.handle, bbox_ptr, data_ptr)
+
     def close(self):
         C.dataset_close(self.handle)
 
@@ -143,3 +162,7 @@ with Dataset.open(root) as dataset:
     
     data = dataset.read(bbox)
     print("data: ", data)
+
+    off = np.array([1, 1, 1], dtype='uint32', order='F')
+    data = np.zeros((2, 2, 2), dtype=header.voxel_type, order='F')
+    dataset.write(off, data)
