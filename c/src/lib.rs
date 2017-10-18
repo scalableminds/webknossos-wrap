@@ -85,6 +85,40 @@ pub extern fn dataset_get_header(dataset_ptr: *const Dataset, header_ptr: *mut H
     std::mem::forget(dataset);
 }
 
+fn c_bbox_to_off_and_shape(bbox_ptr: *const c_ulong) -> (wkwrap::Vec3, wkwrap::Vec3) {
+    let bbox = unsafe {
+        std::slice::from_raw_parts(bbox_ptr as *const u32, 6)
+    };
+
+    let off = wkwrap::Vec3 {
+        x: bbox[0],
+        y: bbox[1],
+        z: bbox[2]
+    };
+
+    let shape = wkwrap::Vec3 {
+        x: bbox[3] - bbox[0],
+        y: bbox[4] - bbox[1],
+        z: bbox[5] - bbox[2]
+    };
+
+    (off, shape)
+}
+
+fn c_data_to_mat<'a>(
+    dataset: &wkwrap::Dataset,
+    shape: &'a wkwrap::Vec3,
+    data_ptr: *const c_void
+) -> wkwrap::Mat<'a> {
+    let voxel_type = dataset.header().voxel_type;
+    let voxel_size = dataset.header().voxel_size as usize;
+
+    let data_len = shape.product() as usize * voxel_size;
+    let data = unsafe { std::slice::from_raw_parts_mut(data_ptr as *mut u8, data_len) };
+
+    wkwrap::Mat::new(data, *shape, voxel_size, voxel_type).unwrap()
+}
+
 #[no_mangle]
 pub extern fn dataset_read(
     dataset_ptr: *const Dataset,
@@ -96,20 +130,28 @@ pub extern fn dataset_read(
     assert!(!data_ptr.is_null());
 
     let dataset = unsafe { Box::from_raw(dataset_ptr as *mut wkwrap::Dataset) };
-    let bbox = unsafe { std::slice::from_raw_parts(bbox_ptr as *const u32, 6) };
+    let (off, shape) = c_bbox_to_off_and_shape(bbox_ptr);
 
-    let off = wkwrap::Vec3 { x: bbox[0], y: bbox[1], z: bbox[2] };
-    let shape = wkwrap::Vec3 { x: bbox[3] - bbox[0], y: bbox[4] - bbox[1], z: bbox[5] - bbox[2] };
-
-    let voxel_type = dataset.header().voxel_type;
-    let voxel_size = dataset.header().voxel_size as usize;
-
-    let data_len = shape.product() as usize * voxel_size;
-    let data = unsafe { std::slice::from_raw_parts_mut(data_ptr as *mut u8, data_len) };
-
-    let mut mat = wkwrap::Mat::new(data, shape, voxel_size, voxel_type).unwrap();
+    let mut mat = c_data_to_mat(&dataset, &shape, data_ptr);
     dataset.read_mat(off, &mut mat).unwrap();
+    std::mem::forget(dataset);
+}
 
+#[no_mangle]
+pub extern fn dataset_write(
+    dataset_ptr: *const Dataset,
+    bbox_ptr: *const c_ulong,
+    data_ptr: *const c_void
+) {
+    assert!(!dataset_ptr.is_null());
+    assert!(!bbox_ptr.is_null());
+    assert!(!data_ptr.is_null());
+
+    let dataset = unsafe { Box::from_raw(dataset_ptr as *mut wkwrap::Dataset) };
+    let (off, shape) = c_bbox_to_off_and_shape(bbox_ptr);
+
+    let mat = c_data_to_mat(&dataset, &shape, data_ptr);
+    dataset.write_mat(off, &mat).unwrap();
     std::mem::forget(dataset);
 }
 
