@@ -14,10 +14,12 @@ ffi.cdef("""
         uint8_t voxel_size;
     };
 
+    typedef struct dataset dataset_t;
+
     void * dataset_open(const char * root);
-    void   dataset_close(const void * dataset);
-    void   dataset_read(const void * dataset, uint32_t * bbox, void * data);
-    void   dataset_get_header(const void * dataset, struct header * header);
+    void   dataset_close(const dataset_t * handle);
+    void   dataset_read(const dataset_t * handle, uint32_t * bbox, void * data);
+    void   dataset_get_header(const dataset_t * handle, struct header * header);
     char * get_last_error_msg();
 """)
 
