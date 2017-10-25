@@ -96,7 +96,9 @@ class Dataset:
         assert bbox.dtype == np.uint32
         assert bbox.shape == (3, 2)
 
-        data = np.zeros(bbox[:, 1] - bbox[:, 0],
+        data_shape = np.append(self.header.numel,
+                               bbox[:, 1] - bbox[:, 0])
+        data = np.zeros(data_shape,
                         dtype=self.header.voxel_type,
                         order='F')
 
@@ -104,6 +106,10 @@ class Dataset:
         bbox_ptr = ffi.cast("uint32_t *", bbox_f.ctypes.data)
         data_ptr = ffi.cast("void *", data.ctypes.data)
         C.dataset_read(self.handle, bbox_ptr, data_ptr)
+
+        if data.shape[0] == 1:
+            # remove channel dimension, if possible
+            data.reshape(data.shape[1:], order='A')
 
         return data
 
