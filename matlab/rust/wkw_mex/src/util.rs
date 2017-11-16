@@ -34,6 +34,10 @@ pub fn str_slice_to_mx_class_id(class_id: &str) -> Result<MxClassId> {
         "uint64" => Ok(MxClassId::Uint64),
         "single" => Ok(MxClassId::Single),
         "double" => Ok(MxClassId::Double),
+        "int8"   => Ok(MxClassId::Int8),
+        "int16"  => Ok(MxClassId::Int16),
+        "int32"  => Ok(MxClassId::Int32),
+        "int64"  => Ok(MxClassId::Int64),
         _        => Err("Unknown MxClassId name")
     }
 }
@@ -145,7 +149,7 @@ pub fn die(msg: &str) {
     let len = bytes.len();
 
     // build zero-terminated string
-    let mut buf = malloc(len + 1).unwrap();
+    let buf = malloc(len + 1).unwrap();
     buf[..len].copy_from_slice(bytes);
     buf[len] = 0;
 

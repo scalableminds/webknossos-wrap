@@ -54,6 +54,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0",
   "net.jpountz.lz4" % "lz4" % "1.3.0",
   "net.liftweb" % "lift-common_2.10" % "2.6-M3",
+  "net.liftweb" % "lift-util_2.10" % "3.0-M1",
   "org.apache.commons" % "commons-lang3" % "3.1",
   "org.apache.logging.log4j" % "log4j-api" % "2.0-beta9",
   "org.apache.logging.log4j" % "log4j-core" % "2.0-beta9"

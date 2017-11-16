@@ -2,8 +2,6 @@ use ::ffi::*;
 use ::util::*;
 use ::wkwrap;
 
-use std::cmp;
-
 fn f64_slice_to_wkwrap_vec(buf: &[f64]) -> Result<wkwrap::Vec3> {
     match buf.len() == 3 {
         true => Ok(wkwrap::Vec3 {
@@ -34,9 +32,9 @@ pub fn mx_array_to_wkwrap_vec(pm: MxArray) -> Result<wkwrap::Vec3> {
     f64_slice_to_wkwrap_vec(buf)
 }
 
-pub fn mx_array_to_wkwrap_mat<'a>(pm: MxArray) -> Result<wkwrap::Mat<'a>> {
+pub fn mx_array_to_wkwrap_mat<'a>(is_multi_channel: bool, pm: MxArray) -> Result<wkwrap::Mat<'a>> {
     // HACK(amotta): Ideally, we would also have wkwrap::MatMut
-    mx_array_mut_to_wkwrap_mat(pm as MxArrayMut)
+    mx_array_mut_to_wkwrap_mat(is_multi_channel, pm as MxArrayMut)
 }
 
 pub fn mx_class_id_to_voxel_type(class_id: MxClassId) -> Result<wkwrap::VoxelType> {
@@ -47,6 +45,10 @@ pub fn mx_class_id_to_voxel_type(class_id: MxClassId) -> Result<wkwrap::VoxelTyp
         MxClassId::Uint64 => Ok(wkwrap::VoxelType::U64),
         MxClassId::Single => Ok(wkwrap::VoxelType::F32),
         MxClassId::Double => Ok(wkwrap::VoxelType::F64),
+        MxClassId::Int8   => Ok(wkwrap::VoxelType::I8),
+        MxClassId::Int16  => Ok(wkwrap::VoxelType::I16),
+        MxClassId::Int32  => Ok(wkwrap::VoxelType::I32),
+        MxClassId::Int64  => Ok(wkwrap::VoxelType::I64),
         _                 => Err("Unknown MxClassId")
     }
 }
@@ -58,44 +60,43 @@ pub fn voxel_type_to_mx_class_id(voxel_type: wkwrap::VoxelType) -> MxClassId {
         wkwrap::VoxelType::U32 => MxClassId::Uint32,
         wkwrap::VoxelType::U64 => MxClassId::Uint64,
         wkwrap::VoxelType::F32 => MxClassId::Single,
-        wkwrap::VoxelType::F64 => MxClassId::Double
+        wkwrap::VoxelType::F64 => MxClassId::Double,
+        wkwrap::VoxelType::I8  => MxClassId::Int8,
+        wkwrap::VoxelType::I16 => MxClassId::Int16,
+        wkwrap::VoxelType::I32 => MxClassId::Int32,
+        wkwrap::VoxelType::I64 => MxClassId::Int64,
     }
 }
 
-pub fn mx_array_mut_to_wkwrap_mat<'a>(pm: MxArrayMut) -> Result<wkwrap::Mat<'a>> {
+pub fn mx_array_mut_to_wkwrap_mat<'a>(
+    is_multi_channel: bool,
+    pm: MxArrayMut
+) -> Result<wkwrap::Mat<'a>> {
+    // buffer
     let buf = mx_array_mut_to_u8_slice_mut(pm)?;
+
+    // full size vector
+    let mx_size = mx_array_size_to_usize_slice(pm);
+    let mx_size_len = mx_size.len();
+
+    // check number of input dimensions
+    if mx_size_len > if is_multi_channel { 4 } else { 3 } {
+        return Err("Data array has too many dimensions");
+    }
+
+    let mut size = [1usize; 4];
+    let size_off = if is_multi_channel { 0 } else { 1 };
+    size[size_off..(size_off + mx_size_len)].copy_from_slice(mx_size);
+
+    // shape
+    let shape = wkwrap::Vec3 { x: size[1] as u32, y: size[2] as u32, z: size[3] as u32 };
+
+    // voxel size
     let elem_size = unsafe { mxGetElementSize(pm) };
+    let voxel_size = elem_size * size[0];
+
+    // voxel type
     let voxel_type = mx_class_id_to_voxel_type(unsafe { mxGetClassID(pm) })?;
 
-    let size_mx = mx_array_size_to_usize_slice(pm);
-    let ndim_mx = size_mx.len();
-
-    if ndim_mx < 1 || ndim_mx > 4 {
-        return Err("Matrix must be one-, two- or three-dimensional");
-    }
-
-    // MATLAB silently drops trailing singleton dimensions. If, for example, a
-    // three-dimensional matrix with size [512, 1, 1] is created, then
-    // mxGetNumberOfDimensions (and thus also mx_array_size_to_usize_slice)
-    // only report a single dimension.
-    let mut size = [1usize; 4];
-    size[..ndim_mx].copy_from_slice(size_mx);
-    let ndim = cmp::max(3, ndim_mx);
-
-    let voxel_size = if ndim < 4 {
-        elem_size
-    } else {
-        elem_size * size[0]
-    };
-
-    let shape = wkwrap::Vec3 {
-        x: size[ndim - 3] as u32,
-        y: size[ndim - 2] as u32,
-        z: size[ndim - 1] as u32
-    };
-
-    match elem_size == 0 {
-        true => Err("Failed to determine element size"),
-        false => wkwrap::Mat::new(buf, shape, voxel_size, voxel_type)
-    }
+    wkwrap::Mat::new(buf, shape, voxel_size, voxel_type)
 }

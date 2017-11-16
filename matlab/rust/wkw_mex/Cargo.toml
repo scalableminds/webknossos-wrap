@@ -1,10 +1,10 @@
 [package]
 name = "wkw_mex"
-version = "1.2.2"
+version = "1.4.0"
 authors = ["Alessandro Motta <alessandro.motta@brain.mpg.de>"]
 
 [dependencies]
-libc = "0.2.24"
+libc = "0.2"
 
 [dependencies.wkwrap]
 path = "../../../rust"

@@ -68,8 +68,6 @@ impl File {
         Ok(file)
     }
 
-    pub(crate) fn header(&self) -> &Header { &self.header }
-
     pub(crate) fn read_mat(
         &mut self,
         src_pos: Vec3,
@@ -100,7 +98,7 @@ impl File {
 
         let buf_shape = Vec3::from(1u32 << block_len_log2);
         let mut buf_vec = vec![0u8; block_size];
-        let mut buf = buf_vec.as_mut_slice();
+        let buf = buf_vec.as_mut_slice();
 
         let iter = Iter::new(file_len_log2, src_box_boxes)?;
         for cur_block_idx in iter {
@@ -198,7 +196,7 @@ impl File {
 
         // prepare buffers and jump table
         let mut buf_vec = vec![0u8; self.header.block_size()];
-        let mut buf = buf_vec.as_mut_slice();
+        let buf = buf_vec.as_mut_slice();
 
         // prepare files
         self.seek_block(0)?;
@@ -312,7 +310,7 @@ impl File {
                                   .or(Err("Could not determine jump entry"))?;
 
         let block_idx = self.block_idx.unwrap();
-        let mut jump_table = &mut *self.header.jump_table.as_mut().unwrap();
+        let jump_table = &mut *self.header.jump_table.as_mut().unwrap();
         jump_table[block_idx as usize] = jump_entry;
 
         Ok(len_lz4)

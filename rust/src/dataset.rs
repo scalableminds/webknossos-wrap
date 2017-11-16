@@ -1,6 +1,3 @@
-extern crate walkdir;
-use dataset::walkdir::{DirEntry, WalkDir, WalkDirIterator};
-
 use ::{BlockType, File, Header, Result, Vec3, Box3, Mat};
 use std::path::{Path, PathBuf};
 use std::fs;
@@ -12,38 +9,6 @@ pub struct Dataset<'a> {
 }
 
 static HEADER_FILE_NAME: &'static str = "header.wkw";
-
-fn is_wkw_file(entry: &DirEntry) -> bool {
-    let is_wkw = entry.file_name()
-                      .to_str()
-                      .map(|s| s.ends_with(".wkw"))
-                      .unwrap_or(false);
-    let is_file = entry.metadata()
-                       .map(|m| m.is_file())
-                       .unwrap_or(false);
-
-    is_wkw && is_file
-}
-
-pub fn recover_header(root: &Path) -> Result<()> {
-    // find an arbitrary .wkw file
-    let mut walker = WalkDir::new(root)
-                             .min_depth(3).max_depth(3)
-                             .into_iter()
-                             .filter_entry(|e| is_wkw_file(e));
-
-    let wkw_file_entry = match walker.next() {
-        Some(Ok(s)) => s,
-        Some(Err(_)) => return Err("Error in directory walk"),
-        None => return Err("No .wkw files found")
-    };
-
-    // open wkw file
-    let file = File::open(wkw_file_entry.path())?;
-    let mut header = file.header().clone();
-
-    Dataset::create_header_file(root, &mut header)
-}
 
 impl<'a> Dataset<'a> {
     pub fn new(root: &'a Path) -> Result<Dataset<'a>> {
@@ -190,34 +155,6 @@ impl<'a> Dataset<'a> {
             }
 
             Ok(1 as usize)
-    }
-
-    pub fn verify_headers(&self) -> Result<bool> {
-        // find an arbitrary .wkw file
-        let walker = WalkDir::new(self.root)
-                             .min_depth(3).max_depth(3)
-                             .into_iter()
-                             .filter_entry(|e| is_wkw_file(e));
-
-        // this header will be used as template
-        let ref mut dataset_header = self.header.clone();
-
-        for entry in walker {
-            let entry = entry.unwrap();
-            let entry_path = entry.path();
-
-            let wkw_file = File::open(&entry_path).unwrap();
-            let wkw_header = wkw_file.header();
-
-            // we want to test for equality up to offset
-            dataset_header.data_offset = wkw_header.data_offset;
-
-            if wkw_header != dataset_header {
-                return Ok(false);
-            }
-        }
-
-        Ok(true)
     }
 
     pub(crate) fn read_header(root: &Path) -> Result<Header> {
