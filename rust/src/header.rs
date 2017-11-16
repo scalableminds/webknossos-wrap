@@ -220,6 +220,16 @@ impl Header {
         self.voxel_type.size()
     }
 
+    pub fn num_channels(&self) -> usize {
+        let voxel_size = self.voxel_size as usize;
+        assert!(voxel_size % self.voxel_type_size() == 0);
+        voxel_size / self.voxel_type_size()
+    }
+
+    pub fn is_multi_channel(&self) -> bool {
+        self.voxel_size as usize > self.voxel_type_size()
+    }
+
     fn from_bytes(buf: [u8; 16]) -> Result<Header> {
         let raw: HeaderRaw = unsafe { mem::transmute(buf) };
 
