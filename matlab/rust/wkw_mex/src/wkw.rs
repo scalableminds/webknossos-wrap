@@ -45,6 +45,10 @@ pub fn mx_class_id_to_voxel_type(class_id: MxClassId) -> Result<wkwrap::VoxelTyp
         MxClassId::Uint64 => Ok(wkwrap::VoxelType::U64),
         MxClassId::Single => Ok(wkwrap::VoxelType::F32),
         MxClassId::Double => Ok(wkwrap::VoxelType::F64),
+        MxClassId::Int8   => Ok(wkwrap::VoxelType::I8),
+        MxClassId::Int16  => Ok(wkwrap::VoxelType::I16),
+        MxClassId::Int32  => Ok(wkwrap::VoxelType::I32),
+        MxClassId::Int64  => Ok(wkwrap::VoxelType::I64),
         _                 => Err("Unknown MxClassId")
     }
 }
@@ -56,7 +60,11 @@ pub fn voxel_type_to_mx_class_id(voxel_type: wkwrap::VoxelType) -> MxClassId {
         wkwrap::VoxelType::U32 => MxClassId::Uint32,
         wkwrap::VoxelType::U64 => MxClassId::Uint64,
         wkwrap::VoxelType::F32 => MxClassId::Single,
-        wkwrap::VoxelType::F64 => MxClassId::Double
+        wkwrap::VoxelType::F64 => MxClassId::Double,
+        wkwrap::VoxelType::I8  => MxClassId::Int8,
+        wkwrap::VoxelType::I16 => MxClassId::Int16,
+        wkwrap::VoxelType::I32 => MxClassId::Int32,
+        wkwrap::VoxelType::I64 => MxClassId::Int64,
     }
 }
 
