@@ -23,12 +23,12 @@ mex_function!(nlhs, lhs, nrhs, rhs, {
     let dataset = wkwrap::Dataset::new(dataset_path)?;
 
     let num_channels = dataset.header().num_channels();
-    let is_multi_channel = num_channels > 0;
+    let is_multi_channel = num_channels > 1;
 
     // build shape
     let bbox = mx_array_to_wkwrap_box(rhs[1])?;
     let shape = bbox.width();
-    
+
     let shape_arr = [num_channels, shape.x as usize, shape.y as usize, shape.z as usize];
     let shape_slice = if is_multi_channel { &shape_arr[0..] } else { &shape_arr[1..] };
 
