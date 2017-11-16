@@ -145,7 +145,7 @@ pub fn die(msg: &str) {
     let len = bytes.len();
 
     // build zero-terminated string
-    let mut buf = malloc(len + 1).unwrap();
+    let buf = malloc(len + 1).unwrap();
     buf[..len].copy_from_slice(bytes);
     buf[len] = 0;
 
