@@ -1,8 +1,8 @@
 function wkwTest()
     %% config
-    dataType = 'uint8';
+    dataType = 'int8';
     roundCount = 50;
-    numChannels = 3;
+    numChannels = 1;
     blockLen = 32;
     fileLen = 32;
     
@@ -69,7 +69,9 @@ function data = buildRandDataForBox(dataType, numChannels, box)
     boxSize = cat(2, numChannels, boxSize);
     
     switch dataType
-        case {'uint8', 'uint16', 'uint32', 'uint64'}
+        case { ...
+                'int8', 'int16', 'int32', 'int64', ...
+                'uint8', 'uint16', 'uint32', 'uint64'}
             dataTypeRange = [intmin(dataType), intmax(dataType)];
             data = randi(dataTypeRange, boxSize, dataType);
         case {'single', 'double'}
