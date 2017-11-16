@@ -13,7 +13,7 @@ mex_function!(nlhs, lhs, nrhs, rhs, {
         false => return Err("Invalid number of input arguments")
     };
 
-    let mut lhs = match nlhs == 1 {
+    let lhs = match nlhs == 1 {
         true => slice::from_raw_parts_mut(lhs, nlhs as usize),
         false => return Err("Invalid number of output arguments")
     };
