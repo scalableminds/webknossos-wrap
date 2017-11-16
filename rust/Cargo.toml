@@ -1,6 +1,6 @@
 [package]
 name = "wkwrap"
-version = "1.3.0"
+version = "1.4.0"
 authors = ["Alessandro Motta <alessandro.motta@brain.mpg.de>"]
 
 [dependencies]

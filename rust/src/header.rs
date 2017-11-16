@@ -19,15 +19,15 @@ struct HeaderRaw {
 pub enum BlockType { Raw, LZ4, LZ4HC }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum VoxelType { U8, U16, U32, U64, F32, F64 }
+pub enum VoxelType { U8, U16, U32, U64, F32, F64, I8, I16, I32, I64 }
 
 impl VoxelType {
     pub fn size(&self) -> usize {
         match *self {
-            VoxelType::U8  => 1,
-            VoxelType::U16 => 2,
-            VoxelType::U32 => 4,
-            VoxelType::U64 => 8,
+            VoxelType::U8  | VoxelType::I8  => 1,
+            VoxelType::U16 | VoxelType::I16 => 2,
+            VoxelType::U32 | VoxelType::I32 => 4,
+            VoxelType::U64 | VoxelType::I64 => 8,
             VoxelType::F32 => 4,
             VoxelType::F64 => 8
         }
@@ -252,13 +252,17 @@ impl Header {
         };
 
         let voxel_type = match raw.voxel_type {
-            1 => VoxelType::U8,
-            2 => VoxelType::U16,
-            3 => VoxelType::U32,
-            4 => VoxelType::U64,
-            5 => VoxelType::F32,
-            6 => VoxelType::F64,
-            _ => return Err("Voxel type is invalid")
+            1  => VoxelType::U8,
+            2  => VoxelType::U16,
+            3  => VoxelType::U32,
+            4  => VoxelType::U64,
+            5  => VoxelType::F32,
+            6  => VoxelType::F64,
+            7  => VoxelType::I8,
+            8  => VoxelType::I16,
+            9  => VoxelType::I32,
+            10 => VoxelType::I64,
+            _  => return Err("Voxel type is invalid")
         };
 
         Ok(Header {
