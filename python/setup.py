@@ -7,7 +7,7 @@ import shutil
 
 
 class BuildPyCommand(build_py):
-  """Modified build commant to compile C library."""
+  """Modified build command to compile C library."""
 
   def __build_c_library(self):
       this_dir = os.path.dirname(__file__)
