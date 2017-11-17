@@ -1,30 +1,38 @@
 from setuptools import setup, find_packages
+from setuptools.command.build_py import build_py
 
 import os
 import subprocess
 import shutil
 
-def build_c_library():
-    this_dir = os.path.dirname(__file__)
-    c_dir = os.path.normpath(os.path.join(this_dir, '..', 'c'))
 
-    # building C library
-    subprocess.call(['cargo', 'clean'], cwd=c_dir)
-    subprocess.call(['cargo', 'build', '--release'], cwd=c_dir)
+class BuildPyCommand(build_py):
+  """Modified build commant to compile C library."""
 
-    lib_name = 'libwkw.so' # TODO(amotta): make this ready for Windows
-    lib_file = os.path.join(c_dir, 'target', 'release', lib_name)
+  def __build_c_library(self):
+      this_dir = os.path.dirname(__file__)
+      c_dir = os.path.normpath(os.path.join(this_dir, '..', 'c'))
 
-    # copying to lib dir
-    lib_dir = os.path.join(this_dir, 'wkw', 'lib')
+      # building C library
+      subprocess.call(['cargo', 'clean'], cwd=c_dir)
+      subprocess.call(['cargo', 'build', '--release'], cwd=c_dir)
 
-    if os.path.exists(lib_dir):
-        shutil.rmtree(lib_dir)
+      lib_name = 'libwkw.so' # TODO(amotta): make this ready for Windows
+      lib_file = os.path.join(c_dir, 'target', 'release', lib_name)
 
-    os.makedirs(lib_dir)
-    shutil.copy(lib_file, os.path.join(lib_dir, lib_name))
+      # copying to lib dir
+      lib_dir = os.path.join(this_dir, 'wkw', 'lib')
 
-build_c_library()
+      if os.path.exists(lib_dir):
+          shutil.rmtree(lib_dir)
+
+      os.makedirs(lib_dir)
+      shutil.copy(lib_file, os.path.join(lib_dir, lib_name))
+
+  def run(self):
+      self.__build_c_library()
+      build_py.run(self)
+
 
 setup(
     name="wkw",
@@ -34,5 +42,6 @@ setup(
     url="https://github.com/scalableminds/webknossos-wrap",
     packages=find_packages(),
     include_package_data=True,
-    install_requires=['cffi', 'numpy']
+    install_requires=['cffi', 'numpy'],
+    cmdclass={'build_py': BuildPyCommand}
 )
