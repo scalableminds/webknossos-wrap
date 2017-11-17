@@ -25,7 +25,7 @@ ffi.cdef("""
 """)
 
 this_dir = os.path.dirname(__file__)
-path_libwkw = os.path.join(this_dir, '../c/target/debug/libwkw.so')
+path_libwkw = os.path.join(this_dir, 'lib', 'libwkw.so')
 C = ffi.dlopen(path_libwkw)
 
 class WKWException(Exception):
@@ -151,25 +151,3 @@ class Dataset:
 
     def __exit__(self, type, value, tb):
         self.close()
-
-root = "/home/amotta/Desktop/wkw"
-with Dataset.open(root) as dataset:
-    header = dataset.header
-    
-    print("Header:")
-    print("  block_len: ", header.block_len)
-    print("  file_len: ", header.file_len)
-    print("  block_type: ", header.block_type)
-    print("  voxel_type: ", header.voxel_type)
-    print("  voxel_size: ", header.voxel_size)
-    
-    bbox = np.zeros((3, 2), dtype='uint32', order='F')
-    bbox[:, 0] = [10, 20, 30]
-    bbox[:, 1] = [70, 60, 50]
-    
-    data = dataset.read(bbox)
-    print("data: ", data)
-
-    off = np.array([1, 1, 1], dtype='uint32', order='F')
-    data = np.zeros((2, 2, 2), dtype=header.voxel_type, order='F')
-    dataset.write(off, data)
