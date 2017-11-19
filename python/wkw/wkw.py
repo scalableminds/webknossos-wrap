@@ -141,8 +141,8 @@ class Dataset:
         if handle == ffi.NULL:
             error_msg = ffi.string(C.get_last_error_msg())
             raise WKWException(error_msg)
-        else:
-            return Dataset(root_c, C.dataset_open(root_c))
+
+        return Dataset(root_c, handle)
 
     def __enter__(self):
         return self
