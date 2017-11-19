@@ -68,8 +68,6 @@ class Header:
 
     @staticmethod
     def from_c(header_c):
-        print(header_c)
-
         assert header_c.voxel_type > 0
         voxel_type = Header.VALID_VOXEL_TYPES[header_c.voxel_type - 1]
 
