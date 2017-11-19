@@ -82,7 +82,7 @@ class Header:
                       voxel_size=header_c.voxel_size)
 
 class Dataset:
-    def __init__(self, root: str, handle):
+    def __init__(self, root, handle):
         self.root = root
         self.handle = handle
 
@@ -142,7 +142,7 @@ class Dataset:
             error_msg = ffi.string(C.get_last_error_msg())
             raise WKWException(error_msg)
         else:
-            return Dataset(root, C.dataset_open(root_c))
+            return Dataset(root_c, C.dataset_open(root_c))
 
     def __enter__(self):
         return self
