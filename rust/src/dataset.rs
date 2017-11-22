@@ -20,7 +20,7 @@ impl Dataset {
         let header = Self::read_header(root)?;
 
         Ok(Dataset {
-            root: PathBuf::from(root),
+            root: root.to_owned(),
             header: header
         })
     }
