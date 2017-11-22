@@ -3,15 +3,15 @@ use std::path::{Path, PathBuf};
 use std::fs;
 
 #[derive(Debug)]
-pub struct Dataset<'a> {
-    root: &'a Path,
+pub struct Dataset {
+    root: PathBuf,
     header: Header
 }
 
 static HEADER_FILE_NAME: &'static str = "header.wkw";
 
-impl<'a> Dataset<'a> {
-    pub fn new(root: &'a Path) -> Result<Dataset<'a>> {
+impl Dataset {
+    pub fn new(root: &Path) -> Result<Dataset> {
         if !root.is_dir() {
             return Err("Dataset root is not a directory")
         }
@@ -20,12 +20,12 @@ impl<'a> Dataset<'a> {
         let header = Self::read_header(root)?;
 
         Ok(Dataset {
-            root: root,
+            root: root.to_owned(),
             header: header
         })
     }
 
-    pub fn create(root: &'a Path, mut header: Header) -> Result<Dataset<'a>> {
+    pub fn create(root: &Path, mut header: Header) -> Result<Dataset> {
         // create directory hierarchy
         fs::create_dir_all(root)
            .or(Err("Could not create dataset directory"))?;
@@ -35,7 +35,7 @@ impl<'a> Dataset<'a> {
         Self::new(root)
     }
 
-    pub fn compress(&self, path: &'a Path) -> Result<Dataset<'a>> {
+    pub fn compress(&self, path: &Path) -> Result<Dataset> {
         let header = Header::compress(&self.header);
         Self::create(path, header)
     }
@@ -59,7 +59,7 @@ impl<'a> Dataset<'a> {
         header.write(&mut file)
     }
 
-    pub fn header(&'a self) -> &'a Header { &self.header }
+    pub fn header(&self) -> &Header { &self.header }
 
     pub fn read_mat(&self, src_pos: Vec3, mat: &mut Mat) -> Result<usize> {
         let bbox = Box3::from(mat.shape) + src_pos;
@@ -75,7 +75,7 @@ impl<'a> Dataset<'a> {
             for cur_y in bbox_files.min().y..bbox_files.max().y {
                 for cur_x in bbox_files.min().x..bbox_files.max().x {
                     // file path to wkw file
-                    let mut cur_path = PathBuf::from(self.root);
+                    let mut cur_path = self.root.clone();
                     cur_path.push(format!("z{}", cur_z));
                     cur_path.push(format!("y{}", cur_y));
                     cur_path.push(format!("x{}.wkw", cur_x));
@@ -132,7 +132,7 @@ impl<'a> Dataset<'a> {
                 for cur_y in bbox_files.min().y..bbox_files.max().y {
                     for cur_x in bbox_files.min().x..bbox_files.max().x {
                         // file path to wkw file
-                        let mut cur_path = PathBuf::from(self.root);
+                        let mut cur_path = self.root.clone();
                         cur_path.push(format!("z{}", cur_z));
                         cur_path.push(format!("y{}", cur_y));
                         cur_path.push(format!("x{}.wkw", cur_x));
