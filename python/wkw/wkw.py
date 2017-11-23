@@ -63,7 +63,7 @@ class Header:
 
         assert voxel_size > 0
         assert voxel_size % np.dtype(voxel_type).itemsize == 0
-        self.numel = voxel_size // np.dtype(voxel_type).itemsize
+        self.num_channels = voxel_size // np.dtype(voxel_type).itemsize
         self.voxel_size = voxel_size
 
     @staticmethod
@@ -95,7 +95,7 @@ class Dataset:
         assert bbox.dtype == np.uint32
         assert bbox.shape == (3, 2)
 
-        data_shape = np.append(self.header.numel,
+        data_shape = np.append(self.header.num_channels,
                                bbox[:, 1] - bbox[:, 0])
         data = np.zeros(data_shape,
                         dtype=self.header.voxel_type,
