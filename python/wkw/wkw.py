@@ -139,10 +139,14 @@ class Dataset:
         handle = C.dataset_open(root_c)
 
         if handle == ffi.NULL:
-            error_msg = ffi.string(C.get_last_error_msg())
-            raise WKWException(error_msg)
+            Dataset.__raise_wkw_exception()
 
         return Dataset(root_c, handle)
+
+    @staticmethod
+    def __raise_wkw_exception():
+        error_msg = ffi.string(C.get_last_error_msg()).decode()
+        raise WKWException(error_msg)
 
     def __enter__(self):
         return self
