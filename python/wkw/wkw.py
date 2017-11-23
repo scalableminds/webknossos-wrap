@@ -1,32 +1,37 @@
 import os
 import ctypes
 import numpy as np
-from cffi import FFI
+import cffi
 
-ffi = FFI()
-ffi.cdef("""
-    struct header {
-        uint8_t version;
-        uint8_t block_len;
-        uint8_t file_len;
-        uint8_t block_type;
-        uint8_t voxel_type;
-        uint8_t voxel_size;
-    };
+def __init_libwkw():
+    ffi = cffi.FFI()
+    ffi.cdef("""
+        struct header {
+            uint8_t version;
+            uint8_t block_len;
+            uint8_t file_len;
+            uint8_t block_type;
+            uint8_t voxel_type;
+            uint8_t voxel_size;
+        };
 
-    typedef struct dataset dataset_t;
+        typedef struct dataset dataset_t;
 
-    void * dataset_open(const char * root);
-    void   dataset_close(const dataset_t * handle);
-    void   dataset_read(const dataset_t * handle, uint32_t * bbox, void * data);
-    void   dataset_write(const dataset_t * handle, uint32_t * bbox, void * data);
-    void   dataset_get_header(const dataset_t * handle, struct header * header);
-    char * get_last_error_msg();
-""")
+        void * dataset_open(const char * root);
+        void   dataset_close(const dataset_t * handle);
+        void   dataset_read(const dataset_t * handle, uint32_t * bbox, void * data);
+        void   dataset_write(const dataset_t * handle, uint32_t * bbox, void * data);
+        void   dataset_get_header(const dataset_t * handle, struct header * header);
+        char * get_last_error_msg();
+    """)
 
-this_dir = os.path.dirname(__file__)
-path_libwkw = os.path.join(this_dir, 'lib', 'libwkw.so')
-C = ffi.dlopen(path_libwkw)
+    this_dir = os.path.dirname(__file__)
+    path_libwkw = os.path.join(this_dir, 'lib', 'libwkw.so')
+    libwkw = ffi.dlopen(path_libwkw)
+
+    return (ffi, libwkw)
+
+ffi, libwkw = __init_libwkw()
 
 class WKWException(Exception):
     pass
@@ -87,7 +92,7 @@ class Dataset:
         self.handle = handle
 
         header_c = ffi.new("struct header *")
-        C.dataset_get_header(self.handle, header_c)
+        libwkw.dataset_get_header(self.handle, header_c)
         self.header = Header.from_c(header_c)
 
     def read(self, bbox):
@@ -104,7 +109,7 @@ class Dataset:
         bbox_f = np.asfortranarray(bbox)
         bbox_ptr = ffi.cast("uint32_t *", bbox_f.ctypes.data)
         data_ptr = ffi.cast("void *", data.ctypes.data)
-        C.dataset_read(self.handle, bbox_ptr, data_ptr)
+        libwkw.dataset_read(self.handle, bbox_ptr, data_ptr)
 
         return data
 
@@ -127,12 +132,12 @@ class Dataset:
         C.dataset_write(self.handle, bbox_ptr, data_ptr)
 
     def close(self):
-        C.dataset_close(self.handle)
+        libwkw.dataset_close(self.handle)
 
     @staticmethod
     def open(root: str):
         root_c = ffi.new("char[]", root.encode())
-        handle = C.dataset_open(root_c)
+        handle = libwkw.dataset_open(root_c)
 
         if handle == ffi.NULL:
             Dataset.__raise_wkw_exception()
@@ -141,8 +146,8 @@ class Dataset:
 
     @staticmethod
     def __raise_wkw_exception():
-        error_msg = ffi.string(C.get_last_error_msg()).decode()
-        raise WKWException(error_msg)
+        error_msg = ffi.string(libwkw.get_last_error_msg())
+        raise WKWException(error_msg.decode())
 
     def __enter__(self):
         return self
