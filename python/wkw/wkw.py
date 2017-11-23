@@ -4,30 +4,20 @@ import numpy as np
 import cffi
 
 def __init_libwkw():
-    ffi = cffi.FFI()
-    ffi.cdef("""
-        struct header {
-            uint8_t version;
-            uint8_t block_len;
-            uint8_t file_len;
-            uint8_t block_type;
-            uint8_t voxel_type;
-            uint8_t voxel_size;
-        };
-
-        typedef struct dataset dataset_t;
-
-        void * dataset_open(const char * root);
-        void   dataset_close(const dataset_t * handle);
-        void   dataset_read(const dataset_t * handle, uint32_t * bbox, void * data);
-        void   dataset_write(const dataset_t * handle, uint32_t * bbox, void * data);
-        void   dataset_get_header(const dataset_t * handle, struct header * header);
-        char * get_last_error_msg();
-    """)
-
     this_dir = os.path.dirname(__file__)
-    path_libwkw = os.path.join(this_dir, 'lib', 'libwkw.so')
-    libwkw = ffi.dlopen(path_libwkw)
+    path_wkw_header = os.path.join(this_dir, 'lib', 'wkw.h')
+    path_wkw_lib = os.path.join(this_dir, 'lib', 'libwkw.so')
+
+    with open(path_wkw_header) as f:
+        wkw_header = f.readlines()
+
+        # strip away directives to be compatible with cffi module
+        wkw_header = filter(lambda l: not l.startswith('#'), wkw_header)
+        wkw_header = "\n".join(wkw_header)
+
+    ffi = cffi.FFI()
+    ffi.cdef(wkw_header)
+    libwkw = ffi.dlopen(path_wkw_lib)
 
     return (ffi, libwkw)
 

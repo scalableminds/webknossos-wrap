@@ -19,6 +19,7 @@ class BuildPyCommand(build_py):
 
         lib_name = 'libwkw.so' # TODO(amotta): make this ready for Windows
         lib_file = os.path.join(c_dir, 'target', 'release', lib_name)
+        header_file = os.path.join(c_dir, 'include', 'wkw.h')
 
         # copying to lib dir
         lib_dir = os.path.join(this_dir, 'wkw', 'lib')
@@ -28,6 +29,7 @@ class BuildPyCommand(build_py):
 
         os.makedirs(lib_dir)
         shutil.copy(lib_file, os.path.join(lib_dir, lib_name))
+        shutil.copy(header_file, os.path.join(lib_dir, 'wkw.h'))
 
     def run(self):
         self.__build_c_library()
