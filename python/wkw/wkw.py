@@ -106,10 +106,6 @@ class Dataset:
         data_ptr = ffi.cast("void *", data.ctypes.data)
         C.dataset_read(self.handle, bbox_ptr, data_ptr)
 
-        if data.shape[0] == 1:
-            # remove channel dimension, if possible
-            data.reshape(data.shape[1:], order='A')
-
         return data
 
     def write(self, off, data):
