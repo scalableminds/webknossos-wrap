@@ -76,6 +76,11 @@ class Header:
                       voxel_type=voxel_type,
                       voxel_size=header_c.voxel_size)
 
+def _build_box(off, shape):
+    off = np.asarray(off, dtype=np.uint32)
+    shape = np.asarray(shape, dtype=np.uint32)
+    return np.hstack((off, off + shape))
+
 class Dataset:
     def __init__(self, root, handle):
         self.root = root
@@ -85,41 +90,32 @@ class Dataset:
         libwkw.dataset_get_header(self.handle, header_c)
         self.header = Header.from_c(header_c)
 
-    def read(self, bbox):
-        assert isinstance(bbox, np.ndarray)
-        assert bbox.dtype == np.uint32
-        assert bbox.shape == (3, 2)
+    def read(self, off, shape):
+        box = _build_box(off, shape)
+        box_ptr = ffi.cast("uint32_t *", box.ctypes.data)
 
-        data_shape = np.append(self.header.num_channels,
-                               bbox[:, 1] - bbox[:, 0])
-        data = np.zeros(data_shape,
-                        dtype=self.header.voxel_type,
-                        order='F')
-
-        bbox_f = np.asfortranarray(bbox)
-        bbox_ptr = ffi.cast("uint32_t *", bbox_f.ctypes.data)
+        num_channels = self.header.num_channels
+        data = np.zeros((num_channels, ) + tuple(shape),
+                        order='F', dtype=self.header.voxel_type)
         data_ptr = ffi.cast("void *", data.ctypes.data)
-        libwkw.dataset_read(self.handle, bbox_ptr, data_ptr)
 
+        libwkw.dataset_read(self.handle, box_ptr, data_ptr)
         return data
 
     def write(self, off, data):
-        assert isinstance(off, np.ndarray)
-        assert off.dtype == np.uint32
-        assert off.size == 3
+        if not isinstance(data, np.ndarray):
+            raise WKWException("Data must be a NumPy ndarray")
 
-        assert isinstance(data, np.ndarray)
-        assert data.dtype == self.header.voxel_type
+        if not data.dtype == self.header.voxel_type:
+            raise WKWException("Data elements must be of type {}"
+                               .format(self.header.voxel_type))
 
-        bbox = np.zeros((3, 2), dtype='uint32', order='F')
-        bbox_ptr = ffi.cast("uint32_t *", bbox.ctypes.data)
+        box = _build_box(off, data.shape)
+        box_ptr = ffi.cast("uint32_t *", box.ctypes.data)
 
-        bbox[:, 0] = off
-        bbox[:, 1] = off + data.shape
-
-        data_f = np.asfortranarray(data)
-        data_ptr = ffi.cast("void *", data_f.ctypes.data)
-        C.dataset_write(self.handle, bbox_ptr, data_ptr)
+        data = data.asfortranarray()
+        data_ptr = ffi.cast("void *", data.ctypes.data)
+        C.dataset_write(self.handle, box_ptr, data_ptr)
 
     def close(self):
         libwkw.dataset_close(self.handle)
