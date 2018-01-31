@@ -13,9 +13,11 @@ values of a given data type (e.g., one 8-bit value for raw image data, or one
 This repository contains the reference implementations for the webKNOSSOS
 wrapper format. Code is available for
 
-* C++
+* C/C++
 * Scala
 * MATLAB
+* Rust
+* Python
 
 The latter is a binding around the C++ library and demonstrates how wk-wrap
 files can be read and written from within other programming languages.
@@ -117,3 +119,15 @@ LZ4. For a wk-wrap reader, the difference between blockType 0x02 and 0x03 is
 only semantic.
 
 Decompression must produce valid raw blocks.
+
+
+## Credits
+* [Max Planck Institute for Brain Research](https://brain.mpg.de/) 
+  - Alessandro Motta
+  - Manuel Berning
+* [scalable minds](https://scm.io/)
+  - Johannes Frohnhofen
+  - Tom Bocklisch
+
+# License
+AGPLv3
