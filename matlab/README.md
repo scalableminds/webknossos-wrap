@@ -5,7 +5,7 @@ is used in production at the Max Plack Institute for Brain Research
 since mid-2017.
 
 ## Example
-```
+```matlab
 % Create a new WKW dataset in `/home/amotta/data/wkw' with a single
 % channel of `uint8` voxel data. The dataset will be organized in WKW
 % files with (32 * 32)³ voxel cubes.
@@ -41,7 +41,7 @@ package repository.
 ## How to build the library
 To build the MEX files from the Rust code, just run the following
 function from within MATLAB:
-```
+```matlab
 >> wkwBuild();
 ```
 

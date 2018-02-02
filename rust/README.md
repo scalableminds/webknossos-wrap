@@ -4,7 +4,7 @@ format. This is the core library used as basis for C, MATLAB, and Python librari
 
 ## How to build the library
 To build this Rust package, just run
-```
+```bash
 $ cargo build
 ```
 

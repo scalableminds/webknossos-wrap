@@ -4,7 +4,7 @@ compressing webKNOSSOS wrapper datasets from Python. **WARNING:** This
 library is experimental. It is **not ready for production**.
 
 ## Example
-```
+```python
 import wkw
 
 # Open a WKW dataset
@@ -16,7 +16,7 @@ data = dataset.read([0, 0, 0], [128, 128, 128])
 
 ## How to build the library
 To build and install this Python package, just run
-```
+```bash
 $ python setup.py install
 ```
 
