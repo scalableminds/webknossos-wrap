@@ -1,17 +1,11 @@
 # The webKNOSSOS Wrapper Format
-webKNOSSOS wrapper (wk-wrap) is a file format for large volumetric (i.e., three-
-dimensional) voxel data. It was designed for large file sizes and high
-performance when reading and writing small subvolumes of data.
-
-Each wk-wrap file contains the data for a cube of voxel, where the cube side-
-length is a power of two. Every voxel of this cube contains a fixed number of
-values of a given data type (e.g., one 8-bit value for raw image data, or one
-32-bit value for image segmentation).
+The webKNOSSOS wrapper format is a file format for large volumetric voxel data
+with support for multiple channels. It was optimized for high-speed access to
+data subvolumes.
 
 ## Implementations
-
-This repository contains the reference implementations for the webKNOSSOS
-wrapper format. Code is available for
+This repository contains reference implementations for the webKNOSSOS wrapper
+format. Code is available for
 
 * C/C++
 * Scala
@@ -19,8 +13,8 @@ wrapper format. Code is available for
 * Rust
 * Python
 
-The latter is a binding around the C++ library and demonstrates how wk-wrap
-files can be read and written from within other programming languages.
+The Python implementation is a binding around the C library and demonstrates how
+wk-wrap files can be read and written from within other programming languages.
 
 ## High-level description
 Each file contains the data for a cube with side-length (CLEN) of FILE_CLEN
