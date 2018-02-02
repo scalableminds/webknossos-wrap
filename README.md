@@ -1,7 +1,8 @@
 # The webKNOSSOS Wrapper Format
-The webKNOSSOS wrapper format is a file format for large volumetric voxel data
-with support for multiple channels. It was optimized for high-speed access to
-data subvolumes.
+webKNOSSOS wrapper is a file format designed for large-scale,
+three-dimensional voxel datasets. It was optimized for high-speed access
+to data subvolumes, and supports multi-channel data and dataset
+compression.
 
 ## Implementations
 This repository contains reference implementations for the webKNOSSOS wrapper
@@ -116,7 +117,7 @@ Decompression must produce valid raw blocks.
 
 
 ## Credits
-* [Max Planck Institute for Brain Research](https://brain.mpg.de/) 
+* [Max Planck Institute for Brain Research](https://brain.mpg.de/)
   - Alessandro Motta
   - Manuel Berning
 * [scalable minds](https://scm.io/)
