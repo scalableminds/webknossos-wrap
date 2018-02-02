@@ -11,7 +11,7 @@ format. Code is available for
 * C/C++
 * Scala
 * [MATLAB](https://github.com/scalableminds/webknossos-wrap/tree/master/matlab#webknossos-wrapper-for-matlab)
-* Rust
+* [Rust](https://github.com/scalableminds/webknossos-wrap/tree/master/rust#webknossos-wrapper-core-library)
 * [Python](https://github.com/scalableminds/webknossos-wrap/tree/master/python#webknossos-wrapper-for-python)
 
 The Python implementation is a binding around the C library and demonstrates how
