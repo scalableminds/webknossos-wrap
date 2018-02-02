@@ -9,7 +9,7 @@ format. Code is available for
 
 * C/C++
 * Scala
-* MATLAB
+* [MATLAB](https://github.com/scalableminds/webknossos-wrap/tree/master/matlab#webknossos-wrapper-for-matlab)
 * Rust
 * Python
 
