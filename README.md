@@ -12,7 +12,7 @@ format. Code is available for
 * Scala
 * [MATLAB](https://github.com/scalableminds/webknossos-wrap/tree/master/matlab#webknossos-wrapper-for-matlab)
 * Rust
-* Python
+* [Python](https://github.com/scalableminds/webknossos-wrap/tree/master/python#webknossos-wrapper-for-python)
 
 The Python implementation is a binding around the C library and demonstrates how
 wk-wrap files can be read and written from within other programming languages.
