@@ -30,8 +30,8 @@ is installed on your system.
 
 ### macOS
 Please note that this library was not yet tested on macOS. Only minor
-modifications to `wkwBuild.m` should be necessary to build and run it.
-Contributions are welcome!
+modifications to `wkwBuild.m` and `lz4.rs` should be necessary to build
+and run it. Contributions are welcome!
 
 ### Linux
 If you're using Linux, make sure that `liblz4` is installed on your
@@ -53,5 +53,5 @@ Linux, `liblz4-dev` on Debian and Ubuntu).
 ## Contact
 Contributions and bug reports are welcome!
 
-- Alessandro Motta <alessandro.motta@brain.mpg.de>
+- Alessandro Motta (alessandro.motta@brain.mpg.de)
 
