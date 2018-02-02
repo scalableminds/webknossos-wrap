@@ -1,6 +1,8 @@
 # webKNOSSOS Wrapper for MATLAB
-This directory contains the code needed to create, read, write, and
-compress webKNOSSOS wrapper datasets from within MATLAB.
+This directory contains the code for creating, reading, writing, and
+compressing webKNOSSOS wrapper datasets from within MATLAB. This library
+is used in production at the Max Plack Institute for Brain Research
+since mid-2017.
 
 ## Example
 ```
@@ -21,7 +23,17 @@ data = wkwLoadRoi('/home/amotta/data/wkw', box);
 
 Each function is documented in-depth in its companion .m file.
 
-## Linux
+### Windows
+If you're using Windows, make sure that the latest version of the
+[Microsoft Visual C++ Redistributable for Visual Studio 2015](https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads)
+is installed on your system.
+
+### macOS
+Please note that this library was not yet tested on macOS. Only minor
+modifications to `wkwBuild.m` should be necessary to build and run it.
+Contributions are welcome!
+
+### Linux
 If you're using Linux, make sure that `liblz4` is installed on your
 system. On most Linux distributions this library is part of the official
 package repository.
