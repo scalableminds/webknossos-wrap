@@ -1,8 +1,32 @@
-# Python API
+# webKNOSSOS Wrapper for Python
+This directory contains the code for creating, reading, writing, and
+compressing webKNOSSOS wrapper datasets from Python. **WARNING:** This
+library is experimental. It is **not ready for production**.
 
-## To Do
-- [ ] Read in a C header file instead of hard-coding definitions
-- [X] Write a `Dataset` class
-- [ ] Validate input values
-- [X] Propagate errors from Rust
+## Example
+```
+import wkw
+
+# Open a WKW dataset
+dataset = wkw.Dataset.open('/home/amotta/data/wkw')
+
+# Read a (128)³ voxel cube starting from position (0, 0, 0)
+data = dataset.read([0, 0, 0], [128, 128, 128])
+```
+
+## How to build the library
+To build and install this Python package, just run
+```
+$ python setup.py install
+```
+
+This requires the [Rust compiler and build tools](https://www.rust-lang.org/en-US/install.html)
+to be installed on your machine. If you're using Linux, then you will
+furthermore need the development version of `liblz4` (`lz4` on Arch
+Linux, `liblz4-dev` on Debian and Ubuntu).
+
+## Contact
+Contributions and bug reports are welcome!
+
+- Alessandro Motta (alessandro.motta@brain.mpg.de)
 
