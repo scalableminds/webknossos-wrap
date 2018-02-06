@@ -25,7 +25,8 @@ jobs:
           name: Install python modules
           command: |
             cd python
-            sudo python setup.py install
+            python3 setup.py build
+            sudo python3 setup.py install
 
       - run:
           name: Run python tests
