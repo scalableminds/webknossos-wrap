@@ -6,36 +6,29 @@ jobs:
       - checkout
 
       - run:
-          name: Install dependencies
+          name: Build testing docker container
           command: |
-            sudo add-apt-repository ppa:jonathonf/rustlang -y
-            sudo apt-get update
-            sudo apt-get install -y \
-              liblz4-dev \
-              python3-minimal \
-              python3-dev \
-              python3-pip \
-              rustc \
-              cargo
-            pyenv global 3.5.2
-            pip3 install \
-              setuptools \
-              pytest \
-              numpy \
-              cffi
+            docker build -f python/Dockerfile -t testing .
 
       - run:
           name: Install python modules
           command: |
-            cd python
-            python3 setup.py build
-            sudo python3 setup.py install
+            docker run \
+              -v$(pwd):/app \
+              -it \
+              -w/app/python \
+              testing \
+              bash -c "python setup.py install"
 
       - run:
           name: Run python tests
           command: |
-            cd python
-            pytest tests
+            docker run \
+              -v$(pwd):/app \
+              -it \
+              -w/app/python \
+              testing \
+              bash -c "pytest tests"
 
 workflows:
   version: 2
