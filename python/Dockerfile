@@ -2,11 +2,15 @@ FROM python:3
 
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
-    PATH=/usr/local/cargo/bin:$PATH
+    PATH=/usr/local/cargo/bin:$PATH \
+    LZ4_VERSION=1.8.1.2
 
-RUN apt-get update && \
-  apt-get install -y liblz4-dev wget && \
-  rm -rf /var/lib/apt/lists/*
+RUN wget https://github.com/lz4/lz4/archive/v${LZ4_VERSION}.tar.gz -O liblz4.tar.gz && \
+  tar -xvzf liblz4.tar.gz && \
+  cd lz4-${LZ4_VERSION} && \
+  make && \
+  make install && \
+  ldconfig
 
 RUN set -eux; \
     \

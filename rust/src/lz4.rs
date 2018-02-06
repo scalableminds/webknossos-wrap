@@ -10,7 +10,7 @@ extern {
     fn LZ4_compressBound(input_size: c_int) -> c_int;
 
     // compression
-    fn LZ4_compressHC(
+    fn LZ4_compress_HC(
         src: *const u8,
         dst: *mut u8,
         src_size: c_int,
@@ -37,7 +37,7 @@ pub fn compress_hc(src_buf: &[u8], dst_buf: &mut [u8]) -> Result<usize> {
     let compression_level = 9;
 
     let dst_len = unsafe {
-        LZ4_compressHC(
+        LZ4_compress_HC(
             src_buf.as_ptr(),
             dst_buf.as_mut_ptr(),
             src_size,
@@ -47,7 +47,7 @@ pub fn compress_hc(src_buf: &[u8], dst_buf: &mut [u8]) -> Result<usize> {
     };
 
     match dst_len == 0 {
-        true => Err("Error in LZ4_compressHC"),
+        true => Err("Error in LZ4_compress_HC"),
         false => Ok(dst_len as usize)
     }
 }
