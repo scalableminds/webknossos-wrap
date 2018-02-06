@@ -14,12 +14,15 @@ jobs:
               liblz4-dev \
               python3-minimal \
               python3-dev \
-              python3-numpy \
-              python3-pytest \
-              python3-cffi \
+              python3-pip \
               rustc \
               cargo
             pyenv global 3.5.2
+            pip3 install \
+              setuptools \
+              pytest \
+              numpy \
+              cffi
 
       - run:
           name: Install python modules
