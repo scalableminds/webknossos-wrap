@@ -1,0 +1,32 @@
+version: 2
+jobs:
+  build_test:
+    machine: true
+    steps:
+      - checkout
+
+      - run:
+          name: Install dependencies
+          command: |
+            sudo apt-get update
+            sudo apt-get install liblz4-dev python3-minimal python3-pip -y
+            sudo pip3 install pytest
+            curl https://sh.rustup.rs -sSf | sudo sh
+
+      - run:
+          name: Install python modules
+          command: |
+            cd python
+            python3 setup.py build
+
+      - run:
+          name: Run python tests
+          command: |
+            cd python
+            pytest tests
+
+workflows:
+  version: 2
+  default:
+    jobs:
+      - build_test

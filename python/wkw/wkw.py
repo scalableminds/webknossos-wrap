@@ -3,7 +3,7 @@ import numpy as np
 import cffi
 import platform
 from copy import deepcopy
-from glob import glob
+from glob import iglob
 from os import path
 
 
@@ -50,7 +50,7 @@ class Header:
 
     def __init__(self,
                  voxel_type: type,
-                 voxel_size: int=1,
+                 voxel_size: int=-1,
                  version: int=1,
                  block_len: int=32,
                  file_len: int=32,
@@ -68,6 +68,9 @@ class Header:
 
         assert voxel_type in self.VALID_VOXEL_TYPES
         self.voxel_type = voxel_type
+
+        if voxel_size == -1:
+            voxel_size = np.dtype(voxel_type).itemsize
 
         assert voxel_size > 0
         assert voxel_size % np.dtype(voxel_type).itemsize == 0
@@ -118,7 +121,7 @@ class File:
 
 class Dataset:
     def __init__(self, root, handle):
-        self.root = root
+        self.root = ffi.string(root).decode('utf-8')
         self.handle = handle
 
         header_c = ffi.new("struct header *")
@@ -156,16 +159,18 @@ class Dataset:
         header = deepcopy(self.header)
         header.block_type = Header.BLOCK_TYPE_LZ4HC
 
-        src_path = ffi.string(self.root).decode('utf-8')
         dataset = Dataset.create(dst_path, header)
 
         if compress_files:
-            for file in glob(path.join(src_path, '*', '**', '*.wkw')):
-                rel_file = path.relpath(file, src_path)
+            for file in self.list_files():
+                rel_file = path.relpath(file, self.root)
                 # print(file, path.join(dst_path, rel_file))
                 File.compress(file, path.join(dst_path, rel_file))
 
         return dataset
+
+    def list_files(self):
+        return iglob(path.join(self.root, '*', '**', '*.wkw'))
 
     def close(self):
         libwkw.dataset_close(self.handle)
