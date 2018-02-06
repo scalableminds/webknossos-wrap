@@ -2,11 +2,19 @@ import os
 import ctypes
 import numpy as np
 import cffi
+import platform
+
 
 def __init_libwkw():
     this_dir = os.path.dirname(__file__)
     path_wkw_header = os.path.join(this_dir, 'lib', 'wkw.h')
-    path_wkw_lib = os.path.join(this_dir, 'lib', 'libwkw.so')
+
+    if platform.system() == 'Linux':
+        path_wkw_lib = os.path.join(this_dir, 'lib', 'libwkw.so')
+    elif platform.system() == 'Windows':
+        path_wkw_lib = os.path.join(this_dir, 'lib', 'wkw.dll')
+    else:
+        path_wkw_lib = os.path.join(this_dir, 'lib', 'libwkw.dylib')
 
     with open(path_wkw_header) as f:
         wkw_header = f.readlines()
@@ -21,10 +29,13 @@ def __init_libwkw():
 
     return (ffi, libwkw)
 
+
 ffi, libwkw = __init_libwkw()
+
 
 class WKWException(Exception):
     pass
+
 
 class Header:
     BLOCK_TYPE_RAW = 1
@@ -37,7 +48,7 @@ class Header:
 
     def __init__(self,
                  voxel_type: type,
-                 voxel_size: int,
+                 voxel_size: int=1,
                  version: int=1,
                  block_len: int=32,
                  file_len: int=32,
@@ -76,10 +87,23 @@ class Header:
                       voxel_type=voxel_type,
                       voxel_size=header_c.voxel_size)
 
+    def to_c(self):
+        header_c = ffi.new("struct header *")
+        header_c.version = self.version
+        header_c.file_len = self.file_len
+        header_c.block_len = self.block_len
+        header_c.block_type = self.block_type
+        header_c.voxel_type = Header.VALID_VOXEL_TYPES.index(
+            self.voxel_type) + 1
+        header_c.voxel_size = self.voxel_size
+        return header_c
+
+
 def _build_box(off, shape):
     off = np.asarray(off, dtype=np.uint32)
     shape = np.asarray(shape, dtype=np.uint32)
     return np.hstack((off, off + shape))
+
 
 class Dataset:
     def __init__(self, root, handle):
@@ -113,9 +137,9 @@ class Dataset:
         box = _build_box(off, data.shape)
         box_ptr = ffi.cast("uint32_t *", box.ctypes.data)
 
-        data = data.asfortranarray()
+        data = np.asfortranarray(data)
         data_ptr = ffi.cast("void *", data.ctypes.data)
-        C.dataset_write(self.handle, box_ptr, data_ptr)
+        libwkw.dataset_write(self.handle, box_ptr, data_ptr)
 
     def close(self):
         libwkw.dataset_close(self.handle)
@@ -124,6 +148,16 @@ class Dataset:
     def open(root: str):
         root_c = ffi.new("char[]", root.encode())
         handle = libwkw.dataset_open(root_c)
+
+        if handle == ffi.NULL:
+            Dataset.__raise_wkw_exception()
+
+        return Dataset(root_c, handle)
+
+    @staticmethod
+    def create(root: str, header):
+        root_c = ffi.new("char[]", root.encode())
+        handle = libwkw.dataset_create(root_c, header.to_c())
 
         if handle == ffi.NULL:
             Dataset.__raise_wkw_exception()

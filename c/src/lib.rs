@@ -22,6 +22,52 @@ pub struct Header {
     pub voxel_size: u8
 }
 
+fn as_log2(i: u8) -> Result<u8, &'static str> {
+    match i & (i - 1) == 0 {
+        true => Ok(i.trailing_zeros() as u8),
+        false => Err("Input must be a power of two")
+    }
+}
+
+fn from_header(header_ptr: *mut Header) -> Result<wkw::Header, &'static str> {
+    unsafe {
+        let block_type = match (*header_ptr).block_type {
+            1 => wkw::BlockType::Raw,
+            2 => wkw::BlockType::LZ4,
+            3 => wkw::BlockType::LZ4HC,
+            _ => return Err("Block type is invalid")
+        };
+
+        let voxel_type = match (*header_ptr).voxel_type {
+            1  => wkw::VoxelType::U8,
+            2  => wkw::VoxelType::U16,
+            3  => wkw::VoxelType::U32,
+            4  => wkw::VoxelType::U64,
+            5  => wkw::VoxelType::F32,
+            6  => wkw::VoxelType::F64,
+            7  => wkw::VoxelType::I8,
+            8  => wkw::VoxelType::I16,
+            9  => wkw::VoxelType::I32,
+            10 => wkw::VoxelType::I64,
+            _  => return Err("Voxel type is invalid")
+        };
+
+        let block_len_log2 = as_log2((*header_ptr).block_len)?;
+        let file_len_log2 = as_log2((*header_ptr).file_len)?;
+
+        return Ok(wkw::Header {
+            version: (*header_ptr).version,
+            block_len_log2: block_len_log2,
+            file_len_log2: file_len_log2,
+            block_type: block_type,
+            voxel_type: voxel_type,
+            voxel_size: (*header_ptr).voxel_size,
+            data_offset: 0,
+            jump_table: None
+        });
+    }
+}
+
 lazy_static! {
     static ref LAST_ERR_MSG: Mutex<Box<CStr>> = Mutex::new(
         CString::new("".as_bytes()).unwrap().into_boxed_c_str());
@@ -83,6 +129,23 @@ pub extern fn dataset_get_header(dataset_ptr: *const Dataset, header_ptr: *mut H
     }
 
     std::mem::forget(dataset);
+}
+
+#[no_mangle]
+pub extern fn dataset_create(root_ptr: *const c_char, header_ptr: *mut Header) -> *const Dataset {
+    let root_str = unsafe { CStr::from_ptr(root_ptr) }.to_str().unwrap();
+    let root_path = Path::new(root_str);
+
+    match from_header(header_ptr).and_then(|header| wkw::Dataset::create(root_path, header)) {
+        Ok(dataset) => {
+            let dataset_ptr = Box::from(dataset);
+            unsafe { std::mem::transmute(dataset_ptr) }
+        },
+        Err(msg) => {
+            set_last_error_msg(msg);
+            std::ptr::null::<Dataset>()
+        }
+    }
 }
 
 fn c_bbox_to_off_and_shape(bbox_ptr: *const c_ulong) -> (wkwrap::Vec3, wkwrap::Vec3) {
