@@ -1,20 +1,22 @@
-import os
 import ctypes
 import numpy as np
 import cffi
 import platform
+from copy import deepcopy
+from glob import glob
+from os import path
 
 
 def __init_libwkw():
-    this_dir = os.path.dirname(__file__)
-    path_wkw_header = os.path.join(this_dir, 'lib', 'wkw.h')
+    this_dir = path.dirname(__file__)
+    path_wkw_header = path.join(this_dir, 'lib', 'wkw.h')
 
     if platform.system() == 'Linux':
-        path_wkw_lib = os.path.join(this_dir, 'lib', 'libwkw.so')
+        path_wkw_lib = path.join(this_dir, 'lib', 'libwkw.so')
     elif platform.system() == 'Windows':
-        path_wkw_lib = os.path.join(this_dir, 'lib', 'wkw.dll')
+        path_wkw_lib = path.join(this_dir, 'lib', 'wkw.dll')
     else:
-        path_wkw_lib = os.path.join(this_dir, 'lib', 'libwkw.dylib')
+        path_wkw_lib = path.join(this_dir, 'lib', 'libwkw.dylib')
 
     with open(path_wkw_header) as f:
         wkw_header = f.readlines()
@@ -105,6 +107,15 @@ def _build_box(off, shape):
     return np.hstack((off, off + shape))
 
 
+class File:
+    @staticmethod
+    def compress(src_path: str, dst_path: str):
+        src_path_c = ffi.new("char[]", src_path.encode())
+        dst_path_c = ffi.new("char[]", dst_path.encode())
+
+        libwkw.file_compress(src_path_c, dst_path_c)
+
+
 class Dataset:
     def __init__(self, root, handle):
         self.root = root
@@ -140,6 +151,21 @@ class Dataset:
         data = np.asfortranarray(data)
         data_ptr = ffi.cast("void *", data.ctypes.data)
         libwkw.dataset_write(self.handle, box_ptr, data_ptr)
+
+    def compress(self, dst_path: str, compress_files: bool=False):
+        header = deepcopy(self.header)
+        header.block_type = Header.BLOCK_TYPE_LZ4HC
+
+        src_path = ffi.string(self.root).decode('utf-8')
+        dataset = Dataset.create(dst_path, header)
+
+        if compress_files:
+            for file in glob(path.join(src_path, '*', '**', '*.wkw')):
+                rel_file = path.relpath(file, src_path)
+                # print(file, path.join(dst_path, rel_file))
+                File.compress(file, path.join(dst_path, rel_file))
+
+        return dataset
 
     def close(self):
         libwkw.dataset_close(self.handle)

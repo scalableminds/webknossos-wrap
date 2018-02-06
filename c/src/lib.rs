@@ -148,6 +148,21 @@ pub extern fn dataset_create(root_ptr: *const c_char, header_ptr: *mut Header) -
     }
 }
 
+#[no_mangle]
+pub extern fn file_compress(src_path_ptr: *const c_char, dst_path_ptr: *const c_char) {
+    let src_path_str = unsafe { CStr::from_ptr(src_path_ptr) }.to_str().unwrap();
+    let src_path = Path::new(src_path_str);
+    let dst_path_str = unsafe { CStr::from_ptr(dst_path_ptr) }.to_str().unwrap();
+    let dst_path = Path::new(dst_path_str);
+
+    match wkwrap::File::open(&src_path).and_then(|mut file| file.compress(&dst_path)) {
+        Ok(_) => {},
+        Err(msg) => {
+            set_last_error_msg(msg);
+        }
+    }
+}
+
 fn c_bbox_to_off_and_shape(bbox_ptr: *const c_ulong) -> (wkwrap::Vec3, wkwrap::Vec3) {
     let bbox = unsafe {
         std::slice::from_raw_parts(bbox_ptr as *const u32, 6)
