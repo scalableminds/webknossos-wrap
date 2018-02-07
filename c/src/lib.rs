@@ -58,7 +58,7 @@ fn from_header(header_ptr: *const Header) -> Result<wkw::Header, &'static str> {
     let block_len_log2 = as_log2(c_header.block_len)?;
     let file_len_log2 = as_log2(c_header.file_len)?;
 
-    return Ok(wkw::Header {
+    Ok(wkw::Header {
         version: c_header.version,
         block_len_log2: block_len_log2,
         file_len_log2: file_len_log2,
@@ -67,7 +67,7 @@ fn from_header(header_ptr: *const Header) -> Result<wkw::Header, &'static str> {
         voxel_size: c_header.voxel_size,
         data_offset: 0,
         jump_table: None
-    });
+    })
 }
 
 fn check_return<T>(ret: Result<T, &str>) -> c_int {
@@ -174,7 +174,7 @@ pub extern fn file_compress(src_path_ptr: *const c_char, dst_path_ptr: *const c_
     let dst_path_str = unsafe { CStr::from_ptr(dst_path_ptr) }.to_str().unwrap();
     let dst_path = Path::new(dst_path_str);
 
-    return check_return(wkwrap::File::open(&src_path).and_then(|mut file| file.compress(&dst_path)));
+    check_return(wkwrap::File::open(&src_path).and_then(|mut file| file.compress(&dst_path)))
 }
 
 fn c_bbox_to_off_and_shape(bbox_ptr: *const c_ulong) -> (wkwrap::Vec3, wkwrap::Vec3) {
@@ -227,7 +227,7 @@ pub extern fn dataset_read(
     let mut mat = c_data_to_mat(&dataset, &shape, data_ptr);
     let ret = dataset.read_mat(off, &mut mat);
     std::mem::forget(dataset);
-    return check_return(ret);
+    check_return(ret)
 }
 
 #[no_mangle]
@@ -246,6 +246,6 @@ pub extern fn dataset_write(
     let mat = c_data_to_mat(&dataset, &shape, data_ptr);
     let ret = dataset.write_mat(off, &mat);
     std::mem::forget(dataset);
-    return check_return(ret);
+    check_return(ret)
 }
 
