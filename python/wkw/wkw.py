@@ -1,20 +1,23 @@
-import os
 import ctypes
 import numpy as np
 import cffi
 import platform
+from copy import deepcopy
+from glob import glob
+from os import path
 
 
-def __init_libwkw():
-    this_dir = os.path.dirname(__file__)
-    path_wkw_header = os.path.join(this_dir, 'lib', 'wkw.h')
+def _init_libwkw():
+    this_dir = path.dirname(__file__)
+    path_wkw_header = path.join(this_dir, 'lib', 'wkw.h')
 
     lib_name_platform = {
         'Linux': 'libwkw.so',
         'Windows': 'wkw.dll',
         'Darwin': 'libwkw.dylib'
     }
-    path_wkw_lib = os.path.join(this_dir, 'lib', lib_name_platform[platform.system()])
+    path_wkw_lib = path.join(
+        this_dir, 'lib', lib_name_platform[platform.system()])
 
     with open(path_wkw_header) as f:
         wkw_header = f.readlines()
@@ -29,12 +32,27 @@ def __init_libwkw():
 
     return (ffi, libwkw)
 
-
-ffi, libwkw = __init_libwkw()
+ffi, libwkw = _init_libwkw()
 
 
 class WKWException(Exception):
     pass
+
+
+def _raise_wkw_exception():
+    error_msg = ffi.string(libwkw.get_last_error_msg())
+    raise WKWException(error_msg.decode())
+
+
+def _check_wkw(ret):
+    if ret > 0:
+        _raise_wkw_exception()
+
+
+def _check_wkw_null(ret):
+    if ret == ffi.NULL:
+        _raise_wkw_exception()
+    return ret
 
 
 class Header:
@@ -105,6 +123,15 @@ def _build_box(off, shape):
     return np.hstack((off, off + shape))
 
 
+class File:
+    @staticmethod
+    def compress(src_path: str, dst_path: str):
+        src_path_c = ffi.new("char[]", src_path.encode())
+        dst_path_c = ffi.new("char[]", dst_path.encode())
+
+        _check_wkw(libwkw.file_compress(src_path_c, dst_path_c))
+
+
 class Dataset:
     def __init__(self, root, handle):
         self.root = root
@@ -123,7 +150,7 @@ class Dataset:
                         order='F', dtype=self.header.voxel_type)
         data_ptr = ffi.cast("void *", data.ctypes.data)
 
-        libwkw.dataset_read(self.handle, box_ptr, data_ptr)
+        _check_wkw(libwkw.dataset_read(self.handle, box_ptr, data_ptr))
         return data
 
     def write(self, off, data):
@@ -139,7 +166,21 @@ class Dataset:
 
         data = np.asfortranarray(data)
         data_ptr = ffi.cast("void *", data.ctypes.data)
-        libwkw.dataset_write(self.handle, box_ptr, data_ptr)
+        _check_wkw(libwkw.dataset_write(self.handle, box_ptr, data_ptr))
+
+    def compress(self, dst_path: str, compress_files: bool=False):
+        header = deepcopy(self.header)
+        header.block_type = Header.BLOCK_TYPE_LZ4HC
+
+        src_path = ffi.string(self.root).decode('utf-8')
+        dataset = Dataset.create(dst_path, header)
+
+        if compress_files:
+            for file in glob(path.join(src_path, '*', '**', '*.wkw')):
+                rel_file = path.relpath(file, src_path)
+                File.compress(file, path.join(dst_path, rel_file))
+
+        return dataset
 
     def close(self):
         libwkw.dataset_close(self.handle)
@@ -147,27 +188,14 @@ class Dataset:
     @staticmethod
     def open(root: str):
         root_c = ffi.new("char[]", root.encode())
-        handle = libwkw.dataset_open(root_c)
-
-        if handle == ffi.NULL:
-            Dataset.__raise_wkw_exception()
-
+        handle = _check_wkw_null(libwkw.dataset_open(root_c))
         return Dataset(root_c, handle)
 
     @staticmethod
     def create(root: str, header):
         root_c = ffi.new("char[]", root.encode())
-        handle = libwkw.dataset_create(root_c, header.to_c())
-
-        if handle == ffi.NULL:
-            Dataset.__raise_wkw_exception()
-
+        handle = _check_wkw_null(libwkw.dataset_create(root_c, header.to_c()))
         return Dataset(root_c, handle)
-
-    @staticmethod
-    def __raise_wkw_exception():
-        error_msg = ffi.string(libwkw.get_last_error_msg())
-        raise WKWException(error_msg.decode())
 
     def __enter__(self):
         return self
