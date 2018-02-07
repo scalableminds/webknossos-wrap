@@ -11,12 +11,12 @@ def __init_libwkw():
     this_dir = path.dirname(__file__)
     path_wkw_header = path.join(this_dir, 'lib', 'wkw.h')
 
-    if platform.system() == 'Linux':
-        path_wkw_lib = path.join(this_dir, 'lib', 'libwkw.so')
-    elif platform.system() == 'Windows':
-        path_wkw_lib = path.join(this_dir, 'lib', 'wkw.dll')
-    else:
-        path_wkw_lib = path.join(this_dir, 'lib', 'libwkw.dylib')
+    lib_name_platform = {
+        'Linux': 'libwkw.so',
+        'Windows': 'wkw.dll',
+        'Darwin': 'libwkw.dylib'
+    }
+    path_wkw_lib = os.path.join(this_dir, 'lib', lib_name_platform[platform.system()])
 
     with open(path_wkw_header) as f:
         wkw_header = f.readlines()
@@ -95,8 +95,8 @@ class Header:
         header_c.file_len = self.file_len
         header_c.block_len = self.block_len
         header_c.block_type = self.block_type
-        header_c.voxel_type = Header.VALID_VOXEL_TYPES.index(
-            self.voxel_type) + 1
+        header_c.voxel_type = \
+            Header.VALID_VOXEL_TYPES.index(self.voxel_type) + 1
         header_c.voxel_size = self.voxel_size
         return header_c
 

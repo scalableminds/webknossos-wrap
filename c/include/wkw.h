@@ -17,7 +17,7 @@ void   dataset_close(const dataset_t * handle);
 void   dataset_read(const dataset_t * handle, uint32_t * bbox, void * data);
 void   dataset_write(const dataset_t * handle, uint32_t * bbox, void * data);
 void   dataset_get_header(const dataset_t * handle, struct header * header);
-void * dataset_create(const char * root, struct header * header);
+void * dataset_create(const char * root, const struct header * header);
 void   file_compress(const char * src_path, const char * dst_path);
 char * get_last_error_msg();
 
