@@ -16,7 +16,7 @@ def __init_libwkw():
         'Windows': 'wkw.dll',
         'Darwin': 'libwkw.dylib'
     }
-    path_wkw_lib = os.path.join(this_dir, 'lib', lib_name_platform[platform.system()])
+    path_wkw_lib = path.join(this_dir, 'lib', lib_name_platform[platform.system()])
 
     with open(path_wkw_header) as f:
         wkw_header = f.readlines()
