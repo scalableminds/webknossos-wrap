@@ -7,16 +7,17 @@ from glob import iglob
 from os import path
 
 
-def __init_libwkw():
+def _init_libwkw():
     this_dir = path.dirname(__file__)
     path_wkw_header = path.join(this_dir, 'lib', 'wkw.h')
 
-    if platform.system() == 'Linux':
-        path_wkw_lib = path.join(this_dir, 'lib', 'libwkw.so')
-    elif platform.system() == 'Windows':
-        path_wkw_lib = path.join(this_dir, 'lib', 'wkw.dll')
-    else:
-        path_wkw_lib = path.join(this_dir, 'lib', 'libwkw.dylib')
+    lib_name_platform = {
+        'Linux': 'libwkw.so',
+        'Windows': 'wkw.dll',
+        'Darwin': 'libwkw.dylib'
+    }
+    path_wkw_lib = path.join(
+        this_dir, 'lib', lib_name_platform[platform.system()])
 
     with open(path_wkw_header) as f:
         wkw_header = f.readlines()
@@ -32,11 +33,27 @@ def __init_libwkw():
     return (ffi, libwkw)
 
 
-ffi, libwkw = __init_libwkw()
+ffi, libwkw = _init_libwkw()
 
 
 class WKWException(Exception):
     pass
+
+
+def _raise_wkw_exception():
+    error_msg = ffi.string(libwkw.get_last_error_msg())
+    raise WKWException(error_msg.decode())
+
+
+def _check_wkw(ret):
+    if ret > 0:
+        _raise_wkw_exception()
+
+
+def _check_wkw_null(ret):
+    if ret == ffi.NULL:
+        _raise_wkw_exception()
+    return ret
 
 
 class Header:
@@ -98,8 +115,8 @@ class Header:
         header_c.file_len = self.file_len
         header_c.block_len = self.block_len
         header_c.block_type = self.block_type
-        header_c.voxel_type = Header.VALID_VOXEL_TYPES.index(
-            self.voxel_type) + 1
+        header_c.voxel_type = \
+            Header.VALID_VOXEL_TYPES.index(self.voxel_type) + 1
         header_c.voxel_size = self.voxel_size
         return header_c
 
@@ -116,7 +133,7 @@ class File:
         src_path_c = ffi.new("char[]", src_path.encode())
         dst_path_c = ffi.new("char[]", dst_path.encode())
 
-        libwkw.file_compress(src_path_c, dst_path_c)
+        _check_wkw(libwkw.file_compress(src_path_c, dst_path_c))
 
 
 class Dataset:
@@ -137,7 +154,7 @@ class Dataset:
                         order='F', dtype=self.header.voxel_type)
         data_ptr = ffi.cast("void *", data.ctypes.data)
 
-        libwkw.dataset_read(self.handle, box_ptr, data_ptr)
+        _check_wkw(libwkw.dataset_read(self.handle, box_ptr, data_ptr))
         return data
 
     def write(self, off, data):
@@ -153,7 +170,7 @@ class Dataset:
 
         data = np.asfortranarray(data)
         data_ptr = ffi.cast("void *", data.ctypes.data)
-        libwkw.dataset_write(self.handle, box_ptr, data_ptr)
+        _check_wkw(libwkw.dataset_write(self.handle, box_ptr, data_ptr))
 
     def compress(self, dst_path: str, compress_files: bool=False):
         header = deepcopy(self.header)
@@ -164,7 +181,6 @@ class Dataset:
         if compress_files:
             for file in self.list_files():
                 rel_file = path.relpath(file, self.root)
-                # print(file, path.join(dst_path, rel_file))
                 File.compress(file, path.join(dst_path, rel_file))
 
         return dataset
@@ -178,27 +194,14 @@ class Dataset:
     @staticmethod
     def open(root: str):
         root_c = ffi.new("char[]", root.encode())
-        handle = libwkw.dataset_open(root_c)
-
-        if handle == ffi.NULL:
-            Dataset.__raise_wkw_exception()
-
+        handle = _check_wkw_null(libwkw.dataset_open(root_c))
         return Dataset(root_c, handle)
 
     @staticmethod
     def create(root: str, header):
         root_c = ffi.new("char[]", root.encode())
-        handle = libwkw.dataset_create(root_c, header.to_c())
-
-        if handle == ffi.NULL:
-            Dataset.__raise_wkw_exception()
-
+        handle = _check_wkw_null(libwkw.dataset_create(root_c, header.to_c()))
         return Dataset(root_c, handle)
-
-    @staticmethod
-    def __raise_wkw_exception():
-        error_msg = ffi.string(libwkw.get_last_error_msg())
-        raise WKWException(error_msg.decode())
 
     def __enter__(self):
         return self
