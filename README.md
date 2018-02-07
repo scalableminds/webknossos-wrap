@@ -123,6 +123,7 @@ Decompression must produce valid raw blocks.
 * [scalable minds](https://scm.io/)
   - Johannes Frohnhofen
   - Tom Bocklisch
+  - Norman Rzepka
 
 # License
 AGPLv3
