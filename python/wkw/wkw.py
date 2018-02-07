@@ -32,7 +32,6 @@ def _init_libwkw():
 
     return (ffi, libwkw)
 
-
 ffi, libwkw = _init_libwkw()
 
 
