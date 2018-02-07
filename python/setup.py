@@ -18,12 +18,12 @@ class BuildPyCommand(build_py):
         subprocess.call(['cargo', 'clean'], cwd=c_dir)
         subprocess.call(['cargo', 'build', '--release'], cwd=c_dir)
 
-        if platform.system() == 'Linux':
-            lib_name = 'libwkw.so'
-        elif platform.system() == 'Windows':
-            lib_name = 'wkw.dll'
-        else:
-            lib_name = 'libwkw.dylib'
+        lib_name_platform = {
+            'Linux': 'libwkw.so',
+            'Windows': 'wkw.dll',
+            'Darwin': 'libwkw.dylib'
+        }
+        lib_name = lib_name_platform[platform.system()]
         lib_file = os.path.join(c_dir, 'target', 'release', lib_name)
         header_file = os.path.join(c_dir, 'include', 'wkw.h')
 

@@ -29,43 +29,45 @@ fn as_log2(i: u8) -> Result<u8, &'static str> {
     }
 }
 
-fn from_header(header_ptr: *mut Header) -> Result<wkw::Header, &'static str> {
-    unsafe {
-        let block_type = match (*header_ptr).block_type {
-            1 => wkw::BlockType::Raw,
-            2 => wkw::BlockType::LZ4,
-            3 => wkw::BlockType::LZ4HC,
-            _ => return Err("Block type is invalid")
-        };
+fn from_header(header_ptr: *const Header) -> Result<wkw::Header, &'static str> {
+    assert!(!header_ptr.is_null());
 
-        let voxel_type = match (*header_ptr).voxel_type {
-            1  => wkw::VoxelType::U8,
-            2  => wkw::VoxelType::U16,
-            3  => wkw::VoxelType::U32,
-            4  => wkw::VoxelType::U64,
-            5  => wkw::VoxelType::F32,
-            6  => wkw::VoxelType::F64,
-            7  => wkw::VoxelType::I8,
-            8  => wkw::VoxelType::I16,
-            9  => wkw::VoxelType::I32,
-            10 => wkw::VoxelType::I64,
-            _  => return Err("Voxel type is invalid")
-        };
+    let c_header = unsafe { &*header_ptr };
 
-        let block_len_log2 = as_log2((*header_ptr).block_len)?;
-        let file_len_log2 = as_log2((*header_ptr).file_len)?;
+    let block_type = match c_header.block_type {
+        1 => wkw::BlockType::Raw,
+        2 => wkw::BlockType::LZ4,
+        3 => wkw::BlockType::LZ4HC,
+        _ => return Err("Block type is invalid")
+    };
 
-        return Ok(wkw::Header {
-            version: (*header_ptr).version,
-            block_len_log2: block_len_log2,
-            file_len_log2: file_len_log2,
-            block_type: block_type,
-            voxel_type: voxel_type,
-            voxel_size: (*header_ptr).voxel_size,
-            data_offset: 0,
-            jump_table: None
-        });
-    }
+    let voxel_type = match c_header.voxel_type {
+        1  => wkw::VoxelType::U8,
+        2  => wkw::VoxelType::U16,
+        3  => wkw::VoxelType::U32,
+        4  => wkw::VoxelType::U64,
+        5  => wkw::VoxelType::F32,
+        6  => wkw::VoxelType::F64,
+        7  => wkw::VoxelType::I8,
+        8  => wkw::VoxelType::I16,
+        9  => wkw::VoxelType::I32,
+        10 => wkw::VoxelType::I64,
+        _  => return Err("Voxel type is invalid")
+    };
+
+    let block_len_log2 = as_log2(c_header.block_len)?;
+    let file_len_log2 = as_log2(c_header.file_len)?;
+
+    return Ok(wkw::Header {
+        version: c_header.version,
+        block_len_log2: block_len_log2,
+        file_len_log2: file_len_log2,
+        block_type: block_type,
+        voxel_type: voxel_type,
+        voxel_size: c_header.voxel_size,
+        data_offset: 0,
+        jump_table: None
+    });
 }
 
 lazy_static! {
@@ -132,7 +134,9 @@ pub extern fn dataset_get_header(dataset_ptr: *const Dataset, header_ptr: *mut H
 }
 
 #[no_mangle]
-pub extern fn dataset_create(root_ptr: *const c_char, header_ptr: *mut Header) -> *const Dataset {
+pub extern fn dataset_create(root_ptr: *const c_char, header_ptr: *const Header) -> *const Dataset {
+    assert!(!header_ptr.is_null());
+    
     let root_str = unsafe { CStr::from_ptr(root_ptr) }.to_str().unwrap();
     let root_path = Path::new(root_str);
 
