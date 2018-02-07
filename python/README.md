@@ -6,9 +6,13 @@ library is experimental. It is **not ready for production**.
 ## Example
 ```python
 import wkw
+import numpy as np
+
+# Create a WKW dataset
+dataset = wkw.Dataset.create('./wkw', wkw.Header(np.uint8))
 
 # Open a WKW dataset
-dataset = wkw.Dataset.open('/home/amotta/data/wkw')
+dataset = wkw.Dataset.open('./wkw')
 
 # Read a (128)³ voxel cube starting from position (0, 0, 0)
 data = dataset.read([0, 0, 0], [128, 128, 128])

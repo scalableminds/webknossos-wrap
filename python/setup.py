@@ -4,6 +4,7 @@ from setuptools.command.build_py import build_py
 import os
 import subprocess
 import shutil
+import platform
 
 
 class BuildPyCommand(build_py):
@@ -17,7 +18,12 @@ class BuildPyCommand(build_py):
         subprocess.call(['cargo', 'clean'], cwd=c_dir)
         subprocess.call(['cargo', 'build', '--release'], cwd=c_dir)
 
-        lib_name = 'libwkw.so' # TODO(amotta): make this ready for Windows
+        lib_name_platform = {
+            'Linux': 'libwkw.so',
+            'Windows': 'wkw.dll',
+            'Darwin': 'libwkw.dylib'
+        }
+        lib_name = lib_name_platform[platform.system()]
         lib_file = os.path.join(c_dir, 'target', 'release', lib_name)
         header_file = os.path.join(c_dir, 'include', 'wkw.h')
 
