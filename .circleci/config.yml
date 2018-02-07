@@ -1,0 +1,37 @@
+version: 2
+jobs:
+  build_test:
+    machine: true
+    steps:
+      - checkout
+
+      - run:
+          name: Build testing docker container
+          command: |
+            docker build -f python/Dockerfile -t testing .
+
+      - run:
+          name: Install python modules
+          command: |
+            docker run \
+              -v$(pwd):/app \
+              -it \
+              -w/app/python \
+              testing \
+              bash -c "python setup.py install"
+
+      - run:
+          name: Run python tests
+          command: |
+            docker run \
+              -v$(pwd):/app \
+              -it \
+              -w/app/python \
+              testing \
+              bash -c "pytest tests"
+
+workflows:
+  version: 2
+  default:
+    jobs:
+      - build_test
