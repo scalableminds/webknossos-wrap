@@ -1,2 +1,4 @@
 include wkw/lib/wkw.h
 include wkw/lib/libwkw.so
+include wkw/lib/libwkw.dylib
+include wkw/lib/wkw.dll

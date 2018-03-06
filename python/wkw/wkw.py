@@ -191,9 +191,16 @@ class Dataset:
         libwkw.dataset_close(self.handle)
 
     @staticmethod
-    def open(root: str):
+    def open(root: str, header=None):
         root_c = ffi.new("char[]", root.encode())
-        handle = _check_wkw_null(libwkw.dataset_open(root_c))
+        handle = None
+        if header is not None:
+            try:
+                handle = _check_wkw_null(libwkw.dataset_create(root_c, header.to_c()))
+            except WKWException:
+                handle = _check_wkw_null(libwkw.dataset_open(root_c))
+        else:
+            handle = _check_wkw_null(libwkw.dataset_open(root_c))
         return Dataset(root_c, handle)
 
     @staticmethod
