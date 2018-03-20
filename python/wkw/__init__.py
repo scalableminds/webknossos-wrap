@@ -1,2 +1,2 @@
-from .wkw import Header, Dataset
-__ALL__ = ['Header', 'Dataset']
+from .wkw import Header, Dataset, File
+__ALL__ = ['Header', 'Dataset', 'File']
