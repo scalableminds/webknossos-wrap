@@ -29,6 +29,15 @@ to be installed on your machine. If you're using Linux, then you will
 furthermore need the development version of `liblz4` (`lz4` on Arch
 Linux, `liblz4-dev` on Debian and Ubuntu).
 
+## Publish to PyPI
+```bash
+# Linux
+python setup.py bdist_wheel -p manylinux1_x86_64 upload -r pypi
+
+# Mac OS X
+python3 setup.py bdist_wheel -p $(python3 -c "import distutils.util; print(distutils.util.get_platform())") upload
+```
+
 ## Contact
 Contributions and bug reports are welcome!
 
