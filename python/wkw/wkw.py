@@ -123,6 +123,8 @@ class Header:
 def _build_box(off, shape):
     off = np.asarray(off, dtype=np.uint32)
     shape = np.asarray(shape, dtype=np.uint32)
+    if len(shape) == 4:
+        shape = shape[1:]
     return np.hstack((off, off + shape))
 
 
