@@ -66,7 +66,7 @@ class Header:
 
     def __init__(self,
                  voxel_type: type,
-                 voxel_size: int=-1,
+                 num_channels: int=1,
                  version: int=1,
                  block_len: int=32,
                  file_len: int=32,
@@ -85,18 +85,17 @@ class Header:
         assert voxel_type in self.VALID_VOXEL_TYPES
         self.voxel_type = voxel_type
 
-        if voxel_size == -1:
-            voxel_size = np.dtype(voxel_type).itemsize
-
-        assert voxel_size > 0
-        assert voxel_size % np.dtype(voxel_type).itemsize == 0
-        self.num_channels = voxel_size // np.dtype(voxel_type).itemsize
-        self.voxel_size = voxel_size
+        assert num_channels > 0
+        self.num_channels = num_channels
 
     @staticmethod
     def from_c(header_c):
         assert header_c.voxel_type > 0
         voxel_type = Header.VALID_VOXEL_TYPES[header_c.voxel_type - 1]
+        voxel_type_size = np.dtype(voxel_type).itemsize
+
+        assert header_c.voxel_size % voxel_type_size == 0
+        num_channels = header_c.voxel_size // voxel_type_size
 
         assert header_c.block_type > 0
         block_type = Header.VALID_BLOCK_TYPES[header_c.block_type - 1]
@@ -106,17 +105,20 @@ class Header:
                       file_len=header_c.file_len,
                       block_type=block_type,
                       voxel_type=voxel_type,
-                      voxel_size=header_c.voxel_size)
+                      num_channels=num_channels)
 
     def to_c(self):
+        voxel_type_c = Header.VALID_VOXEL_TYPES.index(self.voxel_type) + 1
+        voxel_type_size = np.dtype(self.voxel_type).itemsize
+        voxel_size = self.num_channels * voxel_type_size
+
         header_c = ffi.new("struct header *")
         header_c.version = self.version
         header_c.file_len = self.file_len
         header_c.block_len = self.block_len
         header_c.block_type = self.block_type
-        header_c.voxel_type = \
-            Header.VALID_VOXEL_TYPES.index(self.voxel_type) + 1
-        header_c.voxel_size = self.voxel_size
+        header_c.voxel_type = voxel_type_c
+        header_c.voxel_size = voxel_size
         return header_c
 
 
