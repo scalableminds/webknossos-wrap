@@ -160,11 +160,14 @@ class Dataset:
         if not isinstance(data, np.ndarray):
             raise WKWException("Data must be a NumPy ndarray")
 
+        if not data.ndim in [3, 4]:
+            raise WKWException("Data must be three- or four-dimensional")
+
         if not data.dtype == self.header.voxel_type:
             raise WKWException("Data elements must be of type {}"
                                .format(self.header.voxel_type))
 
-        box = _build_box(off, data.shape)
+        box = _build_box(off, data.shape[-3:])
         box_ptr = ffi.cast("uint32_t *", box.ctypes.data)
 
         data = np.asfortranarray(data)
