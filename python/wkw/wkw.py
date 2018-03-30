@@ -163,6 +163,11 @@ class Dataset:
         if not data.ndim in [3, 4]:
             raise WKWException("Data must be three- or four-dimensional")
 
+        data = data.reshape((-1,) + data.shape[-3:])
+        if not data.shape[0] == self.header.num_channels:
+            raise WKWException("Data volume must have {} channels"
+                               .format(self.header.num_channels))
+
         if not data.dtype == self.header.voxel_type:
             raise WKWException("Data elements must be of type {}"
                                .format(self.header.voxel_type))
