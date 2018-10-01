@@ -5,11 +5,7 @@ from os import path
 import pytest
 
 POSITION = (0, 0, 0)
-POSITION2 = (64, 64, 64)
-POSITION3 = (1024, 512, 1024)
 SIZE = (32, 32, 32)
-SIZE2 = (128, 128, 128)
-SIZE3 = (256, 256, 256)
 
 
 def test_context_manager():
@@ -43,36 +39,28 @@ def test_readwrite():
 
 
 def test_readwrite_live_compression():
-    with wkw.Dataset.create('tests/tmp', wkw.Header(np.uint8, block_type=wkw.Header.BLOCK_TYPE_LZ4)) as dataset:
-
+    SIZE128 = (128, 128, 128)
+    file_len = 4
+    header = wkw.Header(np.uint8, block_type=wkw.Header.BLOCK_TYPE_LZ4, file_len=file_len)
+    with wkw.Dataset.create('tests/tmp', header) as dataset:
         header_size = path.getsize(path.join('tests/tmp', 'header.wkw'))
-        test_data = generate_test_data(dataset.header.voxel_type)
-        test_data2 = generate_test_data(dataset.header.voxel_type, SIZE2)
-        test_data3 = generate_test_data(dataset.header.voxel_type, SIZE3)
+        test_data = generate_test_data(dataset.header.voxel_type, SIZE128)
 
         dataset.write(POSITION, test_data)
 
         # The size should be less than if it was not compressed
         assert path.getsize(path.join('tests/tmp', 'z0', 'y0', 'x0.wkw')) < \
-               np.prod(SIZE) * (dataset.header.file_len ** 3) + header_size
-
-        dataset.write(POSITION2, test_data2)
-        dataset.write(POSITION3, test_data3)
+               np.prod(SIZE128) * (dataset.header.file_len ** 3) + header_size
 
     with wkw.Dataset.open('tests/tmp') as dataset:
-        assert np.all(dataset.read(POSITION2, SIZE2) == test_data2)
-        assert np.all(dataset.read(POSITION, SIZE) == test_data)
-        assert np.all(dataset.read(POSITION3, SIZE3) == test_data3)
+        assert np.all(dataset.read(POSITION, SIZE128) == test_data)
 
 
-def test_readwrite_live_compression_should_enforce_morton_order():
+def test_readwrite_live_compression_should_enforce_full_file_write():
     with pytest.raises(Exception):
         with wkw.Dataset.create('tests/tmp', wkw.Header(np.uint8, block_type=BLOCK_TYPE_LZ4)) as dataset:
 
             test_data = generate_test_data(dataset.header.voxel_type)
-
-            dataset.write(POSITION2, test_data)
-            # Should fail since POSITION has a lower morton-order rank than POSITION2
             dataset.write(POSITION, test_data)
 
 
