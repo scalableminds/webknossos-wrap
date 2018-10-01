@@ -96,8 +96,6 @@ impl File {
         let voxel_type = self.header.voxel_type;
 
         let buf_shape = Vec3::from(1u32 << block_len_log2);
-        let mut buf_vec = vec![0u8; block_size];
-        let buf = buf_vec.as_mut_slice();
 
         let iter = Iter::new(file_len_log2, src_box_boxes)?;
         for cur_block_idx in iter {
@@ -112,6 +110,9 @@ impl File {
             // source and destination offsets
             let cur_dst_pos = cur_box.min() - src_pos + dst_pos;
             let cur_src_box = cur_box - cur_block_box.min();
+            
+            let mut buf_vec = vec![0u8; block_size];
+            let buf = buf_vec.as_mut_slice();
 
             // read data
             self.seek_block(cur_block_idx)?;
@@ -351,6 +352,9 @@ impl File {
     fn read_block_lz4(&mut self, buf: &mut [u8]) -> Result<usize> {
         let block_idx = self.block_idx.unwrap();
         let block_size_lz4 = self.header.block_size_on_disk(block_idx)?;
+        if block_size_lz4 == 0 {
+            return Ok(0)
+        }
         let block_size_raw = self.header.block_size();
 
         let buf_lz4_orig = &mut *self.block_buf.as_mut().unwrap();

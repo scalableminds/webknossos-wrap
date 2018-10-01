@@ -194,11 +194,18 @@ impl Header {
                 let ref jump_table = *self.jump_table.as_ref().unwrap();
 
                 if block_idx == 0 {
+                    if jump_table[0] == 0 {
+                        return Ok(0);
+                    }
                     let block_size = jump_table[0] - self.data_offset;
                     Ok(block_size as usize)
                 } else if block_idx < self.file_vol() {
                     let block_idx = block_idx as usize;
+                    if jump_table[block_idx] == 0 ||  jump_table[block_idx - 1] == 0 {
+                        return Ok(0);
+                    }
                     let block_size = jump_table[block_idx] - jump_table[block_idx - 1];
+                    
                     Ok(block_size as usize)
                 } else {
                     Err("Block index out of bounds")

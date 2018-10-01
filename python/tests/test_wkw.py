@@ -76,6 +76,43 @@ def test_readwrite_live_compression_should_enforce_morton_order():
             dataset.write(POSITION, test_data)
 
 
+def test_should_not_crash_when_skipping_blocks_with_live_compression():
+    dataset = wkw.Dataset.create('tests/tmp', wkw.Header(np.uint8, block_type=wkw.Header.BLOCK_TYPE_LZ4))
+
+    test_data = np.empty((128, 128, 128)).astype(np.uint8)
+
+    # test_data_slice_a = np.random.uniform(0, 255, (64, 64, 64)).astype(np.uint8)
+    test_data_slice_b = np.ones((64, 128, 64)).astype(np.uint8)
+
+    # test_data[:64, :64, :64] = test_data_slice_a
+    test_data[64:128, :128, :64] = test_data_slice_b
+
+    # dataset.write((0, 0, 0), test_data_slice_a)
+    dataset.write((64, 0, 0), test_data_slice_b)
+
+    # assert np.all(dataset.read((0, 0, 0), (64, 64, 64)) == test_data_slice_a)
+    # assert np.all(dataset.read((64, 0, 0), (64, 128, 64)) == test_data_slice_b)
+    read_data = dataset.read((0, 0, 0), (128, 128, 128))
+
+    print("test data", test_data[4:8, 4:8, 64:68])
+    print("read data", read_data[4:8, 4:8, 64:68])
+
+    assert np.all(read_data == test_data)
+
+
+def test_should_not_crash_when_reading_first_block():
+    dataset = wkw.Dataset.create('tests/tmp', wkw.Header(np.uint8, block_type=wkw.Header.BLOCK_TYPE_LZ4))
+    test_data = np.empty((128, 128, 128)).astype(np.uint8)
+    test_data_slice_b = np.random.uniform(0, 255, (64, 128, 64)).astype(np.uint8)
+
+    test_data[64:128, :128, :64] = test_data_slice_b
+    dataset.write((64, 0, 0), test_data_slice_b)
+
+    read_data = dataset.read((0, 0, 0), (128, 128, 128))
+
+    assert np.all(read_data == test_data)
+
+
 def test_compress():
     with wkw.Dataset.create('tests/tmp', wkw.Header(np.uint8)) as dataset:
 
