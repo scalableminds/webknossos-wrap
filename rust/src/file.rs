@@ -152,19 +152,7 @@ impl File {
             self.header.voxel_type)?;
 
         // build Morton-order iterator
-        let mut iter = Iter::new(self.header.file_len_log2 as u32, dst_box_boxes)?.peekable();
-
-        if self.header.block_type != BlockType::Raw {
-            // In case of enabled LZ4 compression, we seek to the first empty block
-            // and validate that no data should be written before that block. That way,
-            // we guarantee morton order.
-            let first_empty_block_idx = self.seek_to_first_empty_block()?;
-            if first_empty_block_idx > *iter.peek().unwrap() {
-                return Err("On-the-fly compression is enabled, but data is not written \
-                    in morton order. The first empty block appears after the block \
-                    which should be written to.");
-            }
-        }
+        let iter = Iter::new(self.header.file_len_log2 as u32, dst_box_boxes)?;
 
         for cur_block_idx in iter {
             // box for current block
@@ -188,14 +176,12 @@ impl File {
             // fill / modify buffer
             buf_mat.copy_from(cur_dst_pos, src_mat, cur_src_box)?;
 
-            if self.header.block_type == BlockType::Raw {
-                // Only seek if data is written in raw mode.
-                self.seek_block(cur_block_idx)?;
-            } else {
-                // Otherwise, compressed blocks are written continuously in morton order
-                // without additional seeking.
+            if self.header.block_type == BlockType::LZ4 || self.header.block_type == BlockType::LZ4HC {
+                // Since compressed blocks are written continuously in morton order, we mark the current position
+                // as the correct block position so that no seeking has to be done.
                 self.block_idx = Some(cur_block_idx);
             }
+            self.seek_block(cur_block_idx)?;
 
             // write data
             self.write_block(buf_mat.as_slice())?;
@@ -337,13 +323,6 @@ impl File {
         let block_idx = self.block_idx.unwrap();
         let jump_table = &mut *self.header.jump_table.as_mut().unwrap();
         jump_table[block_idx as usize] = jump_entry;
-        if block_idx > 0 {
-            // Update the previous jump table entry since the difference
-            // of adjacent values has to equal the size of the written block.
-            // This is necessary for blocks written with on-the-fly compression,
-            // as the jump_table might be sparse in such cases.
-            jump_table[block_idx as usize - 1] = jump_entry - len_lz4 as u64;
-        }
 
         Ok(len_lz4)
     }
@@ -383,30 +362,6 @@ impl File {
             Ok(_) => {
                 self.block_idx = Some(block_idx);
                 Ok(block_idx)
-            }
-        }
-    }
-
-    fn seek_to_first_empty_block(&mut self) -> Result<u64> {
-        let jump_table = &mut *self.header.jump_table.as_mut().unwrap();
-        let mut max_offset = self.header.data_offset;
-
-        let mut used_block_idx = 0;
-        for (current_idx, entry) in jump_table.iter().enumerate() {
-            if 0 < *entry && *entry < max_offset {
-                panic!("Jump table is invalid. Values are not increasing monotonically.");
-            }
-            if *entry > max_offset {
-                max_offset = *entry;
-                used_block_idx = current_idx;
-            }
-        }
-
-        // seek to byte offset
-        match self.file.seek(SeekFrom::Start(max_offset)) {
-            Err(_) => Err("Could not seek block"),
-            Ok(_) => {
-                Ok(used_block_idx as u64)
             }
         }
     }

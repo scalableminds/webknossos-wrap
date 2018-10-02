@@ -140,7 +140,7 @@ impl Dataset {
                         // offsets
                         let cur_src_pos = cur_box.min() - dst_pos;
                         let cur_dst_pos = cur_box.min() - cur_file_box.min();
-                        if self.header.block_type != BlockType::Raw {  
+                        if self.header.block_type == BlockType::LZ4 || self.header.block_type == BlockType::LZ4HC {
                             if cur_box != cur_file_box {
                                 return Err("When writing compressed files, each file has to be \
                                     written as a whole. Please pad your data so that all cubes \
