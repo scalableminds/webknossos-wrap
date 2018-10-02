@@ -112,8 +112,19 @@ impl Dataset {
                 return Err("Input matrix has invalid voxel size");
             }
 
-            let bbox = Box3::from(mat.shape) + dst_pos;
             let file_len_vx_log2 = self.header.file_len_vx_log2() as u32;
+            if self.header.block_type == BlockType::LZ4 || self.header.block_type == BlockType::LZ4HC {
+                let file_len_vec = Vec3::from(1 << file_len_vx_log2);
+                let is_dst_aligned = dst_pos % file_len_vec == Vec3::from(0);
+                let is_shape_aligned = mat.shape % file_len_vec == Vec3::from(0);
+                if !is_dst_aligned || !is_shape_aligned {
+                    return Err("When writing compressed files, each file has to be \
+                        written as a whole. Please pad your data so that all cubes \
+                        are complete and the write position is block-aligned.");
+                }
+            };
+
+            let bbox = Box3::from(mat.shape) + dst_pos;
 
             // find files to load
             let bbox_files = Box3::new(
@@ -140,13 +151,6 @@ impl Dataset {
                         // offsets
                         let cur_src_pos = cur_box.min() - dst_pos;
                         let cur_dst_pos = cur_box.min() - cur_file_box.min();
-                        if self.header.block_type == BlockType::LZ4 || self.header.block_type == BlockType::LZ4HC {
-                            if cur_box != cur_file_box {
-                                return Err("When writing compressed files, each file has to be \
-                                    written as a whole. Please pad your data so that all cubes \
-                                    are complete.");
-                            }
-                        };
 
                         let mut file = File::open_or_create(&cur_path, &self.header)?;
                         file.write_mat(cur_dst_pos, mat, cur_src_pos)?;

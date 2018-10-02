@@ -163,7 +163,6 @@ impl File {
                (cur_block_ids + 1) << block_len_log2)?;
             let cur_box = cur_block_box.intersect(dst_box);
 
-            // Todo: What about the following block in case of on-the-fly compression?
             if cur_box != cur_block_box {
                 // reuse existing data
                 self.seek_block(cur_block_idx)?;
