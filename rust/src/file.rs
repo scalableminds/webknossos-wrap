@@ -175,18 +175,13 @@ impl File {
             // fill / modify buffer
             buf_mat.copy_from(cur_dst_pos, src_mat, cur_src_box)?;
 
-            if self.header.block_type == BlockType::LZ4 || self.header.block_type == BlockType::LZ4HC {
-                // Since compressed blocks are written continuously in morton order, we mark the current position
-                // as the correct block position so that no seeking has to be done.
-                self.block_idx = Some(cur_block_idx);
-            }
             self.seek_block(cur_block_idx)?;
 
             // write data
             self.write_block(buf_mat.as_slice())?;
         }
 
-        if self.header.block_type != BlockType::Raw {
+        if self.header.block_type == BlockType::LZ4 || self.header.block_type == BlockType::LZ4HC {
             // Update jump table
             self.write_header()?;
         }
