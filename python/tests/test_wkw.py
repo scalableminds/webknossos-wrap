@@ -78,6 +78,28 @@ def test_readwrite_live_compression_should_not_allow_inconsistent_writes():
     with wkw.Dataset.open('tests/tmp') as dataset:
         assert np.all(dataset.read(POSITION, SIZE129) == empty_data)
 
+def test_readwrite_live_compression_should_truncate():
+    SIZE128 = (128, 128, 128)
+    file_len = 4
+    header = wkw.Header(np.uint8, block_type=wkw.Header.BLOCK_TYPE_LZ4, file_len=file_len)
+    test_data = generate_test_data(header.voxel_type, SIZE128)
+    empty_data = np.zeros(SIZE128).astype(header.voxel_type)
+
+    with wkw.Dataset.create('tests/tmp', header) as dataset:
+        dataset.write(POSITION, test_data)
+
+    random_compressed_size = path.getsize(path.join('tests/tmp', 'z0', 'y0', 'x0.wkw'))
+
+    with wkw.Dataset.open('tests/tmp') as dataset:
+        dataset.write(POSITION, empty_data)
+
+    empty_compressed_size = path.getsize(path.join('tests/tmp', 'z0', 'y0', 'x0.wkw'))
+
+    assert empty_compressed_size < random_compressed_size
+
+    with wkw.Dataset.open('tests/tmp') as dataset:
+        assert np.all(dataset.read(POSITION, SIZE128) == empty_data)
+
 def test_compress():
     with wkw.Dataset.create('tests/tmp', wkw.Header(np.uint8)) as dataset:
 
