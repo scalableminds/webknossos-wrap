@@ -217,7 +217,7 @@ impl File {
         file.write_header()
     }
 
-    fn truncate(&mut self) -> Result<()> {
+    fn truncate(&self) -> Result<()> {
         let truncated_size = match self.header.block_type {
             BlockType::Raw => {
                 let header_size = self.header.size_on_disk();
@@ -227,16 +227,13 @@ impl File {
             },
             BlockType::LZ4 | BlockType::LZ4HC => {
                 let last_block_idx = self.header.file_vol() - 1;
-                let jump_table = &mut *self.header.jump_table.as_mut().unwrap();
+                let jump_table = self.header.jump_table.as_ref().unwrap();
                 let size = jump_table[last_block_idx as usize];
                 size
             }
         };
 
-        match self.file.set_len(truncated_size) {
-            Ok(_) => Ok(()),
-            Err(_) => Err("Could not truncate file")
-        }
+        self.file.set_len(truncated_size).map_err(|_| "Could not truncate file")
     }
 
     fn seek_header(&mut self) -> Result<()> {
