@@ -34,7 +34,6 @@ impl File {
         let mut file = fs::File::open(path)
                                 .or(Err("Could not open WKW file"))?;
         let header = Header::read(&mut file)?;
-
         Ok(Self::new(file, header))
     }
 
@@ -176,9 +175,16 @@ impl File {
             // fill / modify buffer
             buf_mat.copy_from(cur_dst_pos, src_mat, cur_src_box)?;
 
-            // write data
             self.seek_block(cur_block_idx)?;
+
+            // write data
             self.write_block(buf_mat.as_slice())?;
+        }
+
+        if self.header.block_type == BlockType::LZ4 || self.header.block_type == BlockType::LZ4HC {
+            // Update jump table
+            self.write_header()?;
+            self.truncate()?;
         }
 
         Ok(1 as usize)
@@ -211,20 +217,23 @@ impl File {
         file.write_header()
     }
 
-    fn truncate(&mut self) -> Result<()> {
-        match self.header.block_type {
+    fn truncate(&self) -> Result<()> {
+        let truncated_size = match self.header.block_type {
             BlockType::Raw => {
                 let header_size = self.header.size_on_disk();
                 let body_size = self.header.file_size();
                 let size = header_size + body_size;
-
-                match self.file.set_len(size as u64) {
-                    Ok(_) => Ok(()),
-                    Err(_) => Err("Could not truncate file")
-                }
+                size as u64
             },
-            _ => Ok(())
-        }
+            BlockType::LZ4 | BlockType::LZ4HC => {
+                let last_block_idx = self.header.file_vol() - 1;
+                let jump_table = self.header.jump_table.as_ref().unwrap();
+                let size = jump_table[last_block_idx as usize];
+                size
+            }
+        };
+
+        self.file.set_len(truncated_size).map_err(|_| "Could not truncate file")
     }
 
     fn seek_header(&mut self) -> Result<()> {
