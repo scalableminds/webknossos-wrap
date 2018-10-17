@@ -12,7 +12,7 @@ struct header {
 
 typedef struct dataset dataset_t;
 
-void * dataset_open(const char * root);
+dataset_t * dataset_open(const char * root);
 void   dataset_close(const dataset_t * handle);
 int    dataset_read(const dataset_t * handle, const uint32_t * bbox, void * data);
 int    dataset_write(const dataset_t * handle, const uint32_t * bbox, const void * data);
