@@ -112,9 +112,7 @@ impl Header {
     }
 
     pub fn write(&self, file: &mut fs::File) -> Result<()> {
-        if file.write_all(&self.to_bytes()).is_err() {
-            return Err("Could not write header");
-        }
+        file.write_all(&self.to_bytes())?;
 
         match self.jump_table {
             Some(_) => self.write_jump_table(file),
