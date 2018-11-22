@@ -72,7 +72,8 @@ Each wk-wrap file MUST begin with the following header:
   file contains a single value per voxel, then voxelSize is equal to the byte
   size of the data type. If the wk-wrap file, however, contains multiple
   channels (e.g., three 8-bit values for RGB), voxelSize is a multiple of the
-  data type size.
+  data type size (specified as byte count). In the example of three 8-bit values,
+  voxelSize would be 3.
 * __dataOffset__ contains the absolute address of the first byte of the first
   block (relative to the beginning of the file) as unsigned 64-bit integer.
 
