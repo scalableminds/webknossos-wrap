@@ -26,7 +26,7 @@ publishTo := {
       "snapshots"
     else
       "releases"
-  Some("scm.io intern repo" at "s3://maven.scm.io.s3-eu-central-1.amazonaws.com/" + path)
+  Some("scm.io nexus repo" at "https://oss.sonatype.org/content/repositories/" + path)
 }
 
 organization := "com.scalableminds"
