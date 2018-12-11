@@ -1,8 +1,16 @@
-# webKNOSSOS Wrapper for Python
+# webKnossos Wrapper (WKW) for Python
 This directory contains the code for creating, reading, writing, and
 compressing webKnossos wrapper (WKW) datasets from Python.
 
 ## Example
+First, let's install the `wkw` package from the Python Package Index
+(PyPI) by running
+```bash
+$ pip install wkw
+```
+
+The `wkw` package may then be imported and used as follows:
+
 ```python
 import wkw
 import numpy as np
@@ -17,7 +25,7 @@ dataset = wkw.Dataset.open('./wkw')
 data = dataset.read([0, 0, 0], [128, 128, 128])
 ```
 
-## How to build the library
+## How to build this package
 To build and install this Python package, just run
 ```bash
 $ python setup.py install
