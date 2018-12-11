@@ -1,7 +1,6 @@
 # webKNOSSOS Wrapper for Python
 This directory contains the code for creating, reading, writing, and
-compressing webKNOSSOS wrapper datasets from Python. **WARNING:** This
-library is experimental. It is **not ready for production**.
+compressing webKnossos wrapper (WKW) datasets from Python.
 
 ## Example
 ```python
