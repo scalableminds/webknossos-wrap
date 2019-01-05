@@ -247,7 +247,7 @@ impl File {
         let header_size = header.size_on_disk() as i64;
         match file.seek(SeekFrom::End(-header_size)) {
             Ok(_) => Ok(()),
-            Err(err) => Err("Could not seek header"),
+            Err(_) => Err("Could not seek header"),
         }
     }
 
