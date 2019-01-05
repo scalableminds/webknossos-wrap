@@ -13,8 +13,8 @@ mod lz4;
 // convenience
 pub use crate::dataset::Dataset;
 pub use crate::file::File;
-pub use crate::header::{Header, BlockType, VoxelType};
+pub use crate::header::{BlockType, Header, VoxelType};
 pub use crate::mat::Mat;
-pub use crate::morton::{Morton, Iter};
+pub use crate::morton::{Iter, Morton};
 pub use crate::result::Result;
 pub use crate::vec::{Box3, Vec3};
