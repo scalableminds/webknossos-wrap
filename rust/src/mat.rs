@@ -1,6 +1,6 @@
 use std::ptr;
 
-use ::{Box3, Result, Vec3, VoxelType};
+use crate::{Box3, Result, Vec3, VoxelType};
 
 #[derive(Debug)]
 pub struct Mat<'a> {

@@ -1,5 +1,5 @@
 use std::cmp::{min, max, Ordering};
-use ::Result;
+use crate::Result;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Vec3 {

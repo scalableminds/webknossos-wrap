@@ -1,4 +1,4 @@
-use ::{BlockType, File, Header, Result, Vec3, Box3, Mat};
+use crate::{BlockType, File, Header, Result, Vec3, Box3, Mat};
 use std::path::{Path, PathBuf};
 use std::fs;
 

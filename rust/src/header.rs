@@ -1,7 +1,7 @@
-use lz4;
+use crate::lz4;
 use std::{fs, mem, slice};
 use std::io::{Read, Write};
-use result::Result;
+use crate::result::Result;
 
 #[repr(C)]
 #[derive(Debug)]

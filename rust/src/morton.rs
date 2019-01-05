@@ -1,5 +1,5 @@
 use std::cmp;
-use ::{Box3, Result, Vec3};
+use crate::{Box3, Result, Vec3};
 
 #[derive(PartialEq, Debug)]
 pub struct Morton(u64);

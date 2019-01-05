@@ -11,10 +11,10 @@ pub mod vec;
 mod lz4;
 
 // convenience
-pub use dataset::Dataset;
-pub use file::File;
-pub use header::{Header, BlockType, VoxelType};
-pub use mat::Mat;
-pub use morton::{Morton, Iter};
-pub use result::Result;
-pub use vec::{Box3, Vec3};
+pub use crate::dataset::Dataset;
+pub use crate::file::File;
+pub use crate::header::{Header, BlockType, VoxelType};
+pub use crate::mat::Mat;
+pub use crate::morton::{Morton, Iter};
+pub use crate::result::Result;
+pub use crate::vec::{Box3, Vec3};

@@ -1,6 +1,6 @@
 extern crate libc;
 use self::libc::c_int;
-use ::Result;
+use crate::Result;
 
 #[cfg_attr(target_os = "linux", link(name = "lz4", kind = "dylib"))]
 #[cfg_attr(target_os = "macos", link(name = "lz4", kind = "dylib"))]

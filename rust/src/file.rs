@@ -1,7 +1,7 @@
-use lz4;
+use crate::lz4;
 use std::{fs, path};
 use std::io::{Read, Seek, SeekFrom, Write};
-use ::{Header, BlockType, Iter, Mat, Morton, Result, Vec3, Box3};
+use crate::{Header, BlockType, Iter, Mat, Morton, Result, Vec3, Box3};
 
 #[derive(Debug)]
 pub struct File {
