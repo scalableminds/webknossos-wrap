@@ -30,9 +30,12 @@ impl File {
         }
     }
 
-    pub fn open(path: &path::Path) -> Result<File> {
+    pub fn open(dataset_header: &Header, path: &path::Path) -> Result<File> {
         let mut file = fs::File::open(path).or(Err("Could not open WKW file"))?;
+
+        Self::seek_header(dataset_header, &mut file)?;
         let header = Header::read(&mut file)?;
+
         Ok(Self::new(file, header))
     }
 
@@ -238,15 +241,18 @@ impl File {
             .map_err(|_| "Could not truncate file")
     }
 
-    fn seek_header(&mut self) -> Result<()> {
-        match self.file.seek(SeekFrom::Start(0)) {
-            Ok(0) => Ok(()),
-            _ => Err("Could not seek header"),
+    fn seek_header(header: &Header, file: &mut fs::File) -> Result<()> {
+        // TODO(amotta): Version 1/2
+        assert!(header.version == 2);
+        let header_size = header.size_on_disk() as i64;
+        match file.seek(SeekFrom::End(-header_size)) {
+            Ok(_) => Ok(()),
+            Err(err) => Err("Could not seek header"),
         }
     }
 
     fn write_header(&mut self) -> Result<()> {
-        self.seek_header()?;
+        Self::seek_header(&self.header, &mut self.file)?;
         self.header.write(&mut self.file)
     }
 

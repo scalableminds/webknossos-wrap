@@ -97,7 +97,7 @@ impl Dataset {
                     let cur_dst_pos = cur_box.min() - src_pos;
 
                     // try to open file
-                    if let Ok(mut file) = File::open(&cur_path) {
+                    if let Ok(mut file) = File::open(&self.header, &cur_path) {
                         file.read_mat(cur_src_pos, mat, cur_dst_pos)?;
                     }
                 }
