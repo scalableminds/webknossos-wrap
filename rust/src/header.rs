@@ -65,7 +65,6 @@ impl Header {
     pub fn from_template(template: &Header) -> Header {
         let mut header = template.clone();
         header.init();
-
         header
     }
 
@@ -73,7 +72,6 @@ impl Header {
         let mut header = template.clone();
         header.block_type = BlockType::LZ4HC;
         header.init();
-
         header
     }
 
@@ -104,26 +102,28 @@ impl Header {
         header_len + jump_table_len
     }
 
-    pub fn read(file: &mut fs::File) -> Result<Header> {
-        let mut buf = [0u8; 16];
+    pub fn read_dataset_header(file: &mut fs::File) -> Result<Header> {
+        Self::read(file)
+    }
 
-        let mut header = match file.read_exact(&mut buf) {
-            Err(_) => return Err("Could not read raw header"),
-            Ok(_) => Self::from_bytes(buf)?,
-        };
+    pub fn read_file_header(file: &mut fs::File) -> Result<Header> {
+        let mut header = Self::read(file)?;
 
-        // in case of the header file, we're done
-        if header.data_offset == 0 {
-            return Ok(header);
-        }
-
-        // read jump table
         header.jump_table = match header.block_type {
             BlockType::LZ4 | BlockType::LZ4HC => Some(header.read_jump_table(file)?),
             _ => None,
         };
 
         Ok(header)
+    }
+
+    fn read(file: &mut fs::File) -> Result<Header> {
+        let mut buf = [0u8; 16];
+
+        match file.read_exact(&mut buf) {
+            Err(_) => Err("Could not read raw header"),
+            Ok(_) => Self::from_bytes(buf),
+        }
     }
 
     pub fn write(&self, file: &mut fs::File) -> Result<()> {
@@ -206,18 +206,43 @@ impl Header {
         match self.block_type {
             BlockType::Raw => Ok(self.block_size() as usize),
             BlockType::LZ4 | BlockType::LZ4HC => {
-                let ref jump_table = *self.jump_table.as_ref().unwrap();
+                let jump_table = self.jump_table.as_ref().unwrap();
 
                 if block_idx == 0 {
                     let block_size = jump_table[0] - self.data_offset;
                     Ok(block_size as usize)
-                } else if block_idx < self.file_vol() {
+                } else if block_idx < jump_table.len() as u64 {
                     let block_idx = block_idx as usize;
                     let block_size = jump_table[block_idx] - jump_table[block_idx - 1];
                     Ok(block_size as usize)
                 } else {
                     Err("Block index out of bounds")
                 }
+            }
+        }
+    }
+
+    pub fn total_size_of_blocks_on_disk(&self) -> usize {
+        match self.block_type {
+            BlockType::Raw => self.file_size(),
+            BlockType::LZ4 | BlockType::LZ4HC => {
+                let jump_table = self.jump_table.as_ref().unwrap();
+                let end_of_last_block = jump_table[jump_table.len() - 1] as usize;
+                let start_of_first_block = self.data_offset as usize;
+                end_of_last_block - start_of_first_block
+            }
+        }
+    }
+
+    // NOTE(amotta): If this function is called on partially written compressed files, the return
+    // value may be zero. It's the caller's responsibly to make sure that this function is not
+    // called prematurely.
+    pub fn total_block_size_on_disk(&self) -> usize {
+        match self.block_type {
+            BlockType::Raw => self.file_size(),
+            BlockType::LZ4 | BlockType::LZ4HC => {
+                let jump_table = self.jump_table.as_ref().unwrap();
+                jump_table[jump_table.len() - 1] as usize
             }
         }
     }

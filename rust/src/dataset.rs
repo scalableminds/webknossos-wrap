@@ -162,7 +162,7 @@ impl Dataset {
                     let cur_src_pos = cur_box.min() - dst_pos;
                     let cur_dst_pos = cur_box.min() - cur_file_box.min();
 
-                    let mut file = File::open_or_create(&cur_path, &self.header)?;
+                    let (_, mut file) = File::open_or_create(&self.header, &cur_path)?;
                     file.write_mat(cur_dst_pos, mat, cur_src_pos)?;
                 }
             }
@@ -181,6 +181,6 @@ impl Dataset {
             Err(_) => return Err("Could not open header file"),
         };
 
-        Header::read(header_file)
+        Header::read_dataset_header(header_file)
     }
 }

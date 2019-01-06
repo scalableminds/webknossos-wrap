@@ -1,7 +1,7 @@
 use crate::lz4;
-use crate::{BlockType, Box3, Header, Iter, Mat, Morton, Result, Vec3};
+use crate::{BlockType, Box3, Dataset, Header, Iter, Mat, Morton, Result, Vec3};
 use std::io::{Read, Seek, SeekFrom, Write};
-use std::{fs, path};
+use std::{fs, io, path};
 
 #[derive(Debug)]
 pub struct File {
@@ -34,37 +34,48 @@ impl File {
         let mut file = fs::File::open(path).or(Err("Could not open WKW file"))?;
 
         Self::seek_header(dataset_header, &mut file)?;
-        let header = Header::read(&mut file)?;
+        let header = Header::read_file_header(&mut file)?;
 
         Ok(Self::new(file, header))
     }
 
-    pub(crate) fn open_or_create(path: &path::Path, header: &Header) -> Result<File> {
+    pub(crate) fn open_or_create(
+        dataset_header: &Header,
+        path: &path::Path,
+    ) -> Result<(bool, File)> {
         // create parent directory, if needed
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).or(Err("Could not create parent directory"))?;
         }
 
         let mut open_opts = fs::OpenOptions::new();
-        open_opts.read(true).write(true).create(true);
+        open_opts.read(true).write(true);
+        let mut create_opts = fs::OpenOptions::new();
+        create_opts.read(true).write(true).create_new(true);
 
-        let mut file = open_opts.open(path).or(Err("Could not open file"))?;
-
-        // check if file was created
-        let (header, created) = match Header::read(&mut file) {
-            Ok(header) => (header, false),
-            Err(_) => (Header::from_template(header), true),
-        };
+        // try to create file
+        let (created, file) = match create_opts.open(path) {
+            Ok(file) => Ok((true, file)),
+            Err(err) => match err.kind() {
+                // if file already exists, we just open it
+                io::ErrorKind::AlreadyExists => match open_opts.open(path) {
+                    Ok(file) => Ok((false, file)),
+                    Err(_) => Err("Could not open file"),
+                },
+                _ => Err("Could not create file"),
+            },
+        }?;
 
         // create structure
+        let header = Header::from_template(dataset_header);
         let mut file = Self::new(file, header);
 
-        if created {
+        if created && file.header.block_type == BlockType::Raw {
             file.truncate()?;
             file.write_header()?;
         }
 
-        Ok(file)
+        Ok((created, file))
     }
 
     pub(crate) fn read_mat(
@@ -185,67 +196,77 @@ impl File {
         }
 
         if self.header.block_type == BlockType::LZ4 || self.header.block_type == BlockType::LZ4HC {
-            // Update jump table
-            self.write_header()?;
             self.truncate()?;
+            self.write_header()?;
         }
 
         Ok(1 as usize)
     }
 
-    pub fn compress(&mut self, path: &path::Path) -> Result<()> {
-        // prepare header
-        let header = Header::compress(&self.header);
-
-        // make sure that output path does not exist yet
-        let mut file = match path.exists() {
-            true => return Err("Output file already exists"),
-            false => Self::open_or_create(path, &header)?,
+    pub fn compress(src_path: &path::Path, /*dst_*/ path: &path::Path) -> Result<()> {
+        let mut src_file = {
+            // NOTE(amotta): Now that there exist multiple versions of the WKW on-disk file format,
+            // it is no longer possible to compress a file without looking at the header file of
+            // the dataset. Without the version number from the header file it's impossible to
+            // tell whether the header of a WKW file is stored at the beginning or at the end.
+            let dataset_root = src_path
+                .ancestors()
+                .nth(3)
+                .ok_or("Could not derive dataset root")?;
+            let dataset = Dataset::new(dataset_root)?;
+            File::open(dataset.header(), src_path)?
         };
 
+        // TODO(amotta): This is not a good idea... The header for the compressed WKW file should
+        // instead be derived from the header of the compressed WKW dataset. This allows, e.g., to
+        // compress into datasets with higher on-disk format version numbers.
+        let header = Header::compress(&src_file.header);
+
+        // make sure that output path does not exist yet
+        let mut file = match File::open_or_create(&header, path)? {
+            (false, _) => Err("Output file already exists"),
+            (true, file) => Ok(file),
+        }?;
+
         // prepare buffers and jump table
-        let mut buf_vec = vec![0u8; self.header.block_size()];
+        let mut buf_vec = vec![0u8; src_file.header.block_size()];
         let buf = buf_vec.as_mut_slice();
 
         // prepare files
-        self.seek_block(0)?;
+        src_file.seek_block(0)?;
         file.seek_block(0)?;
 
         for _idx in 0..header.file_vol() {
-            self.read_block(buf)?;
+            src_file.read_block(buf)?;
             file.write_block(buf)?;
         }
 
         // write header (with jump table)
-        file.write_header()
+        // TODO(amotta): Version 1/2
+        file.header.write(&mut file.file)
     }
 
     fn truncate(&self) -> Result<()> {
-        let truncated_size = match self.header.block_type {
-            BlockType::Raw => {
-                let header_size = self.header.size_on_disk();
-                let body_size = self.header.file_size();
-                let size = header_size + body_size;
-                size as u64
-            }
-            BlockType::LZ4 | BlockType::LZ4HC => {
-                let last_block_idx = self.header.file_vol() - 1;
-                let jump_table = self.header.jump_table.as_ref().unwrap();
-                let size = jump_table[last_block_idx as usize];
-                size
-            }
-        };
+        let header_size = self.header.size_on_disk();
+        let body_size = self.header.total_size_of_blocks_on_disk();
+        let truncated_size = header_size + body_size;
 
         self.file
-            .set_len(truncated_size)
+            .set_len(truncated_size as u64)
             .map_err(|_| "Could not truncate file")
     }
 
-    fn seek_header(header: &Header, file: &mut fs::File) -> Result<()> {
-        // TODO(amotta): Version 1/2
-        assert!(header.version == 2);
-        let header_size = header.size_on_disk() as i64;
-        match file.seek(SeekFrom::End(-header_size)) {
+    fn seek_header(dataset_header: &Header, file: &mut fs::File) -> Result<()> {
+        let seek_to = match dataset_header.version {
+            1 => SeekFrom::Start(0 as u64),
+            2 => {
+                let header_size = dataset_header.size_on_disk();
+                SeekFrom::End(-(header_size as i64))
+            }
+            _ => unreachable!(),
+        };
+
+        match file.seek(seek_to) {
             Ok(_) => Ok(()),
             Err(_) => Err("Could not seek header"),
         }

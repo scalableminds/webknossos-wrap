@@ -174,7 +174,7 @@ pub extern fn file_compress(src_path_ptr: *const c_char, dst_path_ptr: *const c_
     let dst_path_str = unsafe { CStr::from_ptr(dst_path_ptr) }.to_str().unwrap();
     let dst_path = Path::new(dst_path_str);
 
-    check_return(wkwrap::File::open(&src_path).and_then(|mut file| file.compress(&dst_path)))
+    check_return(wkwrap::File::compress(src_path, dst_path))
 }
 
 fn c_bbox_to_off_and_shape(bbox_ptr: *const c_ulong) -> (wkwrap::Vec3, wkwrap::Vec3) {
