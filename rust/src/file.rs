@@ -23,10 +23,10 @@ impl File {
         };
 
         File {
-            file: file,
-            header: header,
+            file,
+            header,
+            block_buf,
             block_idx: None,
-            block_buf: block_buf,
         }
     }
 

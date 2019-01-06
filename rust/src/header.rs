@@ -37,8 +37,8 @@ pub enum VoxelType {
 }
 
 impl VoxelType {
-    pub fn size(&self) -> usize {
-        match *self {
+    pub fn size(self) -> usize {
+        match self {
             VoxelType::U8 | VoxelType::I8 => 1,
             VoxelType::U16 | VoxelType::I16 => 2,
             VoxelType::U32 | VoxelType::I32 => 4,
@@ -84,12 +84,12 @@ impl Header {
 
         // initialize jump table
         self.jump_table = match self.block_type {
+            BlockType::Raw => None,
             BlockType::LZ4 | BlockType::LZ4HC => {
                 let file_vol = self.file_vol() as usize;
                 let jump_table = vec![0u64; file_vol];
                 Some(jump_table.into_boxed_slice())
             }
-            _ => None,
         };
     }
 
@@ -112,8 +112,8 @@ impl Header {
         let mut header = Self::read(file)?;
 
         header.jump_table = match header.block_type {
+            BlockType::Raw => None,
             BlockType::LZ4 | BlockType::LZ4HC => Some(header.read_jump_table(file)?),
-            _ => None,
         };
 
         Ok(header)
@@ -164,7 +164,7 @@ impl Header {
     }
 
     fn write_jump_table(&self, file: &mut fs::File) -> Result<()> {
-        let jump_table = &*self.jump_table.as_ref().unwrap();
+        let jump_table = self.jump_table.as_ref().unwrap();
 
         let result = unsafe {
             let buf_u8_len = jump_table.len() * mem::size_of::<u64>();
@@ -195,7 +195,7 @@ impl Header {
                 if block_idx == 0 {
                     self.data_offset
                 } else {
-                    let ref jump_table = *self.jump_table.as_ref().unwrap();
+                    let jump_table = self.jump_table.as_ref().unwrap();
                     jump_table[block_idx as usize - 1]
                 }
             }
@@ -262,7 +262,7 @@ impl Header {
     fn from_bytes(buf: [u8; 16]) -> Result<Header> {
         let raw: HeaderRaw = unsafe { mem::transmute(buf) };
 
-        if &raw.magic != "WKW".as_bytes() {
+        if &raw.magic != b"WKW" {
             return Err("Sequence of magic bytes is invalid");
         }
 
@@ -296,10 +296,10 @@ impl Header {
 
         Ok(Header {
             version: raw.version,
-            block_len_log2: block_len_log2,
-            file_len_log2: file_len_log2,
-            block_type: block_type,
-            voxel_type: voxel_type,
+            block_len_log2,
+            file_len_log2,
+            block_type,
+            voxel_type,
             voxel_size: raw.voxel_size,
             data_offset: raw.data_offset,
             jump_table: None,
@@ -312,7 +312,7 @@ impl Header {
         let mut raw = HeaderRaw {
             magic: [0u8; 3],
             version: self.version,
-            per_dim_log2: per_dim_log2,
+            per_dim_log2,
             block_type: 1u8 + self.block_type as u8,
             voxel_type: 1u8 + self.voxel_type as u8,
             voxel_size: self.voxel_size,
@@ -320,7 +320,7 @@ impl Header {
         };
 
         // set magic bytes
-        raw.magic.copy_from_slice("WKW".as_bytes());
+        raw.magic.copy_from_slice(b"WKW");
 
         // convert to bytes
         unsafe { mem::transmute::<HeaderRaw, [u8; 16]>(raw) }

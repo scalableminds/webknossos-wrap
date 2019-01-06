@@ -30,19 +30,21 @@ impl<'a> Mat<'a> {
         }
 
         Ok(Mat {
-            data: data,
-            shape: shape,
-            voxel_size: voxel_size,
-            voxel_type: voxel_type,
+            data,
+            shape,
+            voxel_size,
+            voxel_type,
         })
     }
 
     pub fn as_slice(&self) -> &[u8] {
         self.data
     }
+
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
         self.data
     }
+
     pub fn as_mut_ptr(&mut self) -> *mut u8 {
         self.data.as_mut_ptr()
     }

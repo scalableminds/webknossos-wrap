@@ -18,11 +18,9 @@ impl Dataset {
 
         // read required header file
         let header = Self::read_header(root)?;
+        let root = root.to_owned();
 
-        Ok(Dataset {
-            root: root.to_owned(),
-            header: header,
-        })
+        Ok(Dataset { root, header })
     }
 
     pub fn create(root: &Path, mut header: Header) -> Result<Dataset> {

@@ -17,7 +17,7 @@ pub struct Box3 {
 impl Box3 {
     pub fn new(min: Vec3, max: Vec3) -> Result<Box3> {
         match min < (max + 1) {
-            true => Ok(Box3 { min: min, max: max }),
+            true => Ok(Box3 { min, max }),
             false => Err("Minimum and maximum are in conflict"),
         }
     }
@@ -25,9 +25,11 @@ impl Box3 {
     pub fn min(&self) -> Vec3 {
         self.min
     }
+
     pub fn max(&self) -> Vec3 {
         self.max
     }
+
     pub fn width(&self) -> Vec3 {
         self.max - self.min
     }

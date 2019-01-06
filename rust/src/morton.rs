@@ -12,7 +12,6 @@ fn shuffle(v: u64) -> u64 {
     z = (z | (z << 8)) & 0x100f00f00f00f00f;
     z = (z | (z << 4)) & 0x100f00f00f00f00f;
     z = (z | (z << 2)) & 0x1249249249249249;
-
     z
 }
 
@@ -23,7 +22,6 @@ fn unshuffle(z: u64) -> u64 {
     v = (v ^ (v >> 8)) & 0x001f0000ff0000ff;
     v = (v ^ (v >> 16)) & 0x001f00000000ffff;
     v = (v ^ (v >> 32)) & 0x00000000001fffff;
-
     v
 }
 
@@ -71,8 +69,8 @@ impl Iter {
         Ok(Iter {
             idx: 0,
             end: 0,
-            log2: log2,
-            bbox: bbox,
+            log2,
+            bbox,
         })
     }
 
