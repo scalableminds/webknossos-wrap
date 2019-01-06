@@ -242,8 +242,7 @@ impl File {
         }
 
         // write header (with jump table)
-        // TODO(amotta): Version 1/2
-        file.header.write(&mut file.file)
+        file.write_header()
     }
 
     fn truncate(&self) -> Result<()> {

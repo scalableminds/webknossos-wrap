@@ -76,9 +76,11 @@ impl Header {
     }
 
     fn init(&mut self) {
-        // TODO(amotta): Version 1/2
-        assert!(self.version == 2);
-        self.data_offset = 0;
+        self.data_offset = match self.version {
+            1 => self.size_on_disk() as u64,
+            2 => 0,
+            _ => unreachable!(),
+        };
 
         // initialize jump table
         self.jump_table = match self.block_type {
@@ -277,8 +279,7 @@ impl Header {
             return Err("Sequence of magic bytes is invalid");
         }
 
-        // TODO(amotta): Version 1/2
-        if raw.version != 2 {
+        if raw.version < 1 || raw.version > 2 {
             return Err("Version number is invalid");
         }
 
