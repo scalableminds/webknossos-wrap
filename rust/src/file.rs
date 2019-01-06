@@ -203,7 +203,7 @@ impl File {
         Ok(1 as usize)
     }
 
-    pub fn compress(src_path: &path::Path, /*dst_*/ path: &path::Path) -> Result<()> {
+    pub fn compress(src_path: &path::Path, dst_path: &path::Path) -> Result<()> {
         let mut src_file = {
             // NOTE(amotta): Now that there exist multiple versions of the WKW on-disk file format,
             // it is no longer possible to compress a file without looking at the header file of
@@ -220,10 +220,10 @@ impl File {
         // TODO(amotta): This is not a good idea... The header for the compressed WKW file should
         // instead be derived from the header of the compressed WKW dataset. This allows, e.g., to
         // compress into datasets with higher on-disk format version numbers.
-        let header = Header::compress(&src_file.header);
+        let dst_header = Header::compress(&src_file.header);
 
         // make sure that output path does not exist yet
-        let mut file = match File::open_or_create(&header, path)? {
+        let mut dst_file = match File::open_or_create(&dst_header, dst_path)? {
             (false, _) => Err("Output file already exists"),
             (true, file) => Ok(file),
         }?;
@@ -234,15 +234,15 @@ impl File {
 
         // prepare files
         src_file.seek_block(0)?;
-        file.seek_block(0)?;
+        dst_file.seek_block(0)?;
 
-        for _idx in 0..header.file_vol() {
+        for _idx in 0..dst_header.file_vol() {
             src_file.read_block(buf)?;
-            file.write_block(buf)?;
+            dst_file.write_block(buf)?;
         }
 
         // write header (with jump table)
-        file.write_header()
+        dst_file.write_header()
     }
 
     fn truncate(&self) -> Result<()> {
