@@ -236,19 +236,6 @@ impl Header {
         }
     }
 
-    // NOTE(amotta): If this function is called on partially written compressed files, the return
-    // value may be zero. It's the caller's responsibly to make sure that this function is not
-    // called prematurely.
-    pub fn total_block_size_on_disk(&self) -> usize {
-        match self.block_type {
-            BlockType::Raw => self.file_size(),
-            BlockType::LZ4 | BlockType::LZ4HC => {
-                let jump_table = self.jump_table.as_ref().unwrap();
-                jump_table[jump_table.len() - 1] as usize
-            }
-        }
-    }
-
     pub fn max_block_size_on_disk(&self) -> usize {
         let block_size = self.block_size();
 
