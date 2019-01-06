@@ -33,6 +33,9 @@ impl File {
     pub fn open(dataset_header: &Header, path: &path::Path) -> Result<File> {
         let mut file = fs::File::open(path).or(Err("Could not open WKW file"))?;
 
+        // NOTE(amotta): This is currently only really needed for WKW files with LZ4 or LZ4HC block
+        // types. For raw block types we could just reuse the dataset header and thus save at least
+        // one seek and read operation.
         Self::seek_header(dataset_header, &mut file)?;
         let header = Header::read_file_header(&mut file)?;
 
@@ -102,13 +105,13 @@ impl File {
         )?;
 
         // allocate buffer
-        let block_size = self.header.block_size();
-        let voxel_size = self.header.voxel_size as usize;
-        let voxel_type = self.header.voxel_type;
-
-        let buf_shape = Vec3::from(1u32 << block_len_log2);
-        let mut buf_vec = vec![0u8; block_size];
-        let buf = buf_vec.as_mut_slice();
+        let mut buf = vec![0u8; self.header.block_size()];
+        let mut src_mat = Mat::new(
+            buf.as_mut_slice(),
+            Vec3::from(1u32 << block_len_log2),
+            self.header.voxel_size as usize,
+            self.header.voxel_type,
+        )?;
 
         let iter = Iter::new(file_len_log2, src_box_boxes)?;
         for cur_block_idx in iter {
@@ -125,12 +128,15 @@ impl File {
             let cur_dst_pos = cur_box.min() - src_pos + dst_pos;
             let cur_src_box = cur_box - cur_block_box.min();
 
+            // NOTE(amotta): The current approach reads each block into a temporary buffer /
+            // matrix, which is then (possibly only partially) copied to the destination buffer/
+            // matrix. This (currently) only really needed for LZ4 compressed blocks.
+
             // read data
             self.seek_block(cur_block_idx)?;
-            self.read_block(buf)?;
+            self.read_block(src_mat.as_mut_slice())?;
 
             // copy data
-            let src_mat = Mat::new(buf, buf_shape, voxel_size, voxel_type)?;
             dst_mat.copy_from(cur_dst_pos, &src_mat, cur_src_box)?;
         }
 
@@ -189,9 +195,8 @@ impl File {
             // fill / modify buffer
             buf_mat.copy_from(cur_dst_pos, src_mat, cur_src_box)?;
 
-            self.seek_block(cur_block_idx)?;
-
             // write data
+            self.seek_block(cur_block_idx)?;
             self.write_block(buf_mat.as_slice())?;
         }
 
@@ -277,26 +282,14 @@ impl File {
     }
 
     fn read_block(&mut self, buf: &mut [u8]) -> Result<usize> {
-        if buf.len() != self.header.block_size() {
-            return Err("Buffer has invalid size");
-        }
-
-        let block_idx = match self.block_idx {
-            Some(block_idx) => block_idx,
-            None => return Err("File is not block aligned"),
-        };
-
-        let result = match self.header.block_type {
+        assert!(self.block_idx.is_some());
+        let read = match self.header.block_type {
             BlockType::Raw => self.read_block_raw(buf),
             BlockType::LZ4 | BlockType::LZ4HC => self.read_block_lz4(buf),
-        };
+        }?;
 
-        match result {
-            Ok(_) => self.block_idx = Some(block_idx + 1),
-            Err(_) => self.block_idx = None,
-        };
-
-        result
+        self.block_idx.map(|idx| idx + 1);
+        Ok(read)
     }
 
     fn write_block(&mut self, buf: &[u8]) -> Result<usize> {
@@ -335,8 +328,8 @@ impl File {
 
     fn write_block_lz4(&mut self, buf: &[u8]) -> Result<usize> {
         // compress data
-        let mut buf_lz4 = &mut *self.block_buf.as_mut().unwrap();
-        let len_lz4 = lz4::compress_hc(buf, &mut buf_lz4)?;
+        let buf_lz4 = self.block_buf.as_mut().unwrap();
+        let len_lz4 = lz4::compress_hc(buf, buf_lz4)?;
 
         // write data
         self.file
@@ -350,19 +343,19 @@ impl File {
             .or(Err("Could not determine jump entry"))?;
 
         let block_idx = self.block_idx.unwrap();
-        let jump_table = &mut *self.header.jump_table.as_mut().unwrap();
+        let jump_table = self.header.jump_table.as_mut().unwrap();
         jump_table[block_idx as usize] = jump_entry;
 
         Ok(len_lz4)
     }
 
     fn read_block_lz4(&mut self, buf: &mut [u8]) -> Result<usize> {
-        let block_idx = self.block_idx.unwrap();
-        let block_size_lz4 = self.header.block_size_on_disk(block_idx)?;
-        let block_size_raw = self.header.block_size();
-
-        let buf_lz4_orig = &mut *self.block_buf.as_mut().unwrap();
-        let buf_lz4 = &mut buf_lz4_orig[..block_size_lz4];
+        let buf_lz4 = {
+            let idx = self.block_idx.unwrap();
+            let len = self.header.block_size_on_disk(idx).unwrap();
+            let buf = self.block_buf.as_mut().unwrap();
+            &mut buf[..len]
+        };
 
         // read compressed block
         self.file
@@ -370,10 +363,10 @@ impl File {
             .or(Err("Error while reading LZ4 block"))?;
 
         // decompress block
-        let byte_written = lz4::decompress_safe(buf_lz4, buf)?;
+        let raw_len = lz4::decompress_safe(buf_lz4, buf)?;
 
-        match byte_written == block_size_raw {
-            true => Ok(byte_written),
+        match raw_len == buf.len() {
+            true => Ok(raw_len),
             false => Err("Unexpected length after decompression"),
         }
     }
