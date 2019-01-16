@@ -22,37 +22,48 @@ function wkwTest()
     rng(0);
 
     %% run test
-    for curIdx = 1:roundCount
-        %% write data
-        curSaveBox = buildRandBox(clen);
-        curData = buildRandDataForBox(dataType, numChannels, curSaveBox);
+    for withCompression = [false, true]
+        for curIdx = 1:roundCount
+            %% read data
+            curLoadBox = buildRandBox(clen);
+            curWkwData = wkwLoadRoi(testDir, curLoadBox);
 
-        % update data
-        data( ...
-            :, ...
-            curSaveBox(1, 1):curSaveBox(1, 2), ...
-            curSaveBox(2, 1):curSaveBox(2, 2), ...
-            curSaveBox(3, 1):curSaveBox(3, 2)) = curData;
+            curRamData = data( ...
+                :, ...
+                curLoadBox(1, 1):curLoadBox(1, 2), ...
+                curLoadBox(2, 1):curLoadBox(2, 2), ...
+                curLoadBox(3, 1):curLoadBox(3, 2));
+            curRamData = shiftdim(curRamData, numChannels == 1);
+
+            % do test
+            assert(isequal(size(curWkwData), size(curRamData)));
+            assert(isequal(curWkwData, curRamData));
+            disp(['<< Round ', num2str(curIdx), ' passed']);
+            
+            %% write data
+            if withCompression; continue; end
+            
+            curSaveBox = buildRandBox(clen);
+            curData = buildRandDataForBox(dataType, numChannels, curSaveBox);
+
+            % update data
+            data( ...
+                :, ...
+                curSaveBox(1, 1):curSaveBox(1, 2), ...
+                curSaveBox(2, 1):curSaveBox(2, 2), ...
+                curSaveBox(3, 1):curSaveBox(3, 2)) = curData;
+
+            % write to file
+            curData = shiftdim(curData, numChannels == 1);
+            wkwSaveRoi(testDir, curSaveBox(:, 1)', curData);
+        end
         
-        % write to file
-        curData = shiftdim(curData, numChannels == 1);
-        wkwSaveRoi(testDir, curSaveBox(:, 1)', curData);
-
-        %% read data
-        curLoadBox = buildRandBox(clen);
-        curWkwData = wkwLoadRoi(testDir, curLoadBox);
+        compTestDir = strcat(testDir, '-compressed');
+        wkwInit('compress', testDir, compTestDir);
+        rmCompTestDir = onCleanup(@() rmdir(compTestDir, 's'));
         
-        curRamData = data( ...
-            :, ...
-            curLoadBox(1, 1):curLoadBox(1, 2), ...
-            curLoadBox(2, 1):curLoadBox(2, 2), ...
-            curLoadBox(3, 1):curLoadBox(3, 2));
-        curRamData = shiftdim(curRamData, numChannels == 1);
-
-        %% do test
-        assert(isequal(size(curWkwData), size(curRamData)));
-        assert(isequal(curWkwData, curRamData));
-        disp(['<< Round ', num2str(curIdx), ' passed']);
+        wkwCompressDir(testDir, compTestDir);
+        testDir = compTestDir;
     end
 end
 
