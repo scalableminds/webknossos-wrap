@@ -38,6 +38,7 @@ function buildWithCargo(oldName, newName)
     
     % build project
     cd(cargoDir);
+    system('cargo clean');
     system('cargo update');
     system('cargo build --release');
     

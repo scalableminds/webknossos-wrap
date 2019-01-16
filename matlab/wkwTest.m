@@ -24,34 +24,34 @@ function wkwTest()
     %% run test
     for curIdx = 1:roundCount
         %% write data
-        curBox = buildRandBox(clen);
-        curData = buildRandDataForBox(dataType, numChannels, curBox);
+        curSaveBox = buildRandBox(clen);
+        curData = buildRandDataForBox(dataType, numChannels, curSaveBox);
 
         % update data
         data( ...
             :, ...
-            curBox(1, 1):curBox(1, 2), ...
-            curBox(2, 1):curBox(2, 2), ...
-            curBox(3, 1):curBox(3, 2)) = curData;
+            curSaveBox(1, 1):curSaveBox(1, 2), ...
+            curSaveBox(2, 1):curSaveBox(2, 2), ...
+            curSaveBox(3, 1):curSaveBox(3, 2)) = curData;
         
         % write to file
         curData = shiftdim(curData, numChannels == 1);
-        wkwSaveRoi(testDir, curBox(:, 1)', curData);
+        wkwSaveRoi(testDir, curSaveBox(:, 1)', curData);
 
         %% read data
-        curBox = buildRandBox(clen);
-        curWkwData = wkwLoadRoi(testDir, curBox);
+        curLoadBox = buildRandBox(clen);
+        curWkwData = wkwLoadRoi(testDir, curLoadBox);
         
         curRamData = data( ...
             :, ...
-            curBox(1, 1):curBox(1, 2), ...
-            curBox(2, 1):curBox(2, 2), ...
-            curBox(3, 1):curBox(3, 2));
+            curLoadBox(1, 1):curLoadBox(1, 2), ...
+            curLoadBox(2, 1):curLoadBox(2, 2), ...
+            curLoadBox(3, 1):curLoadBox(3, 2));
         curRamData = shiftdim(curRamData, numChannels == 1);
 
         %% do test
         assert(isequal(size(curWkwData), size(curRamData)));
-        assert(all(curWkwData(:) == curRamData(:)));
+        assert(isequal(curWkwData, curRamData));
         disp(['<< Round ', num2str(curIdx), ' passed']);
     end
 end
