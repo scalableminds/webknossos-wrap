@@ -27,7 +27,7 @@ unsafe fn new(nrhs: c_int, rhs: *const MxArray) -> Result<()> {
     let voxel_size = voxel_type_size as u8 * num_elem as u8;
 
     let header = wkwrap::Header {
-        version: 1,
+        version: 2,
         block_len_log2: block_len_log2,
         file_len_log2: file_len_log2,
         block_type: block_type,
