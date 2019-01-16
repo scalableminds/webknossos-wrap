@@ -282,13 +282,13 @@ impl File {
     }
 
     fn read_block(&mut self, buf: &mut [u8]) -> Result<usize> {
-        assert!(self.block_idx.is_some());
+        let block_idx = self.block_idx.unwrap();
         let read = match self.header.block_type {
             BlockType::Raw => self.read_block_raw(buf),
             BlockType::LZ4 | BlockType::LZ4HC => self.read_block_lz4(buf),
         }?;
 
-        self.block_idx.map(|idx| idx + 1);
+        self.block_idx = Some(block_idx + 1);
         Ok(read)
     }
 
