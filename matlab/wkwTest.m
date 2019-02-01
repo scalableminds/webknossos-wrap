@@ -57,6 +57,8 @@ function wkwTest()
             curData = shiftdim(curData, numChannels == 1);
             wkwSaveRoi(testDir, curSaveBox(:, 1)', curData);
         end
+
+	if withCompression; break; end
         
         compTestDir = strcat(testDir, '-compressed');
         wkwInit('compress', testDir, compTestDir);
