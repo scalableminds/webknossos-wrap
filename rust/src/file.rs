@@ -247,6 +247,7 @@ impl File {
         }
 
         // write header (with jump table)
+        dst_file.truncate()?;
         dst_file.write_header()
     }
 
