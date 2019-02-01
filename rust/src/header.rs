@@ -104,10 +104,6 @@ impl Header {
         header_len + jump_table_len
     }
 
-    pub fn read_dataset_header(file: &mut fs::File) -> Result<Header> {
-        Self::read(file)
-    }
-
     pub fn read_file_header(file: &mut fs::File) -> Result<Header> {
         let mut header = Self::read(file)?;
 
@@ -119,7 +115,7 @@ impl Header {
         Ok(header)
     }
 
-    fn read(file: &mut fs::File) -> Result<Header> {
+    pub(crate) fn read(file: &mut fs::File) -> Result<Header> {
         let mut buf = [0u8; 16];
 
         match file.read_exact(&mut buf) {

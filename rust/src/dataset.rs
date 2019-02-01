@@ -1,6 +1,6 @@
 use crate::{BlockType, Box3, File, Header, Mat, Result, Vec3};
-use std::fs;
 use std::path::{Path, PathBuf};
+use std::{fs, io};
 
 #[derive(Debug)]
 pub struct Dataset {
@@ -12,47 +12,57 @@ static HEADER_FILE_NAME: &'static str = "header.wkw";
 
 impl Dataset {
     pub fn new(root: &Path) -> Result<Dataset> {
-        if !root.is_dir() {
-            return Err("Dataset root is not a directory");
-        }
-
         // read required header file
-        let header = Self::read_header(root)?;
+        let header = Self::read_header_file(root)?;
         let root = root.to_owned();
 
         Ok(Dataset { root, header })
     }
 
-    pub fn create(root: &Path, mut header: Header) -> Result<Dataset> {
-        // create directory hierarchy
-        fs::create_dir_all(root).or(Err("Could not create dataset directory"))?;
+    fn read_header_file(root: &Path) -> Result<Header> {
+        let mut header_file_path = PathBuf::from(root);
+        header_file_path.push(HEADER_FILE_NAME);
 
-        // create header file
-        Self::create_header_file(root, &mut header)?;
-        Self::new(root)
+        let mut header_file = match fs::File::open(header_file_path) {
+            Ok(header_file) => Ok(header_file),
+            Err(_) => Err("Could not open dataset header file"),
+        }?;
+
+        Header::read(&mut header_file)
+    }
+
+    pub fn create(root: &Path, mut header: Header) -> Result<Dataset> {
+        header.data_offset = 0;
+        header.jump_table = None;
+
+        fs::create_dir_all(root).or(Err("Could not create dataset directory"))?;
+        Self::create_header_file(root, &header)?;
+
+        let root = root.to_owned();
+        Ok(Dataset { root, header })
+    }
+
+    fn create_header_file(root: &Path, header: &Header) -> Result<()> {
+        let mut header_file_path = PathBuf::from(root);
+        header_file_path.push(HEADER_FILE_NAME);
+
+        let mut open_opts = fs::OpenOptions::new();
+        open_opts.read(true).write(true).create_new(true);
+
+        let mut file = match open_opts.open(header_file_path) {
+            Ok(file) => Ok(file),
+            Err(err) => match err.kind() {
+                io::ErrorKind::AlreadyExists => Err("Dataset header file already exists"),
+                _ => Err("Could not create dataset header file"),
+            },
+        }?;
+
+        header.write(&mut file)
     }
 
     pub fn compress(&self, path: &Path) -> Result<Dataset> {
         let header = Header::compress(&self.header);
         Self::create(path, header)
-    }
-
-    fn create_header_file(root: &Path, header: &mut Header) -> Result<()> {
-        header.data_offset = 0;
-        header.jump_table = None;
-
-        // build path to header file
-        let mut header_path = PathBuf::from(root);
-        header_path.push(HEADER_FILE_NAME);
-
-        if header_path.exists() {
-            return Err("Header file already exists");
-        }
-
-        // create header file
-        let mut file = fs::File::create(header_path).or(Err("Could not create header file"))?;
-
-        header.write(&mut file)
     }
 
     pub fn header(&self) -> &Header {
@@ -94,7 +104,8 @@ impl Dataset {
                     let cur_src_pos = cur_box.min() - cur_file_box.min();
                     let cur_dst_pos = cur_box.min() - src_pos;
 
-                    // try to open file
+                    // TODO(amotta): Distinguish between non-existen file and other failures (e.g.,
+                    // due to missing file permissions). In the latter case we should return.
                     if let Ok(mut file) = File::open(&self.header, &cur_path) {
                         file.read_mat(cur_src_pos, mat, cur_dst_pos)?;
                     }
@@ -167,18 +178,5 @@ impl Dataset {
         }
 
         Ok(1 as usize)
-    }
-
-    pub(crate) fn read_header(root: &Path) -> Result<Header> {
-        let mut header_path = PathBuf::from(root);
-        header_path.push(HEADER_FILE_NAME);
-
-        let mut header_file_opt = fs::File::open(header_path);
-        let header_file = match header_file_opt.as_mut() {
-            Ok(header_file) => header_file,
-            Err(_) => return Err("Could not open header file"),
-        };
-
-        Header::read_dataset_header(header_file)
     }
 }
