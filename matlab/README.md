@@ -17,7 +17,7 @@ data = randi(intmax('uint8'), [128, 128, 128], 'uint8');
 wkwSaveRoi('/home/amotta/data/wkw', [256, 256, 256], data);
 
 % Read a (256)³ voxel volume starting at position [1, 1, 1].
-box = [1, 1 + 256; 1, 1 + 256; 1, 1 + 256];
+box = [1, 1 + (256 - 1); 1, 1 + (256 - 1); 1, 1 + (256 - 1)];
 data = wkwLoadRoi('/home/amotta/data/wkw', box);
 ```
 
