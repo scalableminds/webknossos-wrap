@@ -124,13 +124,15 @@ Decompression must produce valid raw blocks.
 To test changes locally, run `sbt publishLocal`. The [current version] should already be bumped and marked as `SNAPSHOT`. Then adapt the dependency to webknossos-wrap to this version.
 
 #### Releasing a version to maven
-First you have to specify the s3 credentials:
+Specify the sonatype credentials in `~/.sbt/<sbt version>/sonatype.sbt`:
 ```
-export AWS_ACCESS_KEY_ID_MAVEN_SCM_IO=<KEY_ID>
-export AWS_SECRET_KEY_MAVEN_SCM_IO=<SECRET_KEY>
+credentials += Credentials("Sonatype Nexus Repository Manager",
+       "oss.sonatype.org",
+       "<user>",
+       "<password>")
 ```
 
-Then, simply run `sbt release`. This increments the version automatically, publishes the build and adds git commits and tags. Push the git changes via `git push --follow-tags`.
+Then run `sbt release`. This increments the version automatically, publishes the build and adds git commits and tags. Push the git changes via `git push --follow-tags`.
 
 ## Credits
 * [Max Planck Institute for Brain Research](https://brain.mpg.de/)
