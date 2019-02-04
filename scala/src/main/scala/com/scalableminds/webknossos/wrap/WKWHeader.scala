@@ -20,7 +20,7 @@ object BlockType extends Enumeration(1) {
 }
 
 object VoxelType extends Enumeration(1) {
-  val UInt8, UInt16, UInt32, UInt64, Float, Double = Value
+  val UInt8, UInt16, UInt32, UInt64, Float, Double, Int8, Int16, Int32, Int64 = Value
 
   def bytesPerVoxel(voxelType: VoxelType.Value): Int = voxelType match {
     case UInt8 => 1
@@ -29,6 +29,10 @@ object VoxelType extends Enumeration(1) {
     case UInt64 => 8
     case Float => 4
     case Double => 8
+    case Int8 =>  1
+    case Int16 => 2
+    case Int32 => 4
+    case Int64 => 8
   }
 }
 
