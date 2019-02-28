@@ -35,11 +35,10 @@ function wkwCompressDir(inRoot, outRoot, taskCount)
         'taskConcurrency', taskCount);
     jobArgs = cellfun(@(in, out) {{in, out}}, inFiles, outFiles);
     job = Cluster.startJob(@wkwCompress, jobArgs, 'cluster', cluster);
+
+    % This function will throw an error if task threw error
+    Cluster.waitForJob(job);
     
-    wait(job);
-    
-    % check that there were no errors
-    assert(all(cellfun(@isempty, get(job.Tasks, {'Error'}))));
 end
 
 function files = findWkwFiles(inRoot, level)
