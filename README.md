@@ -54,11 +54,12 @@ Each wk-wrap file MUST begin with the following header:
 #### Header fields
 * __version__ contains the wk-wrap format version as unsigned byte. At the time
   of writing, the only valid version number is 0x01.
-* __perDimLog2__ contains two 4-bit values (nibbles). The lower nibble (
-  `perDimLog2 & 0x0F`) contains __blocksPerFileDimLog2__, i.e., the log2 of the
-  number of blocks per file dimension. The higher nibble (`(perDimLog2 & 0xF0) >> 4`)
-  contains __voxelsPerBlockDimLog2__, i.e., the log2 of the number of
-  voxels per block dimension. Files and blocks are three-dimensional.
+* __perDimLog2__ contains two 4-bit values (nibbles). The lower nibble
+  (`perDimLog2 & 0x0F`) contains __voxelsPerBlockDimLog2__, i.e., the
+  log2 of the number of voxels per block dimension. The higher nibble
+  (`(perDimLog2 & 0xF0) >> 4`) contains __blocksPerFileDimLog2__, i.e.,
+  the log2 of the number of blocks per file dimension. Files and blocks
+  are three-dimensional.
 * __blockType__ determines how the individual blocks were encoded. Valid values
   are: 0x01 for RAW encoding, 0x02 for LZ4 compressed, and 0x03 for the high-
   compression version of LZ4.
