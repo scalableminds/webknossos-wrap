@@ -104,7 +104,7 @@ jobs:
 
 workflows:
   version: 2
-  default:
+  circleci_build:
     jobs:
       - build_linux
       - build_macos
