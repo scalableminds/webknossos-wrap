@@ -9,3 +9,5 @@
 * Rename `liblz4.so.1.8.2.dll` to `liblz4.dll`
 * Go to `python` and run `python setup.py install`
 * Test with `python -c "import wkw"`
+* `pip install wheel`
+* `python bdist_wheel -p win-amd64 upload`
