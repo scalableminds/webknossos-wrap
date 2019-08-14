@@ -46,7 +46,7 @@ class BuildPyCommand(build_py):
 
 setup(
     name="wkw",
-    version="0.0.4",
+    version="0.0.6",
     author="Alessandro Motta",
     author_email="alessandro.motta@brain.mpg.de",
     url="https://github.com/scalableminds/webknossos-wrap",

@@ -37,7 +37,7 @@ jobs:
               -v$(pwd):/app \
               testing \
               bash -c "
-                for PYBIN in /opt/python/{cp34-cp34m,cp35-cp35m,cp36-cp36m}/bin; do
+                for PYBIN in /opt/python/{cp34-cp34m,cp35-cp35m,cp36-cp36m,cp37-cp37m}/bin; do
                   \$PYBIN/pip install /app/python/dist/wkw-*-py3-none-manylinux1_x86_64.whl
                   \$PYBIN/python -c 'import wkw; print(wkw.Dataset)'
                 done"
@@ -104,7 +104,7 @@ jobs:
 
 workflows:
   version: 2
-  default:
+  circleci_build:
     jobs:
       - build_linux
       - build_macos

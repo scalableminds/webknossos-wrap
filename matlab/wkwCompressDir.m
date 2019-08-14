@@ -25,9 +25,14 @@ function wkwCompressDir(inRoot, outRoot, taskCount)
     outDirs = cellfun(@fileparts, outFiles, 'UniformOutput', false);
     assert(all(cellfun(@mkdir, unique(outDirs))));
     
-    cluster = Cluster.getCluster( ...
-        '-pe openmp 1', '-l h_vmem=6G', ...
-        '-l h_rt=0:29:00', ['-tc ', num2str(taskCount)]);
+    % SGE (deprecated)
+    % cluster = Cluster.getCluster( ...
+    %     '-pe openmp 1', '-l h_vmem=6G', ...
+    %     '-l h_rt=0:29:00', ['-tc ', num2str(taskCount)]);
+
+    % SLURM
+    cluster = Cluster.config('memory', 6, 'time', '0:29:00', ...
+        'taskConcurrency', taskCount);
     jobArgs = cellfun(@(in, out) {{in, out}}, inFiles, outFiles);
     job = Cluster.startJob(@wkwCompress, jobArgs, 'cluster', cluster);
     
