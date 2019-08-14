@@ -37,7 +37,7 @@ jobs:
               -v$(pwd):/app \
               -w/app/python \
               testing \
-              bash -c "\$PYBIN/black --check wkw" || true
+              bash -c "\$PYBIN/black --check ." || true
 
       - run:
           name: Try to import on different python versions
