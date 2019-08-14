@@ -46,7 +46,9 @@ class BuildPyCommand(build_py):
 
 setup(
     name="wkw",
-    use_scm_version=True,
+    use_scm_version={
+        "root": ".."
+    },
     setup_requires=['setuptools_scm'],
     author="Alessandro Motta",
     author_email="alessandro.motta@brain.mpg.de",
