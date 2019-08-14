@@ -27,7 +27,7 @@ def _init_libwkw():
         wkw_header = "\n".join(wkw_header)
 
     if platform.system() == "Windows":
-        os.environ['PATH'] += os.pathsep + os.os.path.join(this_dir, 'lib')
+        os.environ['PATH'] += os.pathsep + os.path.join(this_dir, 'lib')
 
     ffi = cffi.FFI()
     ffi.cdef(wkw_header)
