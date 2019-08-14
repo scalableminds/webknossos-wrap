@@ -2,21 +2,21 @@ import ctypes
 import numpy as np
 import cffi
 import platform
+import os
 from copy import deepcopy
 from glob import iglob
-from os import path
 
 
 def _init_libwkw():
-    this_dir = path.dirname(__file__)
-    path_wkw_header = path.join(this_dir, 'lib', 'wkw.h')
+    this_dir = os.path.dirname(__file__)
+    path_wkw_header = os.path.join(this_dir, 'lib', 'wkw.h')
 
     lib_name_platform = {
         'Linux': 'libwkw.so',
         'Windows': 'wkw.dll',
         'Darwin': 'libwkw.dylib'
     }
-    path_wkw_lib = path.join(
+    path_wkw_lib = os.path.join(
         this_dir, 'lib', lib_name_platform[platform.system()])
 
     with open(path_wkw_header) as f:
@@ -27,7 +27,7 @@ def _init_libwkw():
         wkw_header = "\n".join(wkw_header)
 
     if platform.system() == "Windows":
-        os.environ['PATH'] += os.pathsep + os.path.join(this_dir, 'lib')
+        os.environ['PATH'] += os.pathsep + os.os.path.join(this_dir, 'lib')
 
     ffi = cffi.FFI()
     ffi.cdef(wkw_header)
@@ -192,13 +192,13 @@ class Dataset:
 
         if compress_files:
             for file in self.list_files():
-                rel_file = path.relpath(file, self.root)
-                File.compress(file, path.join(dst_path, rel_file))
+                rel_file = os.path.relpath(file, self.root)
+                File.compress(file, os.path.join(dst_path, rel_file))
 
         return dataset
 
     def list_files(self):
-        return iglob(path.join(self.root, '*', '**', '*.wkw'))
+        return iglob(os.path.join(self.root, '*', '**', '*.wkw'))
 
     def close(self):
         libwkw.dataset_close(self.handle)

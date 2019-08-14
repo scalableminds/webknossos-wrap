@@ -6,5 +6,6 @@
 * Install [Rust via Rustup](https://static.rust-lang.org/rustup/dist/i686-pc-windows-gnu/rustup-init.exe)
 * Download and extract [lz4](https://github.com/lz4/lz4/releases/download/v1.8.2/lz4_v1_8_2_win64.zip). Version `>1.8.*` doesn't work because there are no bundled dll files
 * From `lz4*.zip` copy `dll/liblz4.*` to `c/liblz4.*`
+* Rename `liblz4.so.1.8.2.dll` to `liblz4.dll`
 * Go to `python` and run `python setup.py install`
 * Test with `python -c "import wkw"`
