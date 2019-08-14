@@ -119,4 +119,10 @@ workflows:
   circleci_build:
     jobs:
       - build_linux
+          filters:
+            tags:
+              only: /.*/
       - build_macos
+          filters:
+            tags:
+              only: /.*/
