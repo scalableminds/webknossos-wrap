@@ -10,4 +10,5 @@
 * Go to `python` and run `python setup.py install`
 * Test with `python -c "import wkw"`
 * `pip install wheel`
-* `python bdist_wheel -p win-amd64 upload`
+* Write credentials to `~/.pypirc`
+* `python setup.py bdist_wheel -p win-amd64 upload`
