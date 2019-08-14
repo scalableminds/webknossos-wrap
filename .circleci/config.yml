@@ -118,11 +118,11 @@ workflows:
   version: 2
   circleci_build:
     jobs:
-      - build_linux
+      - build_linux:
           filters:
             tags:
               only: /.*/
-      - build_macos
+      - build_macos:
           filters:
             tags:
               only: /.*/
