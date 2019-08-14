@@ -34,6 +34,8 @@ class BuildPyCommand(build_py):
             shutil.rmtree(lib_dir)
 
         os.makedirs(lib_dir)
+        if platform.system() == "Windows":
+            shutil.copy(os.path.join(c_dir, 'liblz4.dll'), os.path.join(lib_dir, 'liblz4.dll'))
         shutil.copy(lib_file, os.path.join(lib_dir, lib_name))
         shutil.copy(header_file, os.path.join(lib_dir, 'wkw.h'))
 
