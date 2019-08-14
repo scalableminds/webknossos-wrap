@@ -12,30 +12,34 @@ class BuildPyCommand(build_py):
 
     def __build_c_library(self):
         this_dir = os.path.dirname(__file__)
-        c_dir = os.path.normpath(os.path.join(this_dir, '..', 'c'))
+        c_dir = os.path.normpath(os.path.join(this_dir, "..", "c"))
 
         # building C library
-        subprocess.call(['cargo', 'clean'], cwd=c_dir)
-        subprocess.call(['cargo', 'build', '--release'], cwd=c_dir)
+        subprocess.call(["cargo", "clean"], cwd=c_dir)
+        subprocess.call(["cargo", "build", "--release"], cwd=c_dir)
 
         lib_name_platform = {
-            'Linux': 'libwkw.so',
-            'Windows': 'wkw.dll',
-            'Darwin': 'libwkw.dylib'
+            "Linux": "libwkw.so",
+            "Windows": "wkw.dll",
+            "Darwin": "libwkw.dylib",
         }
         lib_name = lib_name_platform[platform.system()]
-        lib_file = os.path.join(c_dir, 'target', 'release', lib_name)
-        header_file = os.path.join(c_dir, 'include', 'wkw.h')
+        lib_file = os.path.join(c_dir, "target", "release", lib_name)
+        header_file = os.path.join(c_dir, "include", "wkw.h")
 
         # copying to lib dir
-        lib_dir = os.path.join(this_dir, 'wkw', 'lib')
+        lib_dir = os.path.join(this_dir, "wkw", "lib")
 
         if os.path.exists(lib_dir):
             shutil.rmtree(lib_dir)
 
         os.makedirs(lib_dir)
+        if platform.system() == "Windows":
+            shutil.copy(
+                os.path.join(c_dir, "liblz4.dll"), os.path.join(lib_dir, "liblz4.dll")
+            )
         shutil.copy(lib_file, os.path.join(lib_dir, lib_name))
-        shutil.copy(header_file, os.path.join(lib_dir, 'wkw.h'))
+        shutil.copy(header_file, os.path.join(lib_dir, "wkw.h"))
 
     def run(self):
         self.__build_c_library()
@@ -44,12 +48,13 @@ class BuildPyCommand(build_py):
 
 setup(
     name="wkw",
-    version="0.0.6",
+    use_scm_version={"root": ".."},
+    setup_requires=["setuptools_scm"],
     author="Alessandro Motta",
     author_email="alessandro.motta@brain.mpg.de",
     url="https://github.com/scalableminds/webknossos-wrap",
     packages=find_packages(),
     include_package_data=True,
-    install_requires=['cffi', 'numpy'],
-    cmdclass={'build_py': BuildPyCommand}
+    install_requires=["cffi", "numpy"],
+    cmdclass={"build_py": BuildPyCommand},
 )

@@ -17,4 +17,5 @@ RUN $PYBIN/pip install \
   cffi \
   setuptools \
   pytest \
-  twine
+  twine \
+  black
