@@ -31,6 +31,15 @@ jobs:
               bash -c "\$PYBIN/pytest tests"
 
       - run:
+          name: Check formatting
+          command: |
+            docker run \
+              -v$(pwd):/app \
+              -w/app/python \
+              testing \
+              bash -c "\$PYBIN/black --check wkw" || true
+
+      - run:
           name: Try to import on different python versions
           command: |
             docker run \
