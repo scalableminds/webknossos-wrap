@@ -46,7 +46,8 @@ class BuildPyCommand(build_py):
 
 setup(
     name="wkw",
-    version="0.0.6",
+    use_scm_version=True,
+    setup_requires=['setuptools_scm'],
     author="Alessandro Motta",
     author_email="alessandro.motta@brain.mpg.de",
     url="https://github.com/scalableminds/webknossos-wrap",

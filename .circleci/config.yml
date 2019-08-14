@@ -45,19 +45,21 @@ jobs:
       - run:
           name: Build and publish python package
           command: |
-            echo "[distutils]" >> .pypirc
-            echo "index-servers = pypi" >> .pypirc
-            echo "[pypi]" >> .pypirc
-            echo "repository=https://upload.pypi.org/legacy/" >> .pypirc
-            echo "username=$PYPI_USERNAME" >> .pypirc
-            echo "password=$PYPI_PASSWORD" >> .pypirc
+            if [ -n "$CIRCLE_TAG" ] && [[ "$CIRCLE_TAG" == python-v* ]]; then
+              echo "[distutils]" >> .pypirc
+              echo "index-servers = pypi" >> .pypirc
+              echo "[pypi]" >> .pypirc
+              echo "repository=https://upload.pypi.org/legacy/" >> .pypirc
+              echo "username=$PYPI_USERNAME" >> .pypirc
+              echo "password=$PYPI_PASSWORD" >> .pypirc
 
-            docker run \
-              -v$(pwd):/app \
-              -v$(pwd)/.pypirc:/root/.pypirc \
-              -w/app/python \
-              testing \
-              bash -c "\$PYBIN/python setup.py bdist_wheel -p manylinux1_x86_64 upload -r pypi"
+              docker run \
+                -v$(pwd):/app \
+                -v$(pwd)/.pypirc:/root/.pypirc \
+                -w/app/python \
+                testing \
+                bash -c "\$PYBIN/python setup.py bdist_wheel -p manylinux1_x86_64 upload -r pypi"
+            fi
 
   build_macos:
     macos:
@@ -90,17 +92,18 @@ jobs:
       - run:
           name: Build and publish python package
           command: |
-            echo "[distutils]" >> $HOME/.pypirc
-            echo "index-servers = pypi" >> $HOME/.pypirc
-            echo "[pypi]" >> $HOME/.pypirc
-            echo "repository=https://upload.pypi.org/legacy/" >> $HOME/.pypirc
-            echo "username=$PYPI_USERNAME" >> $HOME/.pypirc
-            echo "password=$PYPI_PASSWORD" >> $HOME/.pypirc
+            if [ -n "$CIRCLE_TAG" ] && [[ "$CIRCLE_TAG" == python-v* ]]; then
+              echo "[distutils]" >> $HOME/.pypirc
+              echo "index-servers = pypi" >> $HOME/.pypirc
+              echo "[pypi]" >> $HOME/.pypirc
+              echo "repository=https://upload.pypi.org/legacy/" >> $HOME/.pypirc
+              echo "username=$PYPI_USERNAME" >> $HOME/.pypirc
+              echo "password=$PYPI_PASSWORD" >> $HOME/.pypirc
 
-            cd python
-            export PATH=$PATH:$HOME/.cargo/bin
-            python3 setup.py bdist_wheel -p $(python3 -c "import distutils.util; print(distutils.util.get_platform())") upload
-
+              cd python
+              export PATH=$PATH:$HOME/.cargo/bin
+              python3 setup.py bdist_wheel -p $(python3 -c "import distutils.util; print(distutils.util.get_platform())") upload
+            fi
 
 workflows:
   version: 2
