@@ -140,6 +140,13 @@ class Header:
 
 
 def _build_box(off, shape):
+    assert off[0] >= 0, "Offset x must be greater or equal to 0"
+    assert off[1] >= 0, "Offset y must be greater or equal to 0"
+    assert off[2] >= 0, "Offset z must be greater or equal to 0"
+    assert shape[0] >= 0, "Shape x must be greater or equal to 0"
+    assert shape[1] >= 0, "Shape y must be greater or equal to 0"
+    assert shape[2] >= 0, "Shape z must be greater or equal to 0"
+
     off = np.asarray(off, dtype=np.uint32)
     shape = np.asarray(shape, dtype=np.uint32)
     return np.hstack((off, off + shape))
