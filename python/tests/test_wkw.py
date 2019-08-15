@@ -28,7 +28,7 @@ def test_open():
         assert dataset.header.voxel_type == np.uint16
 
 
-def test_positive_offsets():
+def test_non_negative_offsets():
     wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)).close()
 
     with pytest.raises(AssertionError):
@@ -46,6 +46,13 @@ def test_positive_offsets():
     with pytest.raises(AssertionError):
         with wkw.Dataset.open("tests/tmp") as dataset:
             dataset.read((0, 0, 0), (-1, -1, -1))
+
+
+def test_empty_read():
+    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dataset:
+
+        data = dataset.read((1, 1, 1), (0, 0, 0))
+        assert data.shape == (1, 0, 0, 0)
 
 
 def test_readwrite():
