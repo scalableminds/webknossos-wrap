@@ -1,0 +1,17 @@
+name: Build Python module (Win)
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: windows-2019
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions/setup-python@v1
+      with:
+        python-version: '3.x' # Version range or exact version of a Python version to use, using semvers version range syntax.
+        architecture: 'x64' # (x64 or x86)
+    - name: Build
+      run: |
+        cd python
+        python setup.py install
