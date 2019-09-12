@@ -96,6 +96,7 @@ jobs:
         echo "password=${{ secrets.PYPI_PASSWORD }}" >> $HOME/.pypirc
 
         cd python
+        pip install wheel
         python setup.py bdist_wheel -p $(python3 -c "import distutils.util; print(distutils.util.get_platform())") upload
 
   build_win:
@@ -137,4 +138,5 @@ jobs:
         echo "password=${{ secrets.PYPI_PASSWORD }}" >> $HOME/.pypirc
 
         cd python
+        pip install wheel
         python setup.py bdist_wheel -p $(python3 -c "import distutils.util; print(distutils.util.get_platform())") upload
