@@ -3,6 +3,26 @@ name: Build Python module
 on: [push]
 
 jobs:
+  build_lin:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions/setup-python@v1
+      with:
+        python-version: '3.x' # Version range or exact version of a Python version to use, using semvers version range syntax.
+        architecture: 'x64' # (x64 or x86)
+    - name: Build
+      run: |
+        cd python
+        export PATH=$PATH:$HOME/.cargo/bin
+        python setup.py install
+    - name: Test
+      run: |
+        cd python
+        python -c "import wkw"
+        pip install pytest
+        pytest tests
+
   build_mac:
     runs-on: macOS-10.14
     steps:
