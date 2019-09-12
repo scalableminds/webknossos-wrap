@@ -47,20 +47,21 @@ jobs:
               \$PYBIN/pip install /app/python/dist/wkw-*-py3-none-manylinux1_x86_64.whl
               \$PYBIN/python -c 'import wkw; print(wkw.Dataset)'
             done"
-     - name: Publish module
-       run: |
-          echo "[distutils]" >> .pypirc
-          echo "index-servers = pypi" >> .pypirc
-          echo "[pypi]" >> .pypirc
-          echo "repository=https://upload.pypi.org/legacy/" >> .pypirc
-          echo "username=${{ secrets.PYPI_USERNAME }}" >> .pypirc
-          echo "password=${{ secrets.PYPI_PASSWORD }}" >> .pypirc
-          docker run \
-            -v$(pwd):/app \
-            -v$(pwd)/.pypirc:/root/.pypirc \
-            -w/app/python \
-            testing \
-            bash -c "\$PYBIN/python setup.py bdist_wheel -p manylinux1_x86_64 upload -r pypi"
+    - name: Publish
+      run: |
+         echo "[distutils]" >> .pypirc
+         echo "index-servers = pypi" >> .pypirc
+         echo "[pypi]" >> .pypirc
+         echo "repository=https://upload.pypi.org/legacy/" >> .pypirc
+         echo "username=${{ secrets.PYPI_USERNAME }}" >> .pypirc
+         echo "password=${{ secrets.PYPI_PASSWORD }}" >> .pypirc
+   
+         docker run \
+           -v$(pwd):/app \
+           -v$(pwd)/.pypirc:/root/.pypirc \
+           -w/app/python \
+           testing \
+           bash -c "\$PYBIN/python setup.py bdist_wheel -p manylinux1_x86_64 upload -r pypi"
 
   build_mac:
     runs-on: macOS-10.14
@@ -85,17 +86,17 @@ jobs:
         python -c "import wkw"
         pip install pytest
         pytest tests
-     - name: Publish module
-       run: |
-          echo "[distutils]" >> $HOME/.pypirc
-          echo "index-servers = pypi" >> $HOME/.pypirc
-          echo "[pypi]" >> $HOME/.pypirc
-          echo "repository=https://upload.pypi.org/legacy/" >> $HOME/.pypirc
-          echo "username=${{ secrets.PYPI_USERNAME }}" >> $HOME/.pypirc
-          echo "password=${{ secrets.PYPI_PASSWORD }}" >> $HOME/.pypirc
-          
-          cd python
-          python setup.py bdist_wheel -p $(python3 -c "import distutils.util; print(distutils.util.get_platform())") upload
+    - name: Publish
+      run: |
+        echo "[distutils]" >> $HOME/.pypirc
+        echo "index-servers = pypi" >> $HOME/.pypirc
+        echo "[pypi]" >> $HOME/.pypirc
+        echo "repository=https://upload.pypi.org/legacy/" >> $HOME/.pypirc
+        echo "username=${{ secrets.PYPI_USERNAME }}" >> $HOME/.pypirc
+        echo "password=${{ secrets.PYPI_PASSWORD }}" >> $HOME/.pypirc
+
+        cd python
+        python setup.py bdist_wheel -p $(python3 -c "import distutils.util; print(distutils.util.get_platform())") upload
 
   build_win:
     runs-on: windows-2019
@@ -126,14 +127,14 @@ jobs:
         python -c "import wkw"
         pip install pytest
         pytest tests
-     - name: Publish module
-       run: |
-          echo "[distutils]" >> $HOME/.pypirc
-          echo "index-servers = pypi" >> $HOME/.pypirc
-          echo "[pypi]" >> $HOME/.pypirc
-          echo "repository=https://upload.pypi.org/legacy/" >> $HOME/.pypirc
-          echo "username=${{ secrets.PYPI_USERNAME }}" >> $HOME/.pypirc
-          echo "password=${{ secrets.PYPI_PASSWORD }}" >> $HOME/.pypirc
-          
-          cd python
-          python setup.py bdist_wheel -p $(python3 -c "import distutils.util; print(distutils.util.get_platform())") upload
+    - name: Publish
+      run: |
+        echo "[distutils]" >> $HOME/.pypirc
+        echo "index-servers = pypi" >> $HOME/.pypirc
+        echo "[pypi]" >> $HOME/.pypirc
+        echo "repository=https://upload.pypi.org/legacy/" >> $HOME/.pypirc
+        echo "username=${{ secrets.PYPI_USERNAME }}" >> $HOME/.pypirc
+        echo "password=${{ secrets.PYPI_PASSWORD }}" >> $HOME/.pypirc
+
+        cd python
+        python setup.py bdist_wheel -p $(python3 -c "import distutils.util; print(distutils.util.get_platform())") upload
