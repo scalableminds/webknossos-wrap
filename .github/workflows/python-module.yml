@@ -19,6 +19,7 @@ jobs:
       run: |
         cd python
         python setup.py install
+        python setup.py bdist_wheel -p manylinux1_x86_64
     - name: Test
       run: |
         cd python
