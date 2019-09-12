@@ -11,20 +11,20 @@ jobs:
       with:
         python-version: '3.x' # Version range or exact version of a Python version to use, using semvers version range syntax.
         architecture: 'x64' # (x64 or x86)
-    - name: Install lz4
-      shell: bash
+    - name: Install Rust
       run: |
-        brew install lz4
+        brew install rustup-init lz4
+        rustup-init -y
     - name: Build
-      shell: bash
       run: |
         cd python
+        export PATH=$PATH:$HOME/.cargo/bin
         python setup.py install
     - name: Test
-      shell: bash
       run: |
         cd python
         python -c "import wkw"
+        pytest tests
 
   build_win:
     runs-on: windows-2019
@@ -53,3 +53,4 @@ jobs:
       run: |
         cd python
         python -c "import wkw"
+        pytests tests
