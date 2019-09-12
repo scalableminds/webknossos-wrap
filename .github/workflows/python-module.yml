@@ -96,6 +96,7 @@ jobs:
         echo "password=${{ secrets.PYPI_PASSWORD }}" >> $HOME/.pypirc
 
         cd python
+        export PATH=$PATH:$HOME/.cargo/bin
         pip install wheel
         python setup.py bdist_wheel -p $(python3 -c "import distutils.util; print(distutils.util.get_platform())") upload
 
@@ -129,6 +130,7 @@ jobs:
         pip install pytest
         pytest tests
     - name: Publish
+      shell: bash
       run: |
         echo "[distutils]" >> $HOME/.pypirc
         echo "index-servers = pypi" >> $HOME/.pypirc
