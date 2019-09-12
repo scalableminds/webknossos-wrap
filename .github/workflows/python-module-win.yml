@@ -3,7 +3,7 @@ name: Build Python module (Win)
 on: [push]
 
 jobs:
-  build:
+  build_win:
     runs-on: windows-2019
     steps:
     - uses: actions/checkout@v1
