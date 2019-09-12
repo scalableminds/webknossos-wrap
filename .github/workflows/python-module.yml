@@ -98,7 +98,7 @@ jobs:
         cd python
         export PATH=$PATH:$HOME/.cargo/bin
         pip install wheel
-        python setup.py bdist_wheel -p $(python3 -c "import distutils.util; print(distutils.util.get_platform())") upload
+        python setup.py bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform())") upload
 
   build_win:
     runs-on: windows-2019
@@ -141,4 +141,4 @@ jobs:
 
         cd python
         pip install wheel
-        python setup.py bdist_wheel -p $(python3 -c "import distutils.util; print(distutils.util.get_platform())") upload
+        python setup.py bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform())") upload
