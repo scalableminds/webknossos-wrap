@@ -24,6 +24,7 @@ jobs:
       run: |
         cd python
         python -c "import wkw"
+        pip install pytest
         pytest tests
 
   build_win:
@@ -53,4 +54,5 @@ jobs:
       run: |
         cd python
         python -c "import wkw"
-        pytests tests
+        pip install pytest
+        pytest tests
