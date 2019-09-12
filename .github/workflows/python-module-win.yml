@@ -12,13 +12,15 @@ jobs:
         python-version: '3.x' # Version range or exact version of a Python version to use, using semvers version range syntax.
         architecture: 'x64' # (x64 or x86)
     - name: Install lz4
+      shell: bash
       run: |
         mkdir lz4
         cd lz4
-        wget https://github.com/lz4/lz4/releases/download/v1.8.2/lz4_v1_8_2_win64.zip
+        curl https://github.com/lz4/lz4/releases/download/v1.8.2/lz4_v1_8_2_win64.zip -o lz4_v1_8_2_win64.zip
         unzip lz4_v1_8_2_win64.zip
         mv dll\liblz4.so.1.8.2.dll ..\c\liblz4.dll
     - name: Build
+      shell: bash
       run: |
         cd python
         python setup.py install
