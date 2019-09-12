@@ -11,14 +11,6 @@ jobs:
       with:
         python-version: '3.x' # Version range or exact version of a Python version to use, using semvers version range syntax.
         architecture: 'x64' # (x64 or x86)
-    - name: Dump GitHub context
-      env:
-        GITHUB_CONTEXT: ${{ toJson(github) }}
-      run: echo "$GITHUB_CONTEXT"
-    - name: Dump job context
-      env:
-        JOB_CONTEXT: ${{ toJson(job) }}
-      run: echo "$JOB_CONTEXT"
     - name: Build testing docker container
       run: |
         docker build -f python/Dockerfile -t testing .
@@ -56,6 +48,7 @@ jobs:
               \$PYBIN/python -c 'import wkw; print(wkw.Dataset)'
             done"
     - name: Publish
+      if: startsWith(github.event.ref, "refs/tags")
       run: |
          echo "[distutils]" >> .pypirc
          echo "index-servers = pypi" >> .pypirc
@@ -95,6 +88,7 @@ jobs:
         pip install pytest
         pytest tests
     - name: Publish
+      if: startsWith(github.event.ref, "refs/tags")
       run: |
         echo "[distutils]" >> $HOME/.pypirc
         echo "index-servers = pypi" >> $HOME/.pypirc
@@ -139,6 +133,7 @@ jobs:
         pytest tests
     - name: Publish
       shell: bash
+      if: startsWith(github.event.ref, "refs/tags")
       run: |
         echo "[distutils]" >> $HOME/.pypirc
         echo "index-servers = pypi" >> $HOME/.pypirc
