@@ -11,14 +11,13 @@ jobs:
       with:
         python-version: '3.x' # Version range or exact version of a Python version to use, using semvers version range syntax.
         architecture: 'x64' # (x64 or x86)
-    - name: Install lz
+    - name: Install lz4
       run: |
-        apt-get update
-        apt-get install -y liblz4-dev
+        sudo apt-get update
+        sudo apt-get install -y liblz4-dev
     - name: Build
       run: |
         cd python
-        export PATH=$PATH:$HOME/.cargo/bin
         python setup.py install
     - name: Test
       run: |
