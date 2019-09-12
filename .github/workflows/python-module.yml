@@ -48,7 +48,7 @@ jobs:
               \$PYBIN/python -c 'import wkw; print(wkw.Dataset)'
             done"
     - name: Publish
-      if: startsWith(github.event.ref, "refs/tags")
+      if: startsWith(github.event.ref, 'refs/tags')
       run: |
          echo "[distutils]" >> .pypirc
          echo "index-servers = pypi" >> .pypirc
@@ -88,7 +88,7 @@ jobs:
         pip install pytest
         pytest tests
     - name: Publish
-      if: startsWith(github.event.ref, "refs/tags")
+      if: startsWith(github.event.ref, 'refs/tags')
       run: |
         echo "[distutils]" >> $HOME/.pypirc
         echo "index-servers = pypi" >> $HOME/.pypirc
@@ -133,7 +133,7 @@ jobs:
         pytest tests
     - name: Publish
       shell: bash
-      if: startsWith(github.event.ref, "refs/tags")
+      if: startsWith(github.event.ref, 'refs/tags')
       run: |
         echo "[distutils]" >> $HOME/.pypirc
         echo "index-servers = pypi" >> $HOME/.pypirc
