@@ -1,8 +1,31 @@
-name: Build Python module (Win)
+name: Build Python module
 
 on: [push]
 
 jobs:
+  build_mac:
+    runs-on: macOS-10.14
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions/setup-python@v1
+      with:
+        python-version: '3.x' # Version range or exact version of a Python version to use, using semvers version range syntax.
+        architecture: 'x64' # (x64 or x86)
+    - name: Install lz4
+      shell: bash
+      run: |
+        brew install lz4
+    - name: Build
+      shell: bash
+      run: |
+        cd python
+        python setup.py install
+    - name: Test
+      shell: bash
+      run: |
+        cd python
+        python -c "import wkw"
+
   build_win:
     runs-on: windows-2019
     steps:
