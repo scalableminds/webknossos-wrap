@@ -11,21 +11,42 @@ jobs:
       with:
         python-version: '3.x' # Version range or exact version of a Python version to use, using semvers version range syntax.
         architecture: 'x64' # (x64 or x86)
-    - name: Install lz4
+    - name: Build testing docker container
       run: |
-        sudo apt-get update
-        sudo apt-get install -y liblz4-dev
+        docker build -f python/Dockerfile -t testing .
     - name: Build
       run: |
-        cd python
-        python setup.py install
-        python setup.py bdist_wheel -p manylinux1_x86_64
+        docker run \
+          -v$(pwd):/app \
+          -w/app/python \
+          testing \
+          bash -c "
+            \$PYBIN/python setup.py install
+            \$PYBIN/python setup.py bdist_wheel -p manylinux1_x86_64"
     - name: Test
       run: |
-        cd python
-        python -c "import wkw"
-        pip install pytest
-        pytest tests
+        docker run \
+          -v$(pwd):/app \
+          -w/app/python \
+          testing \
+          bash -c "\$PYBIN/pytest tests"
+    - name: Check formatting
+      run: |
+        docker run \
+          -v$(pwd):/app \
+          -w/app/python \
+          testing \
+          bash -c "\$PYBIN/black --check ."
+    - name: Try to import on different python versions
+      run: |
+        docker run \
+          -v$(pwd):/app \
+          testing \
+          bash -c "
+            for PYBIN in /opt/python/{cp34-cp34m,cp35-cp35m,cp36-cp36m,cp37-cp37m}/bin; do
+              \$PYBIN/pip install /app/python/dist/wkw-*-py3-none-manylinux1_x86_64.whl
+              \$PYBIN/python -c 'import wkw; print(wkw.Dataset)'
+            done"
 
   build_mac:
     runs-on: macOS-10.14
