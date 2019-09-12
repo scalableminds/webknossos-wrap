@@ -19,8 +19,14 @@ jobs:
         curl -L https://github.com/lz4/lz4/releases/download/v1.8.2/lz4_v1_8_2_win64.zip -o lz4_v1_8_2_win64.zip
         unzip lz4_v1_8_2_win64.zip
         mv dll/liblz4.so.1.8.2.dll ../c/liblz4.dll
+        mv dll/liblz4.lib ../c/liblz4.lib
     - name: Build
       shell: bash
       run: |
         cd python
         python setup.py install
+    - name: Test
+      shell: bash
+      run: |
+        cd python
+        python -c "import wkw"
