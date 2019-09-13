@@ -7,10 +7,6 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
-    - uses: actions/setup-python@v1
-      with:
-        python-version: '3.x' # Version range or exact version of a Python version to use, using semvers version range syntax.
-        architecture: 'x64' # (x64 or x86)
     - name: Build testing docker container
       run: |
         docker build -f python/Dockerfile -t testing .
@@ -57,7 +53,7 @@ jobs:
            -eTWINE_PASSWORD=${{ secrets.PYPI_PASSWORD }} \
            -w/app/python \
            testing \
-           bash -c "\$PYBIN/python setup.py sdist bdist_wheel -p manylinux1_x86_64 && twine upload dist/*"
+           bash -c "\$PYBIN/python setup.py sdist bdist_wheel -p manylinux1_x86_64 && \$PYBIN/twine upload dist/*"
 
   build_mac:
     runs-on: macOS-10.14
