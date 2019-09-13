@@ -86,7 +86,6 @@ jobs:
       run: |
         pip install twine wheel
         cd python
-        pip install wheel
         export PATH=$PATH:$HOME/.cargo/bin
         python setup.py sdist bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform())")
         twine upload dist/*
@@ -134,6 +133,5 @@ jobs:
       run: |
         pip install twine wheel
         cd python
-        pip install wheel
         python setup.py sdist bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform())")
         twine upload dist/*
