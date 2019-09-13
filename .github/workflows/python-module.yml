@@ -44,7 +44,7 @@ jobs:
               \$PYBIN/python -c 'import wkw; print(wkw.Dataset)'
             done"
     - name: Publish
-      # if: startsWith(github.event.ref, 'refs/tags')
+      if: startsWith(github.event.ref, 'refs/tags')
       run: | 
          docker run \
            -v$(pwd):/app \
@@ -79,7 +79,7 @@ jobs:
         pip install pytest
         pytest tests
     - name: Publish
-      # if: startsWith(github.event.ref, 'refs/tags')
+      if: startsWith(github.event.ref, 'refs/tags')
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
@@ -126,7 +126,7 @@ jobs:
         pytest tests
     - name: Publish
       shell: bash
-      # if: startsWith(github.event.ref, 'refs/tags')
+      if: startsWith(github.event.ref, 'refs/tags')
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
