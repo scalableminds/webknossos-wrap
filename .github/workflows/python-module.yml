@@ -49,8 +49,8 @@ jobs:
          docker run \
            -v$(pwd):/app \
            -v$(pwd)/.pypirc:/root/.pypirc \
-           -eTWINE_USERNAME=${{ secrets.PYPI_USERNAME }} \
-           -eTWINE_PASSWORD=${{ secrets.PYPI_PASSWORD }} \
+           "-eTWINE_USERNAME=${{ secrets.PYPI_USERNAME }}" \
+           "-eTWINE_PASSWORD=${{ secrets.PYPI_PASSWORD }}" \
            -w/app/python \
            testing \
            bash -c "\$PYBIN/python setup.py sdist bdist_wheel -p manylinux1_x86_64 && \$PYBIN/twine upload dist/*"
