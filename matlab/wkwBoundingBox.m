@@ -27,7 +27,14 @@ function box = wkwBoundingBox(wkwDir)
         fullfile(f.folder, f.name), ...
         wkwFiles, 'UniformOutput', false);
     
-    pattern = ['z(\d+)', filesep, 'y(\d+)', filesep, 'x(\d+)'];
+    escChar = '';
+    if strcmp(filesep, '\')
+        escChar = '\';
+    end
+    pattern = [...
+        'z(\d+)', filesep, escChar, ...
+        'y(\d+)', filesep, escChar, ...
+        'x(\d+)'];
     coords = regexp(wkwFiles, pattern, 'tokens', 'once');
     
     coords = flip(cat(1, coords{:}), 2);
