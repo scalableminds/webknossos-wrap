@@ -77,9 +77,9 @@ impl<'a> Mat<'a> {
         if self.shape != buffer.shape {
             return Err("Matrices mismatch in shape");
         }
-        println!("shape: {:?}", self.shape);
+
         let buffer_data = buffer.as_mut_slice();
-        // x y z
+
         let x_length = self.shape.x as usize;
         let y_length = self.shape.y as usize;
         let z_length = self.shape.z as usize;
@@ -131,72 +131,66 @@ impl<'a> Mat<'a> {
             return Err("source and destination has to be the same order");
         }
 
-        let len = src_box.width();
+        let width = src_box.width();
+        // unified has fast to slow moving indices
+        let unified_width = match self.is_fortran_order {
+            true => width,
+            false => Vec3 {
+                x: width.z,
+                y: width.y,
+                z: width.x,
+            },
+        };
+        let unified_dst_shape = match self.is_fortran_order {
+            true => self.shape,
+            false => Vec3 {
+                x: self.shape.z,
+                y: self.shape.y,
+                z: self.shape.x,
+            },
+        };
+        let unified_src_shape = match self.is_fortran_order {
+            true => src.shape,
+            false => Vec3 {
+                x: src.shape.z,
+                y: src.shape.y,
+                z: src.shape.x,
+            },
+        };
 
-        if self.is_fortran_order {
-            let stripe_len = src.voxel_size * len.x as usize;
+        let stripe_len = src.voxel_size * unified_width.x as usize;
 
-            let src_off_y = (src.shape.x as usize * src.voxel_size) as isize;
-            let src_off_z =
-                (src.shape.x as usize * src.shape.y as usize * self.voxel_size) as isize;
+        let src_inner_offset = (unified_src_shape.x as usize * self.voxel_size) as isize;
+        let src_outer_offset = (unified_src_shape.x as usize
+            * unified_src_shape.y as usize
+            * self.voxel_size) as isize;
 
-            let dst_off_y = (self.shape.x as usize * self.voxel_size) as isize;
-            let dst_off_z =
-                (self.shape.x as usize * self.shape.y as usize * self.voxel_size) as isize;
+        let dst_inner_offset = (unified_dst_shape.x as usize * self.voxel_size) as isize;
+        let dst_outer_offset = (unified_dst_shape.x as usize
+            * unified_dst_shape.y as usize
+            * self.voxel_size) as isize;
 
-            unsafe {
-                let mut src_ptr = src.data.as_ptr().offset(src.offset(src_box.min()) as isize);
-                let mut dst_ptr = self.data.as_mut_ptr().offset(self.offset(dst_pos) as isize);
+        unsafe {
+            let mut src_ptr = src.data.as_ptr().offset(src.offset(src_box.min()) as isize);
+            let mut dst_ptr = self.data.as_mut_ptr().offset(self.offset(dst_pos) as isize);
 
-                for _ in 0..len.z {
-                    let mut src_ptr_cur = src_ptr;
-                    let mut dst_ptr_cur = dst_ptr;
+            for _ in 0..unified_width.z {
+                let mut src_ptr_cur = src_ptr;
+                let mut dst_ptr_cur = dst_ptr;
 
-                    for _ in 0..len.y {
-                        // copy data
-                        ptr::copy_nonoverlapping(src_ptr_cur, dst_ptr_cur, stripe_len);
+                for _ in 0..unified_width.y {
+                    // copy data
+                    ptr::copy_nonoverlapping(src_ptr_cur, dst_ptr_cur, stripe_len);
 
-                        // advance
-                        src_ptr_cur = src_ptr_cur.offset(src_off_y);
-                        dst_ptr_cur = dst_ptr_cur.offset(dst_off_y);
-                    }
-
-                    src_ptr = src_ptr.offset(src_off_z);
-                    dst_ptr = dst_ptr.offset(dst_off_z);
+                    // advance
+                    src_ptr_cur = src_ptr_cur.offset(src_inner_offset);
+                    dst_ptr_cur = dst_ptr_cur.offset(dst_inner_offset);
                 }
-            }
-        } else {
-            // copy row-major order
-            unsafe {
-                let mut src_ptr = src.data.as_ptr().offset(src.offset(src_box.min()) as isize);
-                let mut dst_ptr = self.data.as_mut_ptr().offset(self.offset(dst_pos) as isize);
 
-                let stripe_len = src.voxel_size * len.z as usize;
-                let src_off_y = (src.shape.z as usize * src.voxel_size) as isize;
-                let src_off_x =
-                    (src.shape.z as usize * src.shape.y as usize * self.voxel_size) as isize;
-
-                let dst_off_y = (self.shape.z as usize * self.voxel_size) as isize;
-                let dst_off_x =
-                    (self.shape.z as usize * self.shape.y as usize * self.voxel_size) as isize;
-
-                for _ in 0..len.x {
-                    let mut src_ptr_cur = src_ptr;
-                    let mut dst_ptr_cur = dst_ptr;
-
-                    for _ in 0..len.y {
-                        // copy data
-                        ptr::copy_nonoverlapping(src_ptr_cur, dst_ptr_cur, stripe_len);
-                        // advance
-                        src_ptr_cur = src_ptr_cur.offset(src_off_y);
-                        dst_ptr_cur = dst_ptr_cur.offset(dst_off_y);
-                    }
-                    src_ptr = src_ptr.offset(src_off_x);
-                    dst_ptr = dst_ptr.offset(dst_off_x);
-                }
+                src_ptr = src_ptr.offset(src_outer_offset);
+                dst_ptr = dst_ptr.offset(dst_outer_offset);
             }
         }
-
         Ok(())
     }
 }
