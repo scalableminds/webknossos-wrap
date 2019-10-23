@@ -206,7 +206,9 @@ class Dataset:
 
         is_fortran_order = data.flags["F_CONTIGUOUS"]
         data_ptr = ffi.cast("void *", data.ctypes.data)
-        _check_wkw(libwkw.dataset_write(self.handle, box_ptr, data_ptr, is_fortran_order))
+        _check_wkw(
+            libwkw.dataset_write(self.handle, box_ptr, data_ptr, is_fortran_order)
+        )
 
     def compress(self, dst_path: str, compress_files: bool = False):
         header = deepcopy(self.header)

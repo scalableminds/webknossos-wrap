@@ -151,7 +151,6 @@ impl File {
             src_mat.get_is_fortran_order(),
         )?;
 
-
         // build second buffer
         let mut second_buf = vec![0u8; self.header.block_size()];
         let mut second_buf_mat = Mat::new(
@@ -191,10 +190,8 @@ impl File {
 
             if buf_mat.get_is_fortran_order() {
                 // write data
-                println!("no transpose!");
                 self.write_block(buf_mat.as_slice())?;
             } else {
-                println!("transpose!");
                 // if buffer is not fortran order
                 // transpose data
                 buf_mat.write_fortran_order_to_buffer(&mut second_buf_mat)?;
