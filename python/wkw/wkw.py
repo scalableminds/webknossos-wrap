@@ -204,9 +204,9 @@ class Dataset:
         box = _build_box(off, data.shape[-3:])
         box_ptr = ffi.cast("uint32_t *", box.ctypes.data)
 
-        data = np.asfortranarray(data)
+        is_fortran_order = data.flags["F_CONTIGUOUS"]
         data_ptr = ffi.cast("void *", data.ctypes.data)
-        _check_wkw(libwkw.dataset_write(self.handle, box_ptr, data_ptr))
+        _check_wkw(libwkw.dataset_write(self.handle, box_ptr, data_ptr, is_fortran_order))
 
     def compress(self, dst_path: str, compress_files: bool = False):
         header = deepcopy(self.header)

@@ -162,6 +162,25 @@ def test_compress():
             )
             assert np.all(dataset2.read(POSITION, SIZE) == test_data)
 
+def test_row_major_order():
+    SIZE128 = (4, 5, 1)
+    data = generate_test_data(np.uint8, SIZE128)
+    print(data)
+    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dataset:
+        dataset.write((0, 0, 0), data)
+        read_data = dataset.read((0, 0, 0), SIZE128)
+
+    assert np.all(data == read_data)
+
+    with wkw.Dataset.create("tests/tmp2", wkw.Header(np.uint8)) as dataset:
+        fortran_data = np.asfortranarray(data)
+        dataset.write((0, 0, 0), fortran_data)
+        fortran_read_data = dataset.read((0, 0, 0), SIZE128)
+
+    assert np.all(fortran_read_data == read_data)
+    assert np.all(fortran_read_data == fortran_data)
+
+
 
 def generate_test_data(dtype, size=SIZE):
     return np.random.uniform(0, 255, size).astype(dtype)
