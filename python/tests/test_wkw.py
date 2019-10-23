@@ -164,31 +164,31 @@ def test_compress():
 
 
 def test_row_major_order():
-    SIZE128 = (4, 5, 6)
-    data = generate_test_data(np.uint8, SIZE128)
+    data_shape = (4, 5, 6)
+    data = generate_test_data(np.uint8, data_shape)
     print(data)
     with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dataset:
         dataset.write((0, 0, 0), data)
-        read_data = dataset.read((0, 0, 0), SIZE128)
+        read_data = dataset.read((0, 0, 0), data_shape)
 
     assert np.all(data == read_data)
 
     with wkw.Dataset.create("tests/tmp2", wkw.Header(np.uint8)) as dataset:
         fortran_data = np.asfortranarray(data)
         dataset.write((0, 0, 0), fortran_data)
-        fortran_read_data = dataset.read((0, 0, 0), SIZE128)
+        fortran_read_data = dataset.read((0, 0, 0), data_shape)
 
     assert np.all(fortran_read_data == read_data)
     assert np.all(fortran_read_data == fortran_data)
 
 
-def test_row_major_order_other_shape():
-    SIZE128 = (17, 1, 4)
-    data = generate_test_data(np.uint8, SIZE128)
+def test_row_major_order_with_offset():
+    data_shape = (17, 1, 4)
+    data = generate_test_data(np.uint8, data_shape)
     print(data)
     with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dataset:
         dataset.write((15, 2, 0), data)
-        read_data = dataset.read((15, 2, 0), SIZE128)
+        read_data = dataset.read((15, 2, 0), data_shape)
 
     assert np.all(data == read_data)
 
