@@ -201,7 +201,7 @@ class Dataset:
                 "Data elements must be of type {}".format(self.header.voxel_type)
             )
 
-        is_contiguous = (data.flags["F_CONTIGUOUS"] or data.flags["C_CONTIGUOUS"])
+        is_contiguous = data.flags["F_CONTIGUOUS"] or data.flags["C_CONTIGUOUS"]
 
         if self.header.num_channels != 1 or not is_contiguous:
             data = np.asfortranarray(data)

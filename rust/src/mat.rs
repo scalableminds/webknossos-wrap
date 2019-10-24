@@ -54,8 +54,7 @@ impl<'a> Mat<'a> {
 
     fn offset(&self, pos: Vec3) -> usize {
         let offset_vx = if self.is_fortran_order {
-             pos.x + self.shape.x * (pos.y + self.shape.y * pos.z)
-
+            pos.x + self.shape.x * (pos.y + self.shape.y * pos.z)
         } else {
             pos.z + self.shape.z * (pos.y + self.shape.y * pos.x)
         };
@@ -81,7 +80,6 @@ impl<'a> Mat<'a> {
         let x_length = self.shape.x as usize;
         let y_length = self.shape.y as usize;
         let z_length = self.shape.z as usize;
-
 
         let row_major_stride: Vec<usize> = vec![
             z_length * y_length * self.voxel_size,
@@ -137,29 +135,32 @@ impl<'a> Mat<'a> {
 
         let width = src_box.width();
         // unified has fast to slow moving indices
-        let unified_width = match self.is_fortran_order {
-            true => width,
-            false => Vec3 {
+        let unified_width = if self.is_fortran_order {
+            width
+        } else {
+            Vec3 {
                 x: width.z,
                 y: width.y,
                 z: width.x,
-            },
+            }
         };
-        let unified_dst_shape = match self.is_fortran_order {
-            true => self.shape,
-            false => Vec3 {
+        let unified_dst_shape = if self.is_fortran_order {
+            self.shape
+        } else {
+            Vec3 {
                 x: self.shape.z,
                 y: self.shape.y,
                 z: self.shape.x,
-            },
+            }
         };
-        let unified_src_shape = match self.is_fortran_order {
-            true => src.shape,
-            false => Vec3 {
+        let unified_src_shape = if self.is_fortran_order {
+            src.shape
+        } else {
+            Vec3 {
                 x: src.shape.z,
                 y: src.shape.y,
                 z: src.shape.x,
-            },
+            }
         };
 
         let stripe_len = src.voxel_size * unified_width.x as usize;

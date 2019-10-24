@@ -190,6 +190,7 @@ def test_row_major_order_with_offset():
 
     assert np.all(data == read_data)
 
+
 def test_row_major_order_with_different_voxel_size():
     data_shape = (4, 3, 9)
     data = generate_test_data(np.uint16, data_shape)
@@ -203,7 +204,9 @@ def test_row_major_order_with_different_voxel_size():
 def test_row_major_order_with_channels():
     data_shape = (2, 4, 3, 9)
     data = generate_test_data(np.uint8, data_shape)
-    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8, num_channels=2)) as dataset:
+    with wkw.Dataset.create(
+        "tests/tmp", wkw.Header(np.uint8, num_channels=2)
+    ) as dataset:
         dataset.write((3, 1, 0), data)
         read_data = dataset.read((3, 1, 0), data_shape[1:])
 
@@ -213,7 +216,9 @@ def test_row_major_order_with_channels():
 def test_row_major_order_with_channels_and_different_voxel_size():
     data_shape = (2, 4, 3, 9)
     data = generate_test_data(np.uint16, data_shape)
-    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint16, num_channels=2)) as dataset:
+    with wkw.Dataset.create(
+        "tests/tmp", wkw.Header(np.uint16, num_channels=2)
+    ) as dataset:
         dataset.write((3, 1, 0), data)
         read_data = dataset.read((3, 1, 0), data_shape[1:])
 
@@ -223,7 +228,9 @@ def test_row_major_order_with_channels_and_different_voxel_size():
 def test_column_major_order_with_channels_and_different_voxel_size():
     data_shape = (2, 4, 3, 9)
     data = generate_test_data(np.uint16, data_shape, order="F")
-    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint16, num_channels=2)) as dataset:
+    with wkw.Dataset.create(
+        "tests/tmp", wkw.Header(np.uint16, num_channels=2)
+    ) as dataset:
         dataset.write((3, 1, 0), data)
         read_data = dataset.read((3, 1, 0), data_shape[1:])
 
@@ -242,7 +249,10 @@ def test_view_on_np_array():
 
 
 def generate_test_data(dtype, size=SIZE, order="C"):
-    return np.array(np.random.uniform(np.iinfo(dtype).min, np.iinfo(dtype).max, size).astype(dtype), order=order)
+    return np.array(
+        np.random.uniform(np.iinfo(dtype).min, np.iinfo(dtype).max, size).astype(dtype),
+        order=order,
+    )
 
 
 def try_rmtree(dir):
