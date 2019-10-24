@@ -40,7 +40,7 @@ impl<'a> Mat<'a> {
     }
 
     pub fn get_is_fortran_order(&self) -> bool {
-        return self.is_fortran_order;
+        self.is_fortran_order
     }
     pub fn as_slice(&self) -> &[u8] {
         self.data
