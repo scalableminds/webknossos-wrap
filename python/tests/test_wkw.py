@@ -210,8 +210,39 @@ def test_row_major_order_with_channels():
     assert np.all(data == read_data)
 
 
-def generate_test_data(dtype, size=SIZE):
-    return np.random.uniform(0, 255, size).astype(dtype)
+def test_row_major_order_with_channels_and_different_voxel_size():
+    data_shape = (2, 4, 3, 9)
+    data = generate_test_data(np.uint16, data_shape)
+    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint16, num_channels=2)) as dataset:
+        dataset.write((3, 1, 0), data)
+        read_data = dataset.read((3, 1, 0), data_shape[1:])
+
+    assert np.all(data == read_data)
+
+
+def test_column_major_order_with_channels_and_different_voxel_size():
+    data_shape = (2, 4, 3, 9)
+    data = generate_test_data(np.uint16, data_shape, order="F")
+    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint16, num_channels=2)) as dataset:
+        dataset.write((3, 1, 0), data)
+        read_data = dataset.read((3, 1, 0), data_shape[1:])
+
+    assert np.all(data == read_data)
+
+
+def test_view_on_np_array():
+    data_shape = (4, 4, 9)
+    data = generate_test_data(np.uint16, data_shape)
+    data = data[:, ::2]
+    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint16)) as dataset:
+        dataset.write((3, 1, 0), data)
+        read_data = dataset.read((3, 1, 0), data.shape)
+
+    assert np.all(data == read_data)
+
+
+def generate_test_data(dtype, size=SIZE, order="C"):
+    return np.array(np.random.uniform(np.iinfo(dtype).min, np.iinfo(dtype).max, size).astype(dtype), order=order)
 
 
 def try_rmtree(dir):

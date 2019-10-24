@@ -201,6 +201,11 @@ class Dataset:
                 "Data elements must be of type {}".format(self.header.voxel_type)
             )
 
+        is_contiguous = (data.flags["F_CONTIGUOUS"] or data.flags["C_CONTIGUOUS"])
+
+        if self.header.num_channels != 1 or not is_contiguous:
+            data = np.asfortranarray(data)
+
         box = _build_box(off, data.shape[-3:])
         box_ptr = ffi.cast("uint32_t *", box.ctypes.data)
 
