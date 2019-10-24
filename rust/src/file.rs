@@ -152,9 +152,9 @@ impl File {
         )?;
 
         // build second buffer
-        let mut second_buf = vec![0u8; self.header.block_size()];
-        let mut second_buf_mat = Mat::new(
-            second_buf.as_mut_slice(),
+        let mut fortran_conversion_buf = vec![0u8; self.header.block_size()];
+        let mut fortran_conversion_mat = Mat::new(
+            fortran_conversion_buf.as_mut_slice(),
             Vec3::from(1u32 << block_len_log2),
             self.header.voxel_size as usize,
             self.header.voxel_type,
@@ -188,15 +188,12 @@ impl File {
 
             self.seek_block(cur_block_idx)?;
 
+            // write in fortran order
             if buf_mat.get_is_fortran_order() {
-                // write data
                 self.write_block(buf_mat.as_slice())?;
             } else {
-                // if buffer is not fortran order
-                // transpose data
-                buf_mat.write_fortran_order_to_buffer(&mut second_buf_mat)?;
-                // write transposed data
-                self.write_block(second_buf_mat.as_slice())?;
+                buf_mat.write_fortran_order_to_buffer(&mut fortran_conversion_mat)?;
+                self.write_block(fortran_conversion_mat.as_slice())?;
             }
         }
 
