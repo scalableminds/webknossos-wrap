@@ -192,7 +192,7 @@ impl File {
             if buf_mat.get_is_fortran_order() {
                 self.write_block(buf_mat.as_slice())?;
             } else {
-                buf_mat.write_fortran_order_to_buffer(&mut fortran_conversion_mat)?;
+                buf_mat.copy_as_fortran_order(&mut fortran_conversion_mat)?;
                 self.write_block(fortran_conversion_mat.as_slice())?;
             }
         }

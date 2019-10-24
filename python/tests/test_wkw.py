@@ -166,7 +166,6 @@ def test_compress():
 def test_row_major_order():
     data_shape = (4, 5, 6)
     data = generate_test_data(np.uint8, data_shape)
-    print(data)
     with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dataset:
         dataset.write((0, 0, 0), data)
         read_data = dataset.read((0, 0, 0), data_shape)
@@ -185,10 +184,28 @@ def test_row_major_order():
 def test_row_major_order_with_offset():
     data_shape = (17, 1, 4)
     data = generate_test_data(np.uint8, data_shape)
-    print(data)
     with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dataset:
         dataset.write((15, 2, 0), data)
         read_data = dataset.read((15, 2, 0), data_shape)
+
+    assert np.all(data == read_data)
+
+def test_row_major_order_with_different_voxel_size():
+    data_shape = (4, 3, 9)
+    data = generate_test_data(np.uint16, data_shape)
+    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint16)) as dataset:
+        dataset.write((3, 1, 0), data)
+        read_data = dataset.read((3, 1, 0), data_shape)
+
+    assert np.all(data == read_data)
+
+
+def test_row_major_order_with_channels():
+    data_shape = (2, 4, 3, 9)
+    data = generate_test_data(np.uint8, data_shape)
+    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8, num_channels=2)) as dataset:
+        dataset.write((3, 1, 0), data)
+        read_data = dataset.read((3, 1, 0), data_shape[1:])
 
     assert np.all(data == read_data)
 

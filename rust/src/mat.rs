@@ -53,18 +53,16 @@ impl<'a> Mat<'a> {
     }
 
     fn offset(&self, pos: Vec3) -> usize {
-        if self.is_fortran_order {
-            let offset_vx = pos.x as usize
-                + self.shape.x as usize * (pos.y as usize + self.shape.y as usize * pos.z as usize);
-            offset_vx * self.voxel_size
+        let offset_vx = if self.is_fortran_order {
+             pos.x + self.shape.x * (pos.y + self.shape.y * pos.z)
+
         } else {
-            let offset_vx = pos.z as usize
-                + self.shape.z as usize * (pos.y as usize + self.shape.y as usize * pos.x as usize);
-            offset_vx * self.voxel_size
-        }
+            pos.z + self.shape.z * (pos.y + self.shape.y * pos.x)
+        };
+        offset_vx as usize * self.voxel_size
     }
 
-    pub fn write_fortran_order_to_buffer(&self, buffer: &mut Mat) -> Result<()> {
+    pub fn copy_as_fortran_order(&self, buffer: &mut Mat) -> Result<()> {
         if self.is_fortran_order {
             return Err("Mat is already in fortran order");
         }
@@ -84,6 +82,7 @@ impl<'a> Mat<'a> {
         let y_length = self.shape.y as usize;
         let z_length = self.shape.z as usize;
 
+
         let row_major_stride: Vec<usize> = vec![
             z_length * y_length * self.voxel_size,
             z_length * self.voxel_size,
@@ -94,18 +93,23 @@ impl<'a> Mat<'a> {
             x_length * self.voxel_size,
             x_length * y_length * self.voxel_size,
         ];
+
+        fn linearize(x: usize, y: usize, z: usize, stride: &Vec<usize>) -> isize {
+            (x * stride[0] + y * stride[1] + z * stride[2]) as isize
+        }
+        let src_ptr = self.data.as_ptr();
+        let dst_ptr = buffer_data.as_mut_ptr();
+
         // Do continuous read in z. Last dim in Row-Major is continuous.
         for x in 0usize..x_length {
             for y in 0usize..y_length {
                 for z in 0usize..z_length {
-                    let row_major_index =
-                        x * row_major_stride[0] + y * row_major_stride[1] + z * row_major_stride[2];
-                    let column_major_index = x * column_major_stride[0]
-                        + y * column_major_stride[1]
-                        + z * column_major_stride[2];
-                    for byte_offset in 0..self.voxel_size {
-                        buffer_data[column_major_index as usize + byte_offset as usize] =
-                            self.data[row_major_index as usize + byte_offset as usize];
+                    let row_major_index = linearize(x, y, z, &row_major_stride);
+                    let column_major_index = linearize(x, y, z, &column_major_stride);
+                    unsafe {
+                        let cur_src_ptr = src_ptr.offset(row_major_index);
+                        let cur_dst_ptr = dst_ptr.offset(column_major_index);
+                        ptr::copy_nonoverlapping(cur_src_ptr, cur_dst_ptr, self.voxel_size);
                     }
                 }
             }
