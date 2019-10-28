@@ -117,6 +117,11 @@ impl Dataset {
             return Err("Input matrix has invalid voxel size");
         }
 
+        let num_channels = self.header.voxel_type.size() / self.header.voxel_size as usize;
+        if num_channels > 1 && mat.get_is_fortran_order() {
+            return Err("Cannot write multichannel data if data is in row-major order.");
+        }
+
         let file_len_vx_log2 = self.header.file_len_vx_log2() as u32;
         if self.header.block_type == BlockType::LZ4 || self.header.block_type == BlockType::LZ4HC {
             let file_len_vec = Vec3::from(1 << file_len_vx_log2);

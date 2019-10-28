@@ -245,15 +245,6 @@ pub extern "C" fn dataset_write(
 
     let dataset = unsafe { Box::from_raw(dataset_ptr as *mut wkwrap::Dataset) };
 
-    // dataset.write cannot cope with multichannel data if row-major order.
-    {
-        let header = dataset.header();
-        let num_channels = header.voxel_type.size() / header.voxel_size as usize;
-        if num_channels > 1 {
-            assert!(is_fortran_order);
-        }
-    }
-
     let (off, shape) = c_bbox_to_off_and_shape(bbox_ptr);
 
     let mat = c_data_to_mat(&dataset, &shape, data_ptr, is_fortran_order);
