@@ -8,7 +8,7 @@ pub struct File {
     file: fs::File,
     header: Header,
     block_idx: Option<u64>,
-    block_buf: Option<Box<[u8]>>,
+    disk_block_buf: Option<Box<[u8]>>,
 }
 
 impl File {
@@ -26,7 +26,7 @@ impl File {
             file: file,
             header: header,
             block_idx: None,
-            block_buf: block_buf,
+            disk_block_buf: block_buf,
         }
     }
 
@@ -142,9 +142,9 @@ impl File {
         )?;
 
         // build buffer matrix
-        let mut buf = vec![0u8; self.header.block_size()];
-        let mut buf_mat = Mat::new(
-            buf.as_mut_slice(),
+        let mut src_block_buf = vec![0u8; self.header.block_size()];
+        let mut src_block_buf_mat = Mat::new(
+            src_block_buf.as_mut_slice(),
             Vec3::from(1u32 << block_len_log2),
             self.header.voxel_size as usize,
             self.header.voxel_type,
@@ -152,9 +152,9 @@ impl File {
         )?;
 
         // build second buffer
-        let mut fortran_conversion_buf = vec![0u8; self.header.block_size()];
-        let mut fortran_conversion_mat = Mat::new(
-            fortran_conversion_buf.as_mut_slice(),
+        let mut raw_disk_block_buf = vec![0u8; self.header.block_size()];
+        let mut raw_disk_block_buf_mat = Mat::new(
+            raw_disk_block_buf.as_mut_slice(),
             Vec3::from(1u32 << block_len_log2),
             self.header.voxel_size as usize,
             self.header.voxel_type,
@@ -177,23 +177,23 @@ impl File {
             if cur_box != cur_block_box {
                 // reuse existing data
                 self.seek_block(cur_block_idx)?;
-                self.read_block(buf_mat.as_mut_slice())?;
+                self.read_block(src_block_buf_mat.as_mut_slice())?;
             }
 
             let cur_src_box = cur_box - dst_pos + src_pos;
             let cur_dst_pos = cur_box.min() - cur_block_box.min();
 
             // fill / modify buffer
-            buf_mat.copy_from(cur_dst_pos, src_mat, cur_src_box)?;
+            src_block_buf_mat.copy_from(cur_dst_pos, src_mat, cur_src_box)?;
 
             self.seek_block(cur_block_idx)?;
 
             // write in fortran order
-            let buffer_to_write = if buf_mat.data_in_c_order {
-                buf_mat.copy_as_fortran_order(&mut fortran_conversion_mat)?;
-                &fortran_conversion_mat
+            let buffer_to_write = if src_block_buf_mat.data_in_c_order {
+                src_block_buf_mat.copy_as_fortran_order(&mut raw_disk_block_buf_mat)?;
+                &raw_disk_block_buf_mat
             } else {
-                &buf_mat
+                &src_block_buf_mat
             };
             self.write_block(buffer_to_write.as_slice())?;
         }
@@ -326,7 +326,7 @@ impl File {
 
     fn write_block_lz4(&mut self, buf: &[u8]) -> Result<usize> {
         // compress data
-        let mut buf_lz4 = &mut *self.block_buf.as_mut().unwrap();
+        let mut buf_lz4 = &mut *self.disk_block_buf.as_mut().unwrap();
         let len_lz4 = lz4::compress_hc(buf, &mut buf_lz4)?;
 
         // write data
@@ -352,7 +352,7 @@ impl File {
         let block_size_lz4 = self.header.block_size_on_disk(block_idx)?;
         let block_size_raw = self.header.block_size();
 
-        let buf_lz4_orig = &mut *self.block_buf.as_mut().unwrap();
+        let buf_lz4_orig = &mut *self.disk_block_buf.as_mut().unwrap();
         let buf_lz4 = &mut buf_lz4_orig[..block_size_lz4];
 
         // read compressed block
