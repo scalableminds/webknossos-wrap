@@ -189,12 +189,13 @@ impl File {
             self.seek_block(cur_block_idx)?;
 
             // write in fortran order
-            if buf_mat.data_in_c_order {
+            let buffer_to_write = if buf_mat.data_in_c_order {
                 buf_mat.copy_as_fortran_order(&mut fortran_conversion_mat)?;
-                self.write_block(fortran_conversion_mat.as_slice())?;
+                &fortran_conversion_mat
             } else {
-                self.write_block(buf_mat.as_slice())?;
-            }
+                &buf_mat
+            };
+            self.write_block(buffer_to_write.as_slice())?;
         }
 
         if self.header.block_type == BlockType::LZ4 || self.header.block_type == BlockType::LZ4HC {
