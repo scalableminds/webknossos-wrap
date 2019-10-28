@@ -8,7 +8,7 @@ pub struct Mat<'a> {
     pub shape: Vec3,
     pub voxel_size: usize,
     pub voxel_type: VoxelType,
-    is_fortran_order: bool,
+    pub data_in_c_order: bool,
 }
 
 impl<'a> Mat<'a> {
@@ -17,7 +17,7 @@ impl<'a> Mat<'a> {
         shape: Vec3,
         voxel_size: usize,
         voxel_type: VoxelType,
-        is_fortran_array: bool,
+        data_in_c_order: bool,
     ) -> Result<Mat> {
         // make sure that slice is large enough
         let numel = shape.x as usize * shape.y as usize * shape.z as usize;
@@ -35,13 +35,10 @@ impl<'a> Mat<'a> {
             shape: shape,
             voxel_size: voxel_size,
             voxel_type: voxel_type,
-            is_fortran_order: is_fortran_array,
+            data_in_c_order: data_in_c_order,
         })
     }
 
-    pub fn get_is_fortran_order(&self) -> bool {
-        self.is_fortran_order
-    }
     pub fn as_slice(&self) -> &[u8] {
         self.data
     }
@@ -53,16 +50,16 @@ impl<'a> Mat<'a> {
     }
 
     fn offset(&self, pos: Vec3) -> usize {
-        let offset_vx = if self.is_fortran_order {
-            pos.x + self.shape.x * (pos.y + self.shape.y * pos.z)
-        } else {
+        let offset_vx = if self.data_in_c_order {
             pos.z + self.shape.z * (pos.y + self.shape.y * pos.x)
+        } else {
+            pos.x + self.shape.x * (pos.y + self.shape.y * pos.z)
         };
         offset_vx as usize * self.voxel_size
     }
 
     pub fn copy_as_fortran_order(&self, buffer: &mut Mat) -> Result<()> {
-        if self.is_fortran_order {
+        if ! self.data_in_c_order {
             return Err("Mat is already in fortran order");
         }
         if self.voxel_size != buffer.voxel_size {
@@ -129,38 +126,38 @@ impl<'a> Mat<'a> {
         if !(dst_pos + src_box.width() < (self.shape + 1)) {
             return Err("Writing out of bounds");
         }
-        if self.is_fortran_order != src.get_is_fortran_order() {
-            return Err("source and destination has to be the same order");
+        if self.data_in_c_order != src.data_in_c_order {
+            return Err("Source and destination has to be the same order");
         }
 
         let width = src_box.width();
         // unified has fast to slow moving indices
-        let unified_width = if self.is_fortran_order {
-            width
-        } else {
+        let unified_width = if self.data_in_c_order {
             Vec3 {
                 x: width.z,
                 y: width.y,
                 z: width.x,
             }
-        };
-        let unified_dst_shape = if self.is_fortran_order {
-            self.shape
         } else {
+            width
+        };
+        let unified_dst_shape = if self.data_in_c_order {
             Vec3 {
                 x: self.shape.z,
                 y: self.shape.y,
                 z: self.shape.x,
             }
-        };
-        let unified_src_shape = if self.is_fortran_order {
-            src.shape
         } else {
+            self.shape
+        };
+        let unified_src_shape = if self.data_in_c_order {
             Vec3 {
                 x: src.shape.z,
                 y: src.shape.y,
                 z: src.shape.x,
             }
+        } else {
+            src.shape
         };
 
         let stripe_len = src.voxel_size * unified_width.x as usize;

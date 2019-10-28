@@ -116,7 +116,7 @@ impl File {
             self.read_block(buf)?;
 
             // copy data
-            let src_mat = Mat::new(buf, buf_shape, voxel_size, voxel_type, true)?;
+            let src_mat = Mat::new(buf, buf_shape, voxel_size, voxel_type, false)?;
             dst_mat.copy_from(cur_dst_pos, &src_mat, cur_src_box)?;
         }
 
@@ -148,7 +148,7 @@ impl File {
             Vec3::from(1u32 << block_len_log2),
             self.header.voxel_size as usize,
             self.header.voxel_type,
-            src_mat.get_is_fortran_order(),
+            src_mat.data_in_c_order,
         )?;
 
         // build second buffer
@@ -158,7 +158,7 @@ impl File {
             Vec3::from(1u32 << block_len_log2),
             self.header.voxel_size as usize,
             self.header.voxel_type,
-            true,
+            false,
         )?;
 
         // build Morton-order iterator
@@ -189,11 +189,11 @@ impl File {
             self.seek_block(cur_block_idx)?;
 
             // write in fortran order
-            if buf_mat.get_is_fortran_order() {
-                self.write_block(buf_mat.as_slice())?;
-            } else {
+            if buf_mat.data_in_c_order {
                 buf_mat.copy_as_fortran_order(&mut fortran_conversion_mat)?;
                 self.write_block(fortran_conversion_mat.as_slice())?;
+            } else {
+                self.write_block(buf_mat.as_slice())?;
             }
         }
 

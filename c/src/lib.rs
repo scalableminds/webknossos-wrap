@@ -202,7 +202,7 @@ fn c_data_to_mat<'a>(
     dataset: &wkwrap::Dataset,
     shape: &'a wkwrap::Vec3,
     data_ptr: *const c_void,
-    is_fortran_order: bool,
+    data_in_c_order: bool,
 ) -> wkwrap::Mat<'a> {
     let voxel_type = dataset.header().voxel_type;
     let voxel_size = dataset.header().voxel_size as usize;
@@ -210,7 +210,7 @@ fn c_data_to_mat<'a>(
     let data_len = shape.product() as usize * voxel_size;
     let data = unsafe { std::slice::from_raw_parts_mut(data_ptr as *mut u8, data_len) };
 
-    wkwrap::Mat::new(data, *shape, voxel_size, voxel_type, is_fortran_order).unwrap()
+    wkwrap::Mat::new(data, *shape, voxel_size, voxel_type, data_in_c_order).unwrap()
 }
 
 #[no_mangle]
@@ -226,7 +226,7 @@ pub extern "C" fn dataset_read(
     let dataset = unsafe { Box::from_raw(dataset_ptr as *mut wkwrap::Dataset) };
     let (off, shape) = c_bbox_to_off_and_shape(bbox_ptr);
 
-    let mut mat = c_data_to_mat(&dataset, &shape, data_ptr, true);
+    let mut mat = c_data_to_mat(&dataset, &shape, data_ptr, false);
     let ret = dataset.read_mat(off, &mut mat);
     std::mem::forget(dataset);
     check_return(ret)
@@ -237,7 +237,7 @@ pub extern "C" fn dataset_write(
     dataset_ptr: *const Dataset,
     bbox_ptr: *const c_ulong,
     data_ptr: *const c_void,
-    is_fortran_order: bool,
+    data_in_c_order: bool,
 ) -> c_int {
     assert!(!dataset_ptr.is_null());
     assert!(!bbox_ptr.is_null());
@@ -247,7 +247,7 @@ pub extern "C" fn dataset_write(
 
     let (off, shape) = c_bbox_to_off_and_shape(bbox_ptr);
 
-    let mat = c_data_to_mat(&dataset, &shape, data_ptr, is_fortran_order);
+    let mat = c_data_to_mat(&dataset, &shape, data_ptr, data_in_c_order);
     let ret = dataset.write_mat(off, &mat);
     std::mem::forget(dataset);
     check_return(ret)

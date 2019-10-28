@@ -118,7 +118,7 @@ impl Dataset {
         }
 
         let num_channels = self.header.voxel_type.size() / self.header.voxel_size as usize;
-        if num_channels > 1 && mat.get_is_fortran_order() {
+        if num_channels > 1 && mat.data_in_c_order {
             return Err("Cannot write multichannel data if data is in row-major order.");
         }
 

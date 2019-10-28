@@ -201,19 +201,23 @@ class Dataset:
                 "Data elements must be of type {}".format(self.header.voxel_type)
             )
 
-        is_contiguous = data.flags["F_CONTIGUOUS"] or data.flags["C_CONTIGUOUS"]
+
+        def is_contiguous(data):
+            return data.flags["F_CONTIGUOUS"] or data.flags["C_CONTIGUOUS"]
 
         # the row-major handling of the rust lib cannot handle num_channels > 1
-        if self.header.num_channels != 1 or not is_contiguous:
+        if self.header.num_channels != 1 or not is_contiguous(data):
             data = np.asfortranarray(data)
 
         box = _build_box(off, data.shape[-3:])
         box_ptr = ffi.cast("uint32_t *", box.ctypes.data)
 
-        is_fortran_order = data.flags["F_CONTIGUOUS"]
+        assert is_contiguous(data), "Input data is not contiguous"
+        
+        data_in_c_order = data.flags["C_CONTIGUOUS"]
         data_ptr = ffi.cast("void *", data.ctypes.data)
         _check_wkw(
-            libwkw.dataset_write(self.handle, box_ptr, data_ptr, is_fortran_order)
+            libwkw.dataset_write(self.handle, box_ptr, data_ptr, data_in_c_order)
         )
 
     def compress(self, dst_path: str, compress_files: bool = False):
