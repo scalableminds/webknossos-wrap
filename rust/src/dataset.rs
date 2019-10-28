@@ -1,11 +1,11 @@
-use ::{BlockType, File, Header, Result, Vec3, Box3, Mat};
-use std::path::{Path, PathBuf};
 use std::fs;
+use std::path::{Path, PathBuf};
+use {BlockType, Box3, File, Header, Mat, Result, Vec3};
 
 #[derive(Debug)]
 pub struct Dataset {
     root: PathBuf,
-    header: Header
+    header: Header,
 }
 
 static HEADER_FILE_NAME: &'static str = "header.wkw";
@@ -13,7 +13,7 @@ static HEADER_FILE_NAME: &'static str = "header.wkw";
 impl Dataset {
     pub fn new(root: &Path) -> Result<Dataset> {
         if !root.is_dir() {
-            return Err("Dataset root is not a directory")
+            return Err("Dataset root is not a directory");
         }
 
         // read required header file
@@ -21,14 +21,13 @@ impl Dataset {
 
         Ok(Dataset {
             root: root.to_owned(),
-            header: header
+            header: header,
         })
     }
 
     pub fn create(root: &Path, mut header: Header) -> Result<Dataset> {
         // create directory hierarchy
-        fs::create_dir_all(root)
-           .or(Err("Could not create dataset directory"))?;
+        fs::create_dir_all(root).or(Err("Could not create dataset directory"))?;
 
         // create header file
         Self::create_header_file(root, &mut header)?;
@@ -53,13 +52,14 @@ impl Dataset {
         }
 
         // create header file
-        let mut file = fs::File::create(header_path)
-                                .or(Err("Could not create header file"))?;
+        let mut file = fs::File::create(header_path).or(Err("Could not create header file"))?;
 
         header.write(&mut file)
     }
 
-    pub fn header(&self) -> &Header { &self.header }
+    pub fn header(&self) -> &Header {
+        &self.header
+    }
 
     pub fn read_mat(&self, src_pos: Vec3, mat: &mut Mat) -> Result<usize> {
         let bbox = Box3::from(mat.shape) + src_pos;
@@ -68,7 +68,7 @@ impl Dataset {
         // find files to load
         let bbox_files = Box3::new(
             bbox.min() >> file_len_vx_log2,
-          ((bbox.max() - 1) >> file_len_vx_log2) + 1
+            ((bbox.max() - 1) >> file_len_vx_log2) + 1,
         )?;
 
         for cur_z in bbox_files.min().z..bbox_files.max().z {
@@ -81,10 +81,15 @@ impl Dataset {
                     cur_path.push(format!("x{}.wkw", cur_x));
 
                     // bounding box
-                    let cur_file_ids = Vec3 { x: cur_x, y: cur_y, z: cur_z };
+                    let cur_file_ids = Vec3 {
+                        x: cur_x,
+                        y: cur_y,
+                        z: cur_z,
+                    };
                     let cur_file_box = Box3::new(
                         cur_file_ids << file_len_vx_log2,
-                       (cur_file_ids + 1) << file_len_vx_log2)?;
+                        (cur_file_ids + 1) << file_len_vx_log2,
+                    )?;
                     let cur_box = cur_file_box.intersect(bbox);
 
                     // offsets
@@ -103,62 +108,72 @@ impl Dataset {
     }
 
     pub fn write_mat(&self, dst_pos: Vec3, mat: &Mat) -> Result<usize> {
-            // validate input matrix
-            if mat.voxel_type != self.header.voxel_type {
-                return Err("Input matrix has invalid voxel type");
-            }
+        // validate input matrix
+        if mat.voxel_type != self.header.voxel_type {
+            return Err("Input matrix has invalid voxel type");
+        }
 
-            if mat.voxel_size != self.header.voxel_size as usize {
-                return Err("Input matrix has invalid voxel size");
-            }
+        if mat.voxel_size != self.header.voxel_size as usize {
+            return Err("Input matrix has invalid voxel size");
+        }
 
-            let file_len_vx_log2 = self.header.file_len_vx_log2() as u32;
-            if self.header.block_type == BlockType::LZ4 || self.header.block_type == BlockType::LZ4HC {
-                let file_len_vec = Vec3::from(1 << file_len_vx_log2);
-                let is_dst_aligned = dst_pos % file_len_vec == Vec3::from(0);
-                let is_shape_aligned = mat.shape % file_len_vec == Vec3::from(0);
-                if !is_dst_aligned || !is_shape_aligned {
-                    return Err("When writing compressed files, each file has to be \
-                        written as a whole. Please pad your data so that all cubes \
-                        are complete and the write position is block-aligned.");
+        let num_channels = self.header.voxel_type.size() / self.header.voxel_size as usize;
+        if num_channels > 1 && mat.data_in_c_order {
+            return Err("Cannot write multichannel data if data is in row-major order.");
+        }
+
+        let file_len_vx_log2 = self.header.file_len_vx_log2() as u32;
+        if self.header.block_type == BlockType::LZ4 || self.header.block_type == BlockType::LZ4HC {
+            let file_len_vec = Vec3::from(1 << file_len_vx_log2);
+            let is_dst_aligned = dst_pos % file_len_vec == Vec3::from(0);
+            let is_shape_aligned = mat.shape % file_len_vec == Vec3::from(0);
+            if !is_dst_aligned || !is_shape_aligned {
+                return Err("When writing compressed files, each file has to be \
+                            written as a whole. Please pad your data so that all cubes \
+                            are complete and the write position is block-aligned.");
+            }
+        };
+
+        let bbox = Box3::from(mat.shape) + dst_pos;
+
+        // find files to load
+        let bbox_files = Box3::new(
+            bbox.min() >> file_len_vx_log2,
+            ((bbox.max() - 1) >> file_len_vx_log2) + 1,
+        )?;
+
+        for cur_z in bbox_files.min().z..bbox_files.max().z {
+            for cur_y in bbox_files.min().y..bbox_files.max().y {
+                for cur_x in bbox_files.min().x..bbox_files.max().x {
+                    // file path to wkw file
+                    let mut cur_path = self.root.clone();
+                    cur_path.push(format!("z{}", cur_z));
+                    cur_path.push(format!("y{}", cur_y));
+                    cur_path.push(format!("x{}.wkw", cur_x));
+
+                    // bounding box
+                    let cur_file_ids = Vec3 {
+                        x: cur_x,
+                        y: cur_y,
+                        z: cur_z,
+                    };
+                    let cur_file_box = Box3::new(
+                        cur_file_ids << file_len_vx_log2,
+                        (cur_file_ids + 1) << file_len_vx_log2,
+                    )?;
+                    let cur_box = cur_file_box.intersect(bbox);
+
+                    // offsets
+                    let cur_src_pos = cur_box.min() - dst_pos;
+                    let cur_dst_pos = cur_box.min() - cur_file_box.min();
+
+                    let mut file = File::open_or_create(&cur_path, &self.header)?;
+                    file.write_mat(cur_dst_pos, mat, cur_src_pos)?;
                 }
-            };
-
-            let bbox = Box3::from(mat.shape) + dst_pos;
-
-            // find files to load
-            let bbox_files = Box3::new(
-                bbox.min() >> file_len_vx_log2,
-              ((bbox.max() - 1) >> file_len_vx_log2) + 1
-            )?;
-
-            for cur_z in bbox_files.min().z..bbox_files.max().z {
-                for cur_y in bbox_files.min().y..bbox_files.max().y {
-                    for cur_x in bbox_files.min().x..bbox_files.max().x {
-                        // file path to wkw file
-                        let mut cur_path = self.root.clone();
-                        cur_path.push(format!("z{}", cur_z));
-                        cur_path.push(format!("y{}", cur_y));
-                        cur_path.push(format!("x{}.wkw", cur_x));
-
-                        // bounding box
-                        let cur_file_ids = Vec3 { x: cur_x, y: cur_y, z: cur_z };
-                        let cur_file_box = Box3::new(
-                            cur_file_ids << file_len_vx_log2,
-                           (cur_file_ids + 1) << file_len_vx_log2)?;
-                        let cur_box = cur_file_box.intersect(bbox);
-
-                        // offsets
-                        let cur_src_pos = cur_box.min() - dst_pos;
-                        let cur_dst_pos = cur_box.min() - cur_file_box.min();
-
-                        let mut file = File::open_or_create(&cur_path, &self.header)?;
-                        file.write_mat(cur_dst_pos, mat, cur_src_pos)?;
-                    }
-                }
             }
+        }
 
-            Ok(1 as usize)
+        Ok(1 as usize)
     }
 
     pub(crate) fn read_header(root: &Path) -> Result<Header> {
@@ -168,7 +183,7 @@ impl Dataset {
         let mut header_file_opt = fs::File::open(header_path);
         let header_file = match header_file_opt.as_mut() {
             Ok(header_file) => header_file,
-            Err(_) => return Err("Could not open header file")
+            Err(_) => return Err("Could not open header file"),
         };
 
         Header::read(header_file)

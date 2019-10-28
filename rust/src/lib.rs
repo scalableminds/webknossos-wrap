@@ -13,8 +13,8 @@ mod lz4;
 // convenience
 pub use dataset::Dataset;
 pub use file::File;
-pub use header::{Header, BlockType, VoxelType};
+pub use header::{BlockType, Header, VoxelType};
 pub use mat::Mat;
-pub use morton::{Morton, Iter};
+pub use morton::{Iter, Morton};
 pub use result::Result;
 pub use vec::{Box3, Vec3};
