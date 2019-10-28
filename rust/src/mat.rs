@@ -59,7 +59,7 @@ impl<'a> Mat<'a> {
     }
 
     pub fn copy_as_fortran_order(&self, buffer: &mut Mat) -> Result<()> {
-        if ! self.data_in_c_order {
+        if !self.data_in_c_order {
             return Err("Mat is already in fortran order");
         }
         if self.voxel_size != buffer.voxel_size {
@@ -130,37 +130,25 @@ impl<'a> Mat<'a> {
             return Err("Source and destination has to be the same order");
         }
 
-        let width = src_box.width();
+        let length = src_box.width();
         // unified has fast to slow moving indices
-        let unified_width = if self.data_in_c_order {
-            Vec3 {
-                x: width.z,
-                y: width.y,
-                z: width.x,
-            }
+        let unified_length = if self.data_in_c_order {
+            length.flip()
         } else {
-            width
+            length
         };
         let unified_dst_shape = if self.data_in_c_order {
-            Vec3 {
-                x: self.shape.z,
-                y: self.shape.y,
-                z: self.shape.x,
-            }
+            self.shape.flip()
         } else {
             self.shape
         };
         let unified_src_shape = if self.data_in_c_order {
-            Vec3 {
-                x: src.shape.z,
-                y: src.shape.y,
-                z: src.shape.x,
-            }
+            src.shape.flip()
         } else {
             src.shape
         };
 
-        let stripe_len = src.voxel_size * unified_width.x as usize;
+        let stripe_len = src.voxel_size * unified_length.x as usize;
 
         let src_inner_offset = (unified_src_shape.x as usize * self.voxel_size) as isize;
         let src_outer_offset = (unified_src_shape.x as usize
@@ -176,11 +164,11 @@ impl<'a> Mat<'a> {
             let mut src_ptr = src.data.as_ptr().offset(src.offset(src_box.min()) as isize);
             let mut dst_ptr = self.data.as_mut_ptr().offset(self.offset(dst_pos) as isize);
 
-            for _ in 0..unified_width.z {
+            for _ in 0..unified_length.z {
                 let mut src_ptr_cur = src_ptr;
                 let mut dst_ptr_cur = dst_ptr;
 
-                for _ in 0..unified_width.y {
+                for _ in 0..unified_length.y {
                     // copy data
                     ptr::copy_nonoverlapping(src_ptr_cur, dst_ptr_cur, stripe_len);
 

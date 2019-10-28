@@ -201,7 +201,6 @@ class Dataset:
                 "Data elements must be of type {}".format(self.header.voxel_type)
             )
 
-
         def is_contiguous(data):
             return data.flags["F_CONTIGUOUS"] or data.flags["C_CONTIGUOUS"]
 
@@ -213,7 +212,7 @@ class Dataset:
         box_ptr = ffi.cast("uint32_t *", box.ctypes.data)
 
         assert is_contiguous(data), "Input data is not contiguous"
-        
+
         data_in_c_order = data.flags["C_CONTIGUOUS"]
         data_ptr = ffi.cast("void *", data.ctypes.data)
         _check_wkw(

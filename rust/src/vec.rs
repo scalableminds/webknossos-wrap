@@ -77,6 +77,14 @@ impl Vec3 {
             z: min(self.z, other.z),
         }
     }
+
+    pub fn flip(&self) -> Vec3 {
+        Vec3 {
+            x: self.z,
+            y: self.y,
+            z: self.x,
+        }
+    }
 }
 
 // based on bluss' ndarray
