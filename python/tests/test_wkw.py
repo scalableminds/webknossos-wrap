@@ -247,6 +247,30 @@ def test_view_on_np_array():
 
     assert np.all(data == read_data)
 
+def test_not_too_much_data_is_written_in_column_order():
+    data_shape = (35, 35, 35)
+    data = generate_test_data(np.uint8, data_shape, order="F")
+    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dataset:
+        dataset.write((0, 0, 0), np.ones((35, 35, 64), dtype=np.uint8))
+        dataset.write((0, 0, 0), data)
+
+        read_data = dataset.read((0, 0, 0), (35, 35, 64))
+
+    assert np.all(data == read_data[0, :, :, :35])
+    assert np.all(read_data[0, :, :, 35:] == 1)
+
+def test_not_too_much_data_is_written_in_row_order():
+    data_shape = (35, 35, 35)
+    data = generate_test_data(np.uint8, data_shape, order="C")
+    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dataset:
+        dataset.write((0, 0, 0), np.ones((35, 35, 64), dtype=np.uint8))
+        dataset.write((0, 0, 0), data)
+
+        read_data = dataset.read((0, 0, 0), (35, 35, 64))
+
+    assert np.all(data == read_data[0, :, :, :35])
+    assert np.all(read_data[0, :, :, 35:] == 1)
+
 
 def generate_test_data(dtype, size=SIZE, order="C"):
     return np.array(
