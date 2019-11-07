@@ -56,7 +56,7 @@ jobs:
            bash -c "\$PYBIN/python setup.py sdist bdist_wheel -p manylinux1_x86_64 && \$PYBIN/twine upload dist/*.whl dist/*.tar.gz"
 
   build_mac:
-    runs-on: macOS-10.14
+    runs-on: macOS-latest
     steps:
     - uses: actions/checkout@v1
     - uses: actions/setup-python@v1
