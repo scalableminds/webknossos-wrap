@@ -177,12 +177,12 @@ impl File {
             if cur_box != cur_block_box {
                 // reuse existing data
                 self.seek_block(cur_block_idx)?;
-                let write_buffer = if src_block_buf_mat.data_in_c_order {
+                let buffer_to_initialize = if src_block_buf_mat.data_in_c_order {
                     &mut raw_disk_block_buf_mat
                 } else {
                     &mut src_block_buf_mat
                 };
-                self.read_block(write_buffer.as_mut_slice())?;
+                self.read_block(buffer_to_initialize.as_mut_slice())?;
             }
 
             let cur_src_box = cur_box - dst_pos + src_pos;
