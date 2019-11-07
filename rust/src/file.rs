@@ -177,7 +177,12 @@ impl File {
             if cur_box != cur_block_box {
                 // reuse existing data
                 self.seek_block(cur_block_idx)?;
-                self.read_block(src_block_buf_mat.as_mut_slice())?;
+                let write_buffer = if src_block_buf_mat.data_in_c_order {
+                    &mut raw_disk_block_buf_mat
+                } else {
+                    &mut src_block_buf_mat
+                };
+                self.read_block(write_buffer.as_mut_slice())?;
             }
 
             let cur_src_box = cur_box - dst_pos + src_pos;
@@ -190,7 +195,8 @@ impl File {
 
             // write in fortran order
             let buffer_to_write = if src_block_buf_mat.data_in_c_order {
-                src_block_buf_mat.copy_as_fortran_order(&mut raw_disk_block_buf_mat)?;
+                let dst_bbox = Box3::new(cur_dst_pos, cur_dst_pos + cur_src_box.width())?;
+                src_block_buf_mat.copy_as_fortran_order(&mut raw_disk_block_buf_mat, dst_bbox)?;
                 &raw_disk_block_buf_mat
             } else {
                 &src_block_buf_mat

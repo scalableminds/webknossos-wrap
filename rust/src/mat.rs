@@ -58,7 +58,7 @@ impl<'a> Mat<'a> {
         offset_vx as usize * self.voxel_size
     }
 
-    pub fn copy_as_fortran_order(&self, buffer: &mut Mat) -> Result<()> {
+    pub fn copy_as_fortran_order(&self, buffer: &mut Mat, src_bbox: Box3) -> Result<()> {
         if !self.data_in_c_order {
             return Err("Mat is already in fortran order");
         }
@@ -95,10 +95,12 @@ impl<'a> Mat<'a> {
         let src_ptr = self.data.as_ptr();
         let dst_ptr = buffer_data.as_mut_ptr();
 
+        let from = src_bbox.min();
+        let to = src_bbox.max();
         // Do continuous read in z. Last dim in Row-Major is continuous.
-        for x in 0usize..x_length {
-            for y in 0usize..y_length {
-                for z in 0usize..z_length {
+        for x in from.x as usize..to.x as usize {
+            for y in from.y as usize..to.y as usize {
+                for z in from.z as usize..to.z as usize {
                     let row_major_index = linearize(x, y, z, &row_major_stride);
                     let column_major_index = linearize(x, y, z, &column_major_stride);
                     unsafe {
