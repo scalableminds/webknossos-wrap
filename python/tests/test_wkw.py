@@ -247,6 +247,7 @@ def test_view_on_np_array():
 
     assert np.all(data == read_data)
 
+
 def test_not_too_much_data_is_written_in_column_order():
     data_shape = (35, 35, 35)
     data = generate_test_data(np.uint8, data_shape, order="F")
@@ -258,6 +259,7 @@ def test_not_too_much_data_is_written_in_column_order():
 
     assert np.all(data == read_data[0, :, :, :35])
     assert np.all(read_data[0, :, :, 35:] == 1)
+
 
 def test_not_too_much_data_is_written_in_row_order():
     data_shape = (35, 35, 35)
