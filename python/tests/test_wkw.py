@@ -248,30 +248,24 @@ def test_view_on_np_array():
     assert np.all(data == read_data)
 
 
-def test_not_too_much_data_is_written_in_column_order():
-    data_shape = (35, 35, 35)
-    data = generate_test_data(np.uint8, data_shape, order="F")
-    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dataset:
-        dataset.write((0, 0, 0), np.ones((35, 35, 64), dtype=np.uint8))
-        dataset.write((0, 0, 0), data)
+def test_not_too_much_data_is_written():
+    def write_and_test_in_given_order(wkw_path, order):
+        data_shape = (35, 35, 35)
+        data = generate_test_data(np.uint8, data_shape, order=order)
+        with wkw.Dataset.create(wkw_path, wkw.Header(np.uint8)) as dataset:
+            dataset.write((0, 0, 0), np.ones((35, 35, 64), dtype=np.uint8))
+            dataset.write((1, 2, 3), data)
 
-        read_data = dataset.read((0, 0, 0), (35, 35, 64))
+            read_data = dataset.read((1, 2, 3), (35, 35, 35))
+            before = dataset.read((0, 0, 0), (1, 2, 3))
+            after = dataset.read((0, 0, 38), (35, 35, 26))
 
-    assert np.all(data == read_data[0, :, :, :35])
-    assert np.all(read_data[0, :, :, 35:] == 1)
+        assert np.all(data == read_data)
+        assert np.all(before == 1)
+        assert np.all(after == 1)
 
-
-def test_not_too_much_data_is_written_in_row_order():
-    data_shape = (35, 35, 35)
-    data = generate_test_data(np.uint8, data_shape, order="C")
-    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dataset:
-        dataset.write((0, 0, 0), np.ones((35, 35, 64), dtype=np.uint8))
-        dataset.write((0, 0, 0), data)
-
-        read_data = dataset.read((0, 0, 0), (35, 35, 64))
-
-    assert np.all(data == read_data[0, :, :, :35])
-    assert np.all(read_data[0, :, :, 35:] == 1)
+    write_and_test_in_given_order("tests/tmp", "F")
+    write_and_test_in_given_order("tests/tmp2", "C")
 
 
 def generate_test_data(dtype, size=SIZE, order="C"):
