@@ -268,6 +268,26 @@ def test_not_too_much_data_is_written():
     write_and_test_in_given_order("tests/tmp2", "C")
 
 
+def test_multiple_writes_and_reads():
+
+    mem_buffer = np.zeros((200, 200, 200))
+    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dataset:
+        for i in range(10):
+            offset = np.random.randint(100, size=(3))
+            size = np.random.randint(1, 100, size=(3))
+            order = np.random.choice(["F", "C"])
+            data = generate_test_data(np.uint8, [1] + list(size), order)
+            dataset.write(offset, data)
+            mem_buffer[
+                offset[0] : offset[0] + size[0],
+                offset[1] : offset[1] + size[1],
+                offset[2] : offset[2] + size[2],
+            ] = data
+
+            read_data = dataset.read((0, 0, 0), (200, 200, 200))
+            assert np.all(mem_buffer == read_data)
+
+
 def generate_test_data(dtype, size=SIZE, order="C"):
     return np.array(
         np.random.uniform(np.iinfo(dtype).min, np.iinfo(dtype).max, size).astype(dtype),
@@ -280,6 +300,10 @@ def try_rmtree(dir):
         shutil.rmtree(dir)
     except FileNotFoundError:
         pass
+
+
+def setup_function():
+    np.random.seed(0)
 
 
 def teardown_function():
