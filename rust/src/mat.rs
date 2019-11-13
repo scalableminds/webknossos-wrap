@@ -114,6 +114,22 @@ impl<'a> Mat<'a> {
         Ok(())
     }
 
+    pub fn copy_from_order_agnostic(
+        &mut self,
+        dst_pos: Vec3,
+        src: &Mat,
+        src_box: Box3,
+        intermediate_buffer: &mut Mat,
+    ) -> Result<()> {
+        if src.data_in_c_order {
+            intermediate_buffer.copy_from(dst_pos, src, src_box)?;
+            let dst_bbox = Box3::new(dst_pos, dst_pos + src_box.width())?;
+            intermediate_buffer.copy_as_fortran_order(self, dst_bbox)
+        } else {
+            self.copy_from(dst_pos, src, src_box)
+        }
+    }
+
     pub fn copy_from(&mut self, dst_pos: Vec3, src: &Mat, src_box: Box3) -> Result<()> {
         // make sure that matrices are matching
         if self.voxel_size != src.voxel_size {
