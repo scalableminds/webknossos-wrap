@@ -124,6 +124,10 @@ impl<'a> Mat<'a> {
         src_box: Box3,
         intermediate_buffer: &mut Mat,
     ) -> Result<()> {
+        if self.data_in_c_order {
+            return Err("copy_from_order_agnostic has to be called on a fortran order buffer.");
+        }
+
         if src.data_in_c_order {
             intermediate_buffer.copy_from(dst_pos, src, src_box)?;
             let dst_bbox = Box3::new(dst_pos, dst_pos + src_box.width())?;
