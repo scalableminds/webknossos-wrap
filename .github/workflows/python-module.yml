@@ -128,12 +128,12 @@ jobs:
         cd python
         python -c "import wkw"
         pip install pytest
-        pytest tests
+        pytest tests -k "not big_read"
     - name: Test (non-bash)
       run: |
         cd python
         python -c "import wkw"
-        pytest tests
+        pytest tests -k "not big_read"
     - name: Publish
       shell: bash
       if: startsWith(github.event.ref, 'refs/tags')
