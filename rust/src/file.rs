@@ -152,9 +152,9 @@ impl File {
         )?;
 
         // build second buffer
-        let mut raw_disk_block_buf = vec![0u8; self.header.block_size()];
-        let mut raw_disk_block_buf_mat = Mat::new(
-            raw_disk_block_buf.as_mut_slice(),
+        let mut c_to_fortran_buf = vec![0u8; self.header.block_size()];
+        let mut c_to_fortran_buf_mat = Mat::new(
+            c_to_fortran_buf.as_mut_slice(),
             Vec3::from(1u32 << block_len_log2),
             self.header.voxel_size as usize,
             self.header.voxel_type,
@@ -188,7 +188,7 @@ impl File {
                 cur_dst_pos,
                 src_mat,
                 cur_src_box,
-                &mut raw_disk_block_buf_mat,
+                &mut c_to_fortran_buf_mat,
             )?;
 
             self.seek_block(cur_block_idx)?;
