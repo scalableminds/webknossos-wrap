@@ -50,15 +50,18 @@ impl<'a> Mat<'a> {
     }
 
     fn offset(&self, pos: Vec3) -> usize {
+        // Early usize cast is necessary as overflows happen
         let offset_vx = if self.data_in_c_order {
-            pos.z + self.shape.z * (pos.y + self.shape.y * pos.x)
+            pos.z as usize
+                + self.shape.z as usize * (pos.y as usize + self.shape.y as usize * pos.x as usize)
         } else {
-            pos.x + self.shape.x * (pos.y + self.shape.y * pos.z)
+            pos.x as usize
+                + self.shape.x as usize * (pos.y as usize + self.shape.y as usize * pos.z as usize)
         };
-        offset_vx as usize * self.voxel_size
+        offset_vx * self.voxel_size
     }
 
-    pub fn copy_as_fortran_order(&self, buffer: &mut Mat) -> Result<()> {
+    pub fn copy_as_fortran_order(&self, buffer: &mut Mat, src_bbox: Box3) -> Result<()> {
         if !self.data_in_c_order {
             return Err("Mat is already in fortran order");
         }
@@ -95,10 +98,12 @@ impl<'a> Mat<'a> {
         let src_ptr = self.data.as_ptr();
         let dst_ptr = buffer_data.as_mut_ptr();
 
+        let from = src_bbox.min();
+        let to = src_bbox.max();
         // Do continuous read in z. Last dim in Row-Major is continuous.
-        for x in 0usize..x_length {
-            for y in 0usize..y_length {
-                for z in 0usize..z_length {
+        for x in from.x as usize..to.x as usize {
+            for y in from.y as usize..to.y as usize {
+                for z in from.z as usize..to.z as usize {
                     let row_major_index = linearize(x, y, z, &row_major_stride);
                     let column_major_index = linearize(x, y, z, &column_major_stride);
                     unsafe {
@@ -110,6 +115,26 @@ impl<'a> Mat<'a> {
             }
         }
         Ok(())
+    }
+
+    pub fn copy_from_order_agnostic(
+        &mut self,
+        dst_pos: Vec3,
+        src: &Mat,
+        src_box: Box3,
+        intermediate_buffer: &mut Mat,
+    ) -> Result<()> {
+        if self.data_in_c_order {
+            return Err("copy_from_order_agnostic has to be called on a fortran order buffer.");
+        }
+
+        if src.data_in_c_order {
+            intermediate_buffer.copy_from(dst_pos, src, src_box)?;
+            let dst_bbox = Box3::new(dst_pos, dst_pos + src_box.width())?;
+            intermediate_buffer.copy_as_fortran_order(self, dst_bbox)
+        } else {
+            self.copy_from(dst_pos, src, src_box)
+        }
     }
 
     pub fn copy_from(&mut self, dst_pos: Vec3, src: &Mat, src_box: Box3) -> Result<()> {

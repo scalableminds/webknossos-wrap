@@ -248,6 +248,63 @@ def test_view_on_np_array():
     assert np.all(data == read_data)
 
 
+def test_not_too_much_data_is_written():
+    def write_and_test_in_given_order(wkw_path, order):
+        data_shape = (35, 35, 35)
+        data = generate_test_data(np.uint8, data_shape, order=order)
+        with wkw.Dataset.create(wkw_path, wkw.Header(np.uint8)) as dataset:
+            dataset.write((0, 0, 0), np.ones((35, 35, 64), dtype=np.uint8))
+            dataset.write((1, 2, 3), data)
+
+            read_data = dataset.read((1, 2, 3), (35, 35, 35))
+            before = dataset.read((0, 0, 0), (1, 2, 3))
+            after = dataset.read((0, 0, 38), (35, 35, 26))
+
+        assert np.all(data == read_data)
+        assert np.all(before == 1)
+        assert np.all(after == 1)
+
+    write_and_test_in_given_order("tests/tmp", "F")
+    write_and_test_in_given_order("tests/tmp2", "C")
+
+
+def test_multiple_writes_and_reads():
+
+    mem_buffer = np.zeros((200, 200, 200), dtype=np.uint8, order="F")
+    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dataset:
+        for i in range(10):
+            offset = np.random.randint(100, size=(3))
+            size = np.random.randint(1, 100, size=(3))
+            order = np.random.choice(["F", "C"])
+            data = generate_test_data(np.uint8, [1] + list(size), order)
+            dataset.write(offset, data)
+            mem_buffer[
+                offset[0] : offset[0] + size[0],
+                offset[1] : offset[1] + size[1],
+                offset[2] : offset[2] + size[2],
+            ] = data
+
+            read_data = dataset.read((0, 0, 0), (200, 200, 200))
+            assert np.all(mem_buffer == read_data)
+
+
+def test_big_read():
+    data = np.ones((10, 10, 764), order="C", dtype=np.uint8)
+    offset = np.array([0, 0, 640])
+    bottom = (2000, 2000, 2000)
+    mem_buffer = np.zeros(bottom, dtype=np.uint8, order="F")
+
+    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dataset:
+        dataset.write(offset, data)
+        mem_buffer[
+            offset[0] : offset[0] + data.shape[0],
+            offset[1] : offset[1] + data.shape[1],
+            offset[2] : offset[2] + data.shape[2],
+        ] = data
+        read_data = dataset.read((0, 0, 0), bottom)
+        assert np.all(read_data == mem_buffer)
+
+
 def generate_test_data(dtype, size=SIZE, order="C"):
     return np.array(
         np.random.uniform(np.iinfo(dtype).min, np.iinfo(dtype).max, size).astype(dtype),
@@ -260,6 +317,10 @@ def try_rmtree(dir):
         shutil.rmtree(dir)
     except FileNotFoundError:
         pass
+
+
+def setup_function():
+    np.random.seed(0)
 
 
 def teardown_function():

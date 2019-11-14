@@ -148,17 +148,17 @@ impl File {
             Vec3::from(1u32 << block_len_log2),
             self.header.voxel_size as usize,
             self.header.voxel_type,
-            src_mat.data_in_c_order,
+            false,
         )?;
 
         // build second buffer
-        let mut raw_disk_block_buf = vec![0u8; self.header.block_size()];
-        let mut raw_disk_block_buf_mat = Mat::new(
-            raw_disk_block_buf.as_mut_slice(),
+        let mut c_to_fortran_buf = vec![0u8; self.header.block_size()];
+        let mut c_to_fortran_buf_mat = Mat::new(
+            c_to_fortran_buf.as_mut_slice(),
             Vec3::from(1u32 << block_len_log2),
             self.header.voxel_size as usize,
             self.header.voxel_type,
-            false,
+            true,
         )?;
 
         // build Morton-order iterator
@@ -184,18 +184,17 @@ impl File {
             let cur_dst_pos = cur_box.min() - cur_block_box.min();
 
             // fill / modify buffer
-            src_block_buf_mat.copy_from(cur_dst_pos, src_mat, cur_src_box)?;
+            src_block_buf_mat.copy_from_order_agnostic(
+                cur_dst_pos,
+                src_mat,
+                cur_src_box,
+                &mut c_to_fortran_buf_mat,
+            )?;
 
             self.seek_block(cur_block_idx)?;
 
             // write in fortran order
-            let buffer_to_write = if src_block_buf_mat.data_in_c_order {
-                src_block_buf_mat.copy_as_fortran_order(&mut raw_disk_block_buf_mat)?;
-                &raw_disk_block_buf_mat
-            } else {
-                &src_block_buf_mat
-            };
-            self.write_block(buffer_to_write.as_slice())?;
+            self.write_block(src_block_buf_mat.as_slice())?;
         }
 
         if self.header.block_type == BlockType::LZ4 || self.header.block_type == BlockType::LZ4HC {
