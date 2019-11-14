@@ -50,12 +50,15 @@ impl<'a> Mat<'a> {
     }
 
     fn offset(&self, pos: Vec3) -> usize {
+        // Early usize cast is necessary as overflows happen
         let offset_vx = if self.data_in_c_order {
-            pos.z + self.shape.z * (pos.y + self.shape.y * pos.x)
+            pos.z as usize
+                + self.shape.z as usize * (pos.y as usize + self.shape.y as usize * pos.x as usize)
         } else {
-            pos.x + self.shape.x * (pos.y + self.shape.y * pos.z)
+            pos.x as usize
+                + self.shape.x as usize * (pos.y as usize + self.shape.y as usize * pos.z as usize)
         };
-        offset_vx as usize * self.voxel_size
+        offset_vx * self.voxel_size
     }
 
     pub fn copy_as_fortran_order(&self, buffer: &mut Mat, src_bbox: Box3) -> Result<()> {

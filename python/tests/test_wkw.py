@@ -270,7 +270,7 @@ def test_not_too_much_data_is_written():
 
 def test_multiple_writes_and_reads():
 
-    mem_buffer = np.zeros((200, 200, 200))
+    mem_buffer = np.zeros((200, 200, 200), dtype=np.uint8, order="F")
     with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dataset:
         for i in range(10):
             offset = np.random.randint(100, size=(3))
@@ -286,6 +286,23 @@ def test_multiple_writes_and_reads():
 
             read_data = dataset.read((0, 0, 0), (200, 200, 200))
             assert np.all(mem_buffer == read_data)
+
+
+def test_big_read():
+    data = np.ones((10, 10, 764), order="C", dtype=np.uint8)
+    offset = np.array([0, 0, 640])
+    bottom = (2000, 2000, 2000)
+    mem_buffer = np.zeros(bottom, dtype=np.uint8, order="F")
+
+    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dataset:
+        dataset.write(offset, data)
+        mem_buffer[
+            offset[0] : offset[0] + data.shape[0],
+            offset[1] : offset[1] + data.shape[1],
+            offset[2] : offset[2] + data.shape[2],
+        ] = data
+        read_data = dataset.read((0, 0, 0), bottom)
+        assert np.all(read_data == mem_buffer)
 
 
 def generate_test_data(dtype, size=SIZE, order="C"):
