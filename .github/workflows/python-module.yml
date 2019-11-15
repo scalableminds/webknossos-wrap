@@ -39,7 +39,7 @@ jobs:
           -v$(pwd):/app \
           testing \
           bash -c "
-            for PYBIN in /opt/python/{cp34-cp34mu,cp35-cp35mu,cp36-cp36mu,cp37-cp37mu,cp38-cp38mu}/bin; do
+            for PYBIN in /opt/python/*/bin; do
               \$PYBIN/pip install /app/python/dist/wkw-*-py3-none-manylinux2010_x86_64.whl
               \$PYBIN/python -c 'import wkw; print(wkw.Dataset)'
             done"
