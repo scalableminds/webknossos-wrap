@@ -40,6 +40,7 @@ jobs:
           testing \
           bash -c "
             for PYBIN in /opt/python/*/bin; do
+              echo --> \$PYBIN
               \$PYBIN/pip install /app/python/dist/wkw-*-py3-none-manylinux2010_x86_64.whl
               \$PYBIN/python -c 'import wkw; print(wkw.Dataset)'
             done"
