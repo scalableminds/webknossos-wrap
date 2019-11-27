@@ -98,5 +98,5 @@ pub fn mx_array_mut_to_wkwrap_mat<'a>(
     // voxel type
     let voxel_type = mx_class_id_to_voxel_type(unsafe { mxGetClassID(pm) })?;
 
-    wkwrap::Mat::new(buf, shape, voxel_size, voxel_type)
+    wkwrap::Mat::new(buf, shape, voxel_size, voxel_type, false)
 }
