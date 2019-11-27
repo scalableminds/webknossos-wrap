@@ -20,6 +20,10 @@ function wkwBuild()
         extraLinkPaths{end + 1} = fileparts(mfilename('fullpath'));
     end
     
+    if ismac
+    	extraLinkPaths{end + 1} = fileparts(mfilename('fullpath'));
+    end
+    
     % make link paths available for cargo
     exportExtraLinkPaths(extraLinkPaths);
     
@@ -44,7 +48,9 @@ function buildWithCargo(oldName, newName)
     % rename library
     libDir = fullfile(cargoDir, 'target', 'release');
     
-    if isunix
+    if ismac
+        libPath = fullfile(libDir, strcat('lib', oldName, '.dylib'));
+    elseif isunix
         libPath = fullfile(libDir, strcat('lib', oldName, '.so'));
     elseif ispc
         libPath = fullfile(libDir, strcat(oldName, '.dll'));
@@ -59,6 +65,6 @@ function buildWithCargo(oldName, newName)
 end
 
 function exportExtraLinkPaths(paths)
-    extraLinkPathsStr = strjoin(paths, pathsep);
+    extraLinkPathsStr = strjoin(paths, ';');
     setenv('EXTRALINKPATHS', extraLinkPathsStr);
 end
