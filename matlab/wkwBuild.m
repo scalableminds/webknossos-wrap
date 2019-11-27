@@ -21,7 +21,8 @@ function wkwBuild()
     end
     
     if ismac
-    	extraLinkPaths{end + 1} = fileparts(mfilename('fullpath'));
+        % liblz4.dylib from homebrew
+        extraLinkPaths{end + 1} = '/usr/local/lib';
     end
     
     % make link paths available for cargo
