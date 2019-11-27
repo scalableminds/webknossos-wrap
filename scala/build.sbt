@@ -1,6 +1,6 @@
 name := "webknossos-wrap"
 
-scalaVersion := "2.11.7"
+scalaVersion := "2.12.7"
 
 javaOptions in test ++= Seq("-Xmx512m")
 
@@ -20,14 +20,13 @@ publishArtifact in Test := false
 
 pomIncludeRepository := { _ => false }
 
-publishTo <<= version { (version: String) =>
-  val rootDir = "/srv/maven/"
+publishTo := {
   val path =
-    if (version.trim.endsWith("SNAPSHOT"))
+    if (isSnapshot.value)
       "snapshots"
     else
       "releases"
-  Some("scm.io intern repo" at "s3://maven.scm.io.s3-eu-central-1.amazonaws.com/" + path)
+  Some("scm.io nexus repo" at "https://oss.sonatype.org/content/repositories/" + path)
 }
 
 organization := "com.scalableminds"
@@ -51,7 +50,7 @@ libraryDependencies ++= Seq(
   "com.jsuereth" %% "scala-arm" % "2.0",
   "com.newrelic.agent.java" % "newrelic-agent" % "3.31.1",
   "com.newrelic.agent.java" % "newrelic-api" % "3.31.1",
-  "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0",
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
   "net.jpountz.lz4" % "lz4" % "1.3.0",
   "net.liftweb" % "lift-common_2.10" % "2.6-M3",
   "net.liftweb" % "lift-util_2.10" % "3.0-M1",

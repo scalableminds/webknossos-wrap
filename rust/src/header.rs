@@ -1,7 +1,7 @@
 use lz4;
-use std::{fs, mem, slice};
-use std::io::{Read, Write};
 use result::Result;
+use std::io::{Read, Write};
+use std::{fs, mem, slice};
 
 #[repr(C)]
 #[derive(Debug)]
@@ -12,24 +12,39 @@ struct HeaderRaw {
     block_type: u8,
     voxel_type: u8,
     voxel_size: u8,
-    data_offset: u64
+    data_offset: u64,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum BlockType { Raw, LZ4, LZ4HC }
+pub enum BlockType {
+    Raw,
+    LZ4,
+    LZ4HC,
+}
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum VoxelType { U8, U16, U32, U64, F32, F64, I8, I16, I32, I64 }
+pub enum VoxelType {
+    U8,
+    U16,
+    U32,
+    U64,
+    F32,
+    F64,
+    I8,
+    I16,
+    I32,
+    I64,
+}
 
 impl VoxelType {
     pub fn size(&self) -> usize {
         match *self {
-            VoxelType::U8  | VoxelType::I8  => 1,
+            VoxelType::U8 | VoxelType::I8 => 1,
             VoxelType::U16 | VoxelType::I16 => 2,
             VoxelType::U32 | VoxelType::I32 => 4,
             VoxelType::U64 | VoxelType::I64 => 8,
             VoxelType::F32 => 4,
-            VoxelType::F64 => 8
+            VoxelType::F64 => 8,
         }
     }
 }
@@ -43,7 +58,7 @@ pub struct Header {
     pub voxel_type: VoxelType,
     pub voxel_size: u8,
     pub data_offset: u64,
-    pub jump_table: Option<Box<[u64]>>
+    pub jump_table: Option<Box<[u64]>>,
 }
 
 impl Header {
@@ -72,8 +87,8 @@ impl Header {
                 let file_vol = self.file_vol() as usize;
                 let jump_table = vec![0u64; file_vol];
                 Some(jump_table.into_boxed_slice())
-            },
-            _ => None
+            }
+            _ => None,
         };
     }
 
@@ -82,8 +97,7 @@ impl Header {
 
         let jump_table_len = match self.block_type {
             BlockType::Raw => 0,
-            BlockType::LZ4 | BlockType::LZ4HC =>
-                self.file_vol() as usize * mem::size_of::<u64>()
+            BlockType::LZ4 | BlockType::LZ4HC => self.file_vol() as usize * mem::size_of::<u64>(),
         } as usize;
 
         header_len + jump_table_len
@@ -94,7 +108,7 @@ impl Header {
 
         let mut header = match file.read_exact(&mut buf) {
             Err(_) => return Err("Could not read raw header"),
-            Ok(_) => Self::from_bytes(buf)?
+            Ok(_) => Self::from_bytes(buf)?,
         };
 
         // in case of the header file, we're done
@@ -105,7 +119,7 @@ impl Header {
         // read jump table
         header.jump_table = match header.block_type {
             BlockType::LZ4 | BlockType::LZ4HC => Some(header.read_jump_table(file)?),
-            _ => None
+            _ => None,
         };
 
         Ok(header)
@@ -118,7 +132,7 @@ impl Header {
 
         match self.jump_table {
             Some(_) => self.write_jump_table(file),
-            None => Ok(())
+            None => Ok(()),
         }
     }
 
@@ -142,12 +156,12 @@ impl Header {
 
         match result {
             Ok(_) => Ok(jump_table.into_boxed_slice()),
-            Err(_) => Err("Could not read jump table")
+            Err(_) => Err("Could not read jump table"),
         }
     }
 
     fn write_jump_table(&self, file: &mut fs::File) -> Result<()> {
-        let jump_table = & *self.jump_table.as_ref().unwrap();
+        let jump_table = &*self.jump_table.as_ref().unwrap();
 
         let result = unsafe {
             let buf_u8_len = jump_table.len() * mem::size_of::<u64>();
@@ -160,7 +174,7 @@ impl Header {
 
         match result {
             Ok(_) => Ok(()),
-            Err(_) => Err("Could not write jump table")
+            Err(_) => Err("Could not write jump table"),
         }
     }
 
@@ -173,7 +187,7 @@ impl Header {
             BlockType::Raw => {
                 let block_size = self.block_size() as u64;
                 self.data_offset + block_idx * block_size
-            },
+            }
             BlockType::LZ4 | BlockType::LZ4HC => {
                 if block_idx == 0 {
                     self.data_offset
@@ -212,7 +226,7 @@ impl Header {
 
         match self.block_type {
             BlockType::Raw => block_size,
-            BlockType::LZ4 | BlockType::LZ4HC => lz4::compress_bound(block_size)
+            BlockType::LZ4 | BlockType::LZ4HC => lz4::compress_bound(block_size),
         }
     }
 
@@ -248,21 +262,21 @@ impl Header {
             1 => BlockType::Raw,
             2 => BlockType::LZ4,
             3 => BlockType::LZ4HC,
-            _ => return Err("Block type is invalid")
+            _ => return Err("Block type is invalid"),
         };
 
         let voxel_type = match raw.voxel_type {
-            1  => VoxelType::U8,
-            2  => VoxelType::U16,
-            3  => VoxelType::U32,
-            4  => VoxelType::U64,
-            5  => VoxelType::F32,
-            6  => VoxelType::F64,
-            7  => VoxelType::I8,
-            8  => VoxelType::I16,
-            9  => VoxelType::I32,
+            1 => VoxelType::U8,
+            2 => VoxelType::U16,
+            3 => VoxelType::U32,
+            4 => VoxelType::U64,
+            5 => VoxelType::F32,
+            6 => VoxelType::F64,
+            7 => VoxelType::I8,
+            8 => VoxelType::I16,
+            9 => VoxelType::I32,
             10 => VoxelType::I64,
-            _  => return Err("Voxel type is invalid")
+            _ => return Err("Voxel type is invalid"),
         };
 
         Ok(Header {
@@ -273,13 +287,12 @@ impl Header {
             voxel_type: voxel_type,
             voxel_size: raw.voxel_size,
             data_offset: raw.data_offset,
-            jump_table: None
+            jump_table: None,
         })
     }
 
     pub fn to_bytes(&self) -> [u8; 16] {
-        let per_dim_log2 = (self.file_len_log2 << 4)
-                         | (self.block_len_log2 & 0x0f);
+        let per_dim_log2 = (self.file_len_log2 << 4) | (self.block_len_log2 & 0x0f);
 
         let mut raw = HeaderRaw {
             magic: [0u8; 3],
@@ -288,7 +301,7 @@ impl Header {
             block_type: 1u8 + self.block_type as u8,
             voxel_type: 1u8 + self.voxel_type as u8,
             voxel_size: self.voxel_size,
-            data_offset: self.data_offset
+            data_offset: self.data_offset,
         };
 
         // set magic bytes
@@ -298,15 +311,33 @@ impl Header {
         unsafe { mem::transmute::<HeaderRaw, [u8; 16]>(raw) }
     }
 
-    pub fn block_len(&self) -> u16 { 1u16 << self.block_len_log2 }
-    pub fn block_vol(&self) -> u64 { 1u64 << (3 * self.block_len_log2) }
-    pub fn block_size(&self) -> usize { self.voxel_size as usize * self.block_vol() as usize }
+    pub fn block_len(&self) -> u16 {
+        1u16 << self.block_len_log2
+    }
+    pub fn block_vol(&self) -> u64 {
+        1u64 << (3 * self.block_len_log2)
+    }
+    pub fn block_size(&self) -> usize {
+        self.voxel_size as usize * self.block_vol() as usize
+    }
 
-    pub fn file_len(&self) -> u16 { 1u16 << self.file_len_log2 }
-    pub fn file_vol(&self) -> u64 { 1u64 << (3 * self.file_len_log2) }
+    pub fn file_len(&self) -> u16 {
+        1u16 << self.file_len_log2
+    }
+    pub fn file_vol(&self) -> u64 {
+        1u64 << (3 * self.file_len_log2)
+    }
 
-    pub fn file_len_vx_log2(&self) -> u8 { self.file_len_log2 + self.block_len_log2 }
-    pub fn file_len_vx(&self) -> u32 { 1u32 << self.file_len_vx_log2() as u32 }
-    pub fn file_vol_vx(&self) -> u64 { 1u64 << (3 * self.file_len_vx_log2() as u64) }
-    pub fn file_size(&self) -> usize { self.voxel_size as usize * self.file_vol_vx() as usize }
+    pub fn file_len_vx_log2(&self) -> u8 {
+        self.file_len_log2 + self.block_len_log2
+    }
+    pub fn file_len_vx(&self) -> u32 {
+        1u32 << self.file_len_vx_log2() as u32
+    }
+    pub fn file_vol_vx(&self) -> u64 {
+        1u64 << (3 * self.file_len_vx_log2() as u64)
+    }
+    pub fn file_size(&self) -> usize {
+        self.voxel_size as usize * self.file_vol_vx() as usize
+    }
 }

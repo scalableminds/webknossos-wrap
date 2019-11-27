@@ -54,11 +54,12 @@ Each wk-wrap file MUST begin with the following header:
 #### Header fields
 * __version__ contains the wk-wrap format version as unsigned byte. At the time
   of writing, the only valid version number is 0x01.
-* __perDimLog2__ contains two 4-bit values (nibbles). The lower nibble (
-  `perDimLog2 & 0x0F`) contains __blocksPerFileDimLog2__, i.e., the log2 of the
-  number of blocks per file dimension. The higher nibble (`(perDimLog2 & 0xF0) >> 4`)
-  contains __voxelsPerBlockDimLog2__, i.e., the log2 of the number of
-  voxels per block dimension. Files and blocks are three-dimensional.
+* __perDimLog2__ contains two 4-bit values (nibbles). The lower nibble
+  (`perDimLog2 & 0x0F`) contains __voxelsPerBlockDimLog2__, i.e., the
+  log2 of the number of voxels per block dimension. The higher nibble
+  (`(perDimLog2 & 0xF0) >> 4`) contains __blocksPerFileDimLog2__, i.e.,
+  the log2 of the number of blocks per file dimension. Files and blocks
+  are three-dimensional.
 * __blockType__ determines how the individual blocks were encoded. Valid values
   are: 0x01 for RAW encoding, 0x02 for LZ4 compressed, and 0x03 for the high-
   compression version of LZ4.
@@ -72,7 +73,8 @@ Each wk-wrap file MUST begin with the following header:
   file contains a single value per voxel, then voxelSize is equal to the byte
   size of the data type. If the wk-wrap file, however, contains multiple
   channels (e.g., three 8-bit values for RGB), voxelSize is a multiple of the
-  data type size.
+  data type size (specified as byte count). In the example of three 8-bit values,
+  voxelSize would be 3.
 * __dataOffset__ contains the absolute address of the first byte of the first
   block (relative to the beginning of the file) as unsigned 64-bit integer.
 
@@ -115,6 +117,23 @@ only semantic.
 
 Decompression must produce valid raw blocks.
 
+## Usage
+
+### Scala Release Process
+
+#### Local Testing
+To test changes locally, run `sbt publishLocal`. The [current version] should already be bumped and marked as `SNAPSHOT`. Then adapt the dependency to webknossos-wrap to this version.
+
+#### Releasing a version to maven
+Specify the sonatype credentials in `~/.sbt/<sbt version>/sonatype.sbt`:
+```
+credentials += Credentials("Sonatype Nexus Repository Manager",
+       "oss.sonatype.org",
+       "<user>",
+       "<password>")
+```
+
+Then run `sbt release`. This increments the version automatically, publishes the build and adds git commits and tags. Push the git changes via `git push --follow-tags`.
 
 ## Credits
 * [Max Planck Institute for Brain Research](https://brain.mpg.de/)

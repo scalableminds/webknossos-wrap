@@ -1,6 +1,6 @@
 [package]
 name = "wkw"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Alessandro Motta <alessandro.motta@brain.mpg.de>"]
 
 [dependencies]
