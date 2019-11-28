@@ -24,6 +24,7 @@ pub enum MxClassId {
 }
 
 #[cfg_attr(target_os = "linux", link(name = "mx", kind = "dylib"))]
+#[cfg_attr(target_os = "macos", link(name = "mx", kind = "dylib"))]
 #[cfg_attr(target_os = "windows", link(name = "libmx", kind = "dylib"))]
 extern {
     // creation
@@ -56,6 +57,7 @@ extern {
 }
 
 #[cfg_attr(target_os = "linux", link(name = "mex", kind = "dylib"))]
+#[cfg_attr(target_os = "macos", link(name = "mex", kind = "dylib"))]
 #[cfg_attr(target_os = "windows", link(name = "libmex", kind = "dylib"))]
 extern {
     pub fn mexErrMsgTxt(errormsg: *const c_uchar);

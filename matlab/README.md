@@ -29,9 +29,10 @@ If you're using Windows, make sure that the latest version of the
 is installed on your system.
 
 ### macOS
-Please note that this library was not yet tested on macOS. Only minor
-modifications to `wkwBuild.m` and `lz4.rs` should be necessary to build
-and run it. Contributions are welcome!
+If you're using macOS, please install `lz4` and `rust` with [Homebrew](https://brew.sh/): 
+```bash
+brew install lz4 rust
+```
 
 ### Linux
 If you're using Linux, make sure that `liblz4` is installed on your

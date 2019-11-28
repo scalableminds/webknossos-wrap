@@ -20,6 +20,11 @@ function wkwBuild()
         extraLinkPaths{end + 1} = fileparts(mfilename('fullpath'));
     end
     
+    if ismac
+        % liblz4.dylib from homebrew
+        extraLinkPaths{end + 1} = '/usr/local/lib';
+    end
+    
     % make link paths available for cargo
     exportExtraLinkPaths(extraLinkPaths);
     
@@ -38,13 +43,16 @@ function buildWithCargo(oldName, newName)
     
     % build project
     cd(cargoDir);
+    system('cargo clean');
     system('cargo update');
     system('cargo build --release');
     
     % rename library
     libDir = fullfile(cargoDir, 'target', 'release');
     
-    if isunix
+    if ismac
+        libPath = fullfile(libDir, strcat('lib', oldName, '.dylib'));
+    elseif isunix
         libPath = fullfile(libDir, strcat('lib', oldName, '.so'));
     elseif ispc
         libPath = fullfile(libDir, strcat(oldName, '.dll'));
@@ -59,6 +67,6 @@ function buildWithCargo(oldName, newName)
 end
 
 function exportExtraLinkPaths(paths)
-    extraLinkPathsStr = strjoin(paths, pathsep);
+    extraLinkPathsStr = strjoin(paths, ';');
     setenv('EXTRALINKPATHS', extraLinkPathsStr);
 end
