@@ -29,7 +29,7 @@ If you're using Windows, make sure that the latest version of the
 is installed on your system.
 
 ### macOS
-If you're using macOS, please install `lz4` and `rust` with Homebrew: 
+If you're using macOS, please install `lz4` and `rust` with [Homebrew](https://brew.sh/): 
 ```bash
 brew install lz4 rust
 ```
