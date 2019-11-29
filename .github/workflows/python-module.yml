@@ -89,6 +89,7 @@ jobs:
         rustup-init -y
     - name: Compile lz4
       run: |
+        brew uninstall lz4
         curl -L https://github.com/lz4/lz4/archive/v1.9.2.tar.gz -o lz4.tar.gz
         tar -xzvf lz4.tar.gz
         rm -rf lz4
