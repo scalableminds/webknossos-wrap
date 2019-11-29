@@ -100,7 +100,7 @@ jobs:
         cd python
         export PATH=$PATH:$HOME/.cargo/bin
         python setup.py install
-        install_name_tool -change /usr/local/lib/liblz4.1.dylib @rpath/liblz4.1.dylib wkw/lib/libwkw.dylib
+        install_name_tool -change /usr/local/lib/liblz4.1.dylib @loader_path/liblz4.1.dylib wkw/lib/libwkw.dylib
     - name: Test
       run: |
         cd python
