@@ -32,9 +32,6 @@ def _init_libwkw():
         wkw_header = filter(lambda l: not l.startswith("#"), wkw_header)
         wkw_header = "\n".join(wkw_header)
 
-    # if platform.system() == "Windows":
-    #     os.environ["PATH"] += os.pathsep + os.path.join(this_dir, "lib")
-
     ffi = cffi.FFI()
     ffi.cdef(wkw_header)
     ffi.dlopen(path_lz4_lib)
