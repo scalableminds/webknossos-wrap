@@ -31,7 +31,8 @@ jobs:
           testing \
           bash -c "
             \$PYBIN/python setup.py install
-            \$PYBIN/python setup.py bdist_wheel -p manylinux2010_x86_64"
+            \$PYBIN/python setup.py bdist_wheel -p manylinux2010_x86_64
+            ldd lib/wkw/libwkw.so"
     - name: Test
       run: |
         docker run \
@@ -99,6 +100,7 @@ jobs:
         cd python
         export PATH=$PATH:$HOME/.cargo/bin
         python setup.py install
+        otool -L wkw/lib/libwkw.dylib
     - name: Test
       run: |
         cd python
@@ -137,8 +139,9 @@ jobs:
         cd lz4
         curl -L https://github.com/lz4/lz4/releases/download/v1.8.2/lz4_v1_8_2_win64.zip -o lz4_v1_8_2_win64.zip
         unzip lz4_v1_8_2_win64.zip
-        mv dll/liblz4.so.1.8.2.dll ./liblz4.dll
-        mv dll/liblz4.lib ./liblz4.lib
+        mkdir lib
+        mv dll/liblz4.so.1.8.2.dll lib/liblz4.dll
+        mv dll/liblz4.lib lib/liblz4.lib
     - name: Build
       shell: bash
       run: |
