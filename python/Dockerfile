@@ -5,8 +5,7 @@ ENV RUSTUP_HOME=/usr/local/rustup \
     PATH=/usr/local/cargo/bin:$PATH \
     PYBIN=/opt/python/cp36-cp36m/bin
 
-RUN yum install lz4 lz4-devel -y; \
-    curl https://sh.rustup.rs -sSf | sh -s -- --no-modify-path -y; \
+RUN curl https://sh.rustup.rs -sSf | sh -s -- --no-modify-path -y; \
     chmod -R a+w $RUSTUP_HOME $CARGO_HOME; \
     rustup --version; \
     cargo --version; \

@@ -10,6 +10,19 @@ jobs:
     - name: Build testing docker container
       run: |
         docker build -f python/Dockerfile -t testing .
+    - name: Compile lz4
+      run: |
+        docker run \
+          -v$(pwd):/app \
+          -w/app \
+          testing \
+          bash -c "
+            curl -L https://github.com/lz4/lz4/archive/v1.9.2.tar.gz -o lz4.tar.gz
+            tar -xzvf lz4.tar.gz
+            rm -rf lz4
+            mv lz4-1.9.2/ lz4
+            cd lz4
+            make allmost"
     - name: Build
       run: |
         docker run \
@@ -69,10 +82,18 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         architecture: 'x64' # (x64 or x86)
-    - name: Install Rust and lz4
+    - name: Install Rust
       run: |
-        brew install rustup-init lz4
+        brew install rustup-init
         rustup-init -y
+    - name: Compile lz4
+      run: |
+        curl -L https://github.com/lz4/lz4/archive/v1.9.2.tar.gz -o lz4.tar.gz
+        tar -xzvf lz4.tar.gz
+        rm -rf lz4
+        mv lz4-1.9.2/ lz4
+        cd lz4
+        make allmost
     - name: Build
       run: |
         cd python
@@ -116,8 +137,8 @@ jobs:
         cd lz4
         curl -L https://github.com/lz4/lz4/releases/download/v1.8.2/lz4_v1_8_2_win64.zip -o lz4_v1_8_2_win64.zip
         unzip lz4_v1_8_2_win64.zip
-        mv dll/liblz4.so.1.8.2.dll ../c/liblz4.dll
-        mv dll/liblz4.lib ../c/liblz4.lib
+        mv dll/liblz4.so.1.8.2.dll ./liblz4.dll
+        mv dll/liblz4.lib ./liblz4.lib
     - name: Build
       shell: bash
       run: |

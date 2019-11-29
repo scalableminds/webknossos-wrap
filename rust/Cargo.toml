@@ -5,6 +5,7 @@ authors = ["Alessandro Motta <alessandro.motta@brain.mpg.de>"]
 description = "webKNOSSOS wrapper is a file format designed for large-scale, three-dimensional voxel datasets. It was optimized for high-speed access to data subvolumes, and supports multi-channel data and dataset compression."
 repository = "https://github.com/scalableminds/webknossos-wrap"
 license = "AGPL-3.0"
+build = "build.rs"
 
 [badges]
 circle-ci = { repository = "scalableminds/webknossos", branch = "master" }
