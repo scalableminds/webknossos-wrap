@@ -1,6 +1,6 @@
+import cffi
 import ctypes
 import numpy as np
-import cffi
 import platform
 import os
 from copy import deepcopy
@@ -10,6 +10,13 @@ from glob import iglob
 def _init_libwkw():
     this_dir = os.path.dirname(__file__)
     path_wkw_header = os.path.join(this_dir, "lib", "wkw.h")
+
+    lz4_name_platform = {
+        "Linux": "liblz4.so.1",
+        "Windows": "liblz4.dll",
+        "Darwin": "liblz4.1.dylib",
+    }
+    path_lz4_lib = os.path.join(this_dir, "lib", lz4_name_platform[platform.system()])
 
     lib_name_platform = {
         "Linux": "libwkw.so",
@@ -25,11 +32,9 @@ def _init_libwkw():
         wkw_header = filter(lambda l: not l.startswith("#"), wkw_header)
         wkw_header = "\n".join(wkw_header)
 
-    if platform.system() == "Windows":
-        os.environ["PATH"] += os.pathsep + os.path.join(this_dir, "lib")
-
     ffi = cffi.FFI()
     ffi.cdef(wkw_header)
+    ffi.dlopen(path_lz4_lib)
     libwkw = ffi.dlopen(path_wkw_lib)
 
     return (ffi, libwkw)
