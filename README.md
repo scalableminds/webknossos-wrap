@@ -1,4 +1,6 @@
 # The webKNOSSOS Wrapper Format
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fscalableminds%2Fwebknossos-wrap.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fscalableminds%2Fwebknossos-wrap?ref=badge_shield)
+
 webKNOSSOS wrapper is a file format designed for large-scale,
 three-dimensional voxel datasets. It was optimized for high-speed access
 to data subvolumes, and supports multi-channel data and dataset
@@ -146,3 +148,6 @@ Then run `sbt release`. This increments the version automatically, publishes the
 
 # License
 AGPLv3
+
+
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fscalableminds%2Fwebknossos-wrap.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fscalableminds%2Fwebknossos-wrap?ref=badge_large)
