@@ -326,3 +326,12 @@ def setup_function():
 def teardown_function():
     try_rmtree("tests/tmp")
     try_rmtree("tests/tmp2")
+
+
+def main():
+	print("main main main")
+	with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dataset:
+		print("exit")
+
+if __name__ == '__main__':
+	main()

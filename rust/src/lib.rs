@@ -9,6 +9,7 @@ pub mod vec;
 
 // private modules
 mod lz4;
+mod zfp;
 
 // convenience
 pub use dataset::Dataset;

@@ -754,3 +754,8 @@ void zfp_demote_int32_to_uint16(uint16* oblock, const int32* iblock, uint dims);
 #endif
 
 #endif
+
+size_t zfp_wrapped_estimate_maximum_byte_size(unsigned int cube_length, unsigned int precision);
+size_t zfp_wrapped_compress(const uint8 * input_array, int32 * output_array, size_t output_buffer_byte_size, size_t cube_length, unsigned int precision);
+size_t zfp_wrapped_decompress(const int32 * compressed_array, uint8 * decompressed_array, size_t num_compressed_elements, size_t cube_length, uint precision);
+

@@ -1,3 +1,4 @@
+use zfp;
 use std::fs;
 use std::path::{Path, PathBuf};
 use {BlockType, Box3, File, Header, Mat, Result, Vec3};
@@ -26,6 +27,60 @@ impl Dataset {
     }
 
     pub fn create(root: &Path, mut header: Header) -> Result<Dataset> {
+		println!("bum bum\n");
+		let cube_length = 4 as usize;
+		let precision = 30 as usize;
+		let byte_size = zfp::estimate_maximum_byte_size(cube_length, precision) as usize;
+    	println!("{}\n", byte_size);
+
+    	let mut src = vec![0 as u8; cube_length.pow(3) as usize];
+    	src[0] = 16;
+    	src[1] = 16;
+    	src[2] = 16;
+    	src[3] = 16;
+    	src[4] = 16;
+    	src[5] = 16;
+    	src[6] = 16;
+
+    	let mut compressed_buffer = vec![0 as u8; byte_size as usize];
+    	let mut decompressed_buffer = vec![0 as u8; cube_length.pow(3)];
+   	
+    	let compressed_size = zfp::zfp_compress(
+    		&src,
+    		&mut compressed_buffer,
+    		byte_size,
+    		cube_length,
+    		precision,
+    	)?;
+
+    	for i in 0usize..10 {
+	        // print!("{} \n", i);
+	        print!("src: {} \n", src[i]);
+	    }
+
+	    for i in 0usize..10 {
+	        // print!("{} \n", i);
+	        print!("compressed_buffer: {} \n", compressed_buffer[i]);
+	    }
+
+	    zfp::zfp_decompress(
+	    	&compressed_buffer,
+	    	&mut decompressed_buffer,
+	    	compressed_size,
+	    	cube_length,
+	    	precision,
+	    );
+
+	    print!("grüß mich\n");
+    	for i in 0usize..10 {
+    	    // print!("{} \n", i);
+    	    print!("decompressed_buffer: {} \n", decompressed_buffer[i]);
+    	}
+
+    	
+    	return Err("testing zfp");
+
+
         // create directory hierarchy
         fs::create_dir_all(root).or(Err("Could not create dataset directory"))?;
 

@@ -1090,3 +1090,88 @@ zfp_read_header(zfp_stream* zfp, zfp_field* field, uint mask)
   }
   return bits;
 }
+
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
+size_t zfp_wrapped_estimate_maximum_byte_size(unsigned int cube_length, unsigned int precision) {
+    zfp_field * field = zfp_field_3d(NULL, zfp_type_int32, cube_length, cube_length, cube_length);
+    zfp_stream* zfp_s = zfp_stream_open(NULL);
+    zfp_stream_set_precision(zfp_s, precision);
+    size_t output_size =  zfp_stream_maximum_size(zfp_s, field);
+    zfp_field_free(field);
+    zfp_stream_close(zfp_s);
+    return output_size;
+}
+size_t zfp_wrapped_compress(const uint8 * input_array, int32 * output_array, size_t output_buffer_byte_size, size_t cube_length, unsigned int precision) {
+    unsigned int num_input_voxel = cube_length * cube_length * cube_length;
+    const int encode_cube_length = 4;
+    // copy input into int 32 buffer
+    int32 * i_input = (int32 *)malloc(num_input_voxel * sizeof(int32));
+    for (int i = 0; i < num_input_voxel; ++i) {
+        i_input[i] = ((int32)input_array[i] - 0x80) << 23;
+    }
+    bitstream* b_stream = stream_open(output_array, output_buffer_byte_size);
+    // setup stream
+    zfp_stream* zfp_s = zfp_stream_open(b_stream);
+    //zfp_stream_set_precision(zfp_s, precision);
+    zfp_stream_set_reversible(zfp_s);
+    zfp_stream_rewind(zfp_s);
+    // encode
+    unsigned int num_bits = 0;
+    int sx = 1;
+    int sy = cube_length;
+    int sz = cube_length * cube_length;
+    int num_of_sub_cubes = (int)(cube_length / encode_cube_length);
+    for (int z = 0; z < num_of_sub_cubes; ++z) {
+        for (int y = 0; y < num_of_sub_cubes; ++y) {
+            for (int x = 0; x < num_of_sub_cubes; ++x) {
+                int block_offset = (x + y * sy + z * sz) * encode_cube_length;
+                num_bits += zfp_encode_block_strided_int32_3(zfp_s, &i_input[block_offset], sx, sy, sz);
+            }
+        }
+    }
+    // flush
+    zfp_stream_flush(zfp_s);
+    size_t output_elements = ceil(num_bits / 8.0);
+    zfp_stream_close(zfp_s);
+    stream_close(b_stream);
+    free(i_input);
+    return output_elements;
+}
+size_t zfp_wrapped_decompress(const int32 * compressed_array, uint8 * decompressed_array, size_t num_compressed_elements, size_t cube_length, uint precision){
+    unsigned int num_output_voxel = cube_length * cube_length * cube_length;
+    const int encode_cube_length = 4;
+    // alloc output int32 buffer
+    int32 * i_output = (int32 *)malloc(num_output_voxel * sizeof(int32));
+    bitstream* b_stream = stream_open(compressed_array, num_output_voxel * sizeof(int32));
+    // setup stream
+    zfp_stream* zfp_s = zfp_stream_open(b_stream);
+    //zfp_stream_set_precision(zfp_s, precision);
+    zfp_stream_set_reversible(zfp_s);
+    zfp_stream_rewind(zfp_s);
+    // decode
+    unsigned int num_bits = 0;
+    int sx = 1;
+    int sy = cube_length;
+    int sz = cube_length * cube_length;
+    int num_of_sub_cubes = (int)(cube_length / encode_cube_length);
+    for (int z = 0; z < num_of_sub_cubes; ++z) {
+        for (int y = 0; y < num_of_sub_cubes; ++y) {
+            for (int x = 0; x < num_of_sub_cubes; ++x) {
+                int block_offset = (x + y * sy + z * sz) * encode_cube_length;
+                num_bits += zfp_decode_block_strided_int32_3(zfp_s, &i_output[block_offset], sx, sy, sz);
+            }
+        }
+    }
+    // flush
+    zfp_stream_flush(zfp_s);
+    //demote to uint8
+    for (int element = 0; element < num_output_voxel; ++element) {
+        if(i_output[element] != 0) {
+            printf("somthing is here! %d", element);
+        }
+        int32 value = (i_output[element] >> 23) + 0x80;
+        decompressed_array[element] = (uint8)MAX(0x00, MIN(value, 0xff));
+    }
+    return num_bits;
+}
