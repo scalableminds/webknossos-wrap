@@ -31,7 +31,7 @@ impl File {
     }
 
     pub fn open(path: &path::Path) -> Result<File> {
-        let mut file = fs::File::open(path).or(Err("Could not open WKW file"))?;
+        let mut file = fs::File::open(path).or(Err(format!("Could not open WKW file '{:?}'", path)))?;
         let header = Header::read(&mut file)?;
         Ok(Self::new(file, header))
     }
@@ -39,13 +39,13 @@ impl File {
     pub(crate) fn open_or_create(path: &path::Path, header: &Header) -> Result<File> {
         // create parent directory, if needed
         if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).or(Err("Could not create parent directory"))?;
+            fs::create_dir_all(parent).or(Err(format!("Could not create parent directory '{:?}'", parent)))?;
         }
 
         let mut open_opts = fs::OpenOptions::new();
         open_opts.read(true).write(true).create(true);
 
-        let mut file = open_opts.open(path).or(Err("Could not open file"))?;
+        let mut file = open_opts.open(path).or(Err(format!("Could not open file '{:?}'", path)))?;
 
         // check if file was created
         let (header, created) = match Header::read(&mut file) {
@@ -212,7 +212,7 @@ impl File {
 
         // make sure that output path does not exist yet
         let mut file = match path.exists() {
-            true => return Err("Output file already exists"),
+            true => return Err(format!("Output file '{:?}' already exists", path)),
             false => Self::open_or_create(path, &header)?,
         };
 
@@ -251,13 +251,13 @@ impl File {
 
         self.file
             .set_len(truncated_size)
-            .map_err(|_| "Could not truncate file")
+            .map_err(|_| String::from("Could not truncate file"))
     }
 
     fn seek_header(&mut self) -> Result<()> {
         match self.file.seek(SeekFrom::Start(0)) {
             Ok(0) => Ok(()),
-            _ => Err("Could not seek header"),
+            _ => Err(String::from("Could not seek header")),
         }
     }
 
@@ -268,12 +268,12 @@ impl File {
 
     fn read_block(&mut self, buf: &mut [u8]) -> Result<usize> {
         if buf.len() != self.header.block_size() {
-            return Err("Buffer has invalid size");
+            return Err(String::from("Buffer has invalid size"));
         }
 
         let block_idx = match self.block_idx {
             Some(block_idx) => block_idx,
-            None => return Err("File is not block aligned"),
+            None => return Err(String::from("File is not block aligned")),
         };
 
         let result = match self.header.block_type {
@@ -292,7 +292,7 @@ impl File {
     fn write_block(&mut self, buf: &[u8]) -> Result<usize> {
         let block_idx = match self.block_idx {
             Some(block_idx) => block_idx,
-            None => return Err("File is not block aligned"),
+            None => return Err(String::from("File is not block aligned")),
         };
 
         let result = match self.header.block_type {
@@ -312,14 +312,14 @@ impl File {
     fn read_block_raw(&mut self, buf: &mut [u8]) -> Result<usize> {
         match self.file.read_exact(buf) {
             Ok(_) => Ok(buf.len()),
-            Err(_) => Err("Could not read raw block"),
+            Err(_) => Err(String::from("Could not read raw block")),
         }
     }
 
     fn write_block_raw(&mut self, buf: &[u8]) -> Result<usize> {
         match self.file.write_all(buf) {
             Ok(_) => Ok(buf.len()),
-            Err(_) => Err("Could not write raw block"),
+            Err(_) => Err(String::from("Could not write raw block")),
         }
     }
 
@@ -331,7 +331,7 @@ impl File {
         // write data
         self.file
             .write_all(&buf_lz4[..len_lz4])
-            .or(Err("Could not write LZ4 block"))?;
+            .or(Err(String::from("Could not write LZ4 block")))?;
 
         // update jump table
         let jump_entry = self
@@ -357,14 +357,14 @@ impl File {
         // read compressed block
         self.file
             .read_exact(buf_lz4)
-            .or(Err("Error while reading LZ4 block"))?;
+            .or(Err(String::from("Error while reading LZ4 block")))?;
 
         // decompress block
         let byte_written = lz4::decompress_safe(buf_lz4, buf)?;
 
         match byte_written == block_size_raw {
             true => Ok(byte_written),
-            false => Err("Unexpected length after decompression"),
+            false => Err(String::from("Unexpected length after decompression")),
         }
     }
 
@@ -378,7 +378,7 @@ impl File {
 
         // seek to byte offset
         match self.file.seek(SeekFrom::Start(offset)) {
-            Err(_) => Err("Could not seek block"),
+            Err(_) => Err(String::from("Could not seek block")),
             Ok(_) => {
                 self.block_idx = Some(block_idx);
                 Ok(block_idx)

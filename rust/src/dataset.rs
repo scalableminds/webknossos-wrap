@@ -13,7 +13,7 @@ static HEADER_FILE_NAME: &'static str = "header.wkw";
 impl Dataset {
     pub fn new(root: &Path) -> Result<Dataset> {
         if !root.is_dir() {
-            return Err("Dataset root is not a directory");
+            return Err(format!("Dataset root '{:?}' is not a directory", &root));
         }
 
         // read required header file
@@ -27,7 +27,7 @@ impl Dataset {
 
     pub fn create(root: &Path, mut header: Header) -> Result<Dataset> {
         // create directory hierarchy
-        fs::create_dir_all(root).or(Err("Could not create dataset directory"))?;
+        fs::create_dir_all(root).or(Err(format!("Could not create dataset directory '{:?}'", &root)))?;
 
         // create header file
         Self::create_header_file(root, &mut header)?;
@@ -48,7 +48,7 @@ impl Dataset {
         header_path.push(HEADER_FILE_NAME);
 
         if header_path.exists() {
-            return Err("Header file already exists");
+            return Err(String::from("Header file already exists"));
         }
 
         // create header file
@@ -110,16 +110,16 @@ impl Dataset {
     pub fn write_mat(&self, dst_pos: Vec3, mat: &Mat) -> Result<usize> {
         // validate input matrix
         if mat.voxel_type != self.header.voxel_type {
-            return Err("Input matrix has invalid voxel type");
+            return Err(format!("Input matrix has invalid voxel type {:?} != {:?}", mat.voxel_type, self.header.voxel_type));
         }
 
         if mat.voxel_size != self.header.voxel_size as usize {
-            return Err("Input matrix has invalid voxel size");
+            return Err(format!("Input matrix has invalid voxel size {} != {}", mat.voxel_size,  self.header.voxel_size as usize));
         }
 
         let num_channels = self.header.voxel_type.size() / self.header.voxel_size as usize;
         if num_channels > 1 && mat.data_in_c_order {
-            return Err("Cannot write multichannel data if data is in row-major order.");
+            return Err(String::from("Cannot write multichannel data if data is in row-major order."));
         }
 
         let file_len_vx_log2 = self.header.file_len_vx_log2() as u32;
@@ -128,9 +128,9 @@ impl Dataset {
             let is_dst_aligned = dst_pos % file_len_vec == Vec3::from(0);
             let is_shape_aligned = mat.shape % file_len_vec == Vec3::from(0);
             if !is_dst_aligned || !is_shape_aligned {
-                return Err("When writing compressed files, each file has to be \
+                return Err(String::from("When writing compressed files, each file has to be \
                             written as a whole. Please pad your data so that all cubes \
-                            are complete and the write position is block-aligned.");
+                            are complete and the write position is block-aligned."));
             }
         };
 
@@ -183,7 +183,7 @@ impl Dataset {
         let mut header_file_opt = fs::File::open(header_path);
         let header_file = match header_file_opt.as_mut() {
             Ok(header_file) => header_file,
-            Err(_) => return Err("Could not open header file"),
+            Err(_) => return Err(String::from("Could not open header file")),
         };
 
         Header::read(header_file)
