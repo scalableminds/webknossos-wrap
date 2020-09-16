@@ -248,11 +248,11 @@ impl Header {
         let raw: HeaderRaw = unsafe { mem::transmute(buf) };
 
         if &raw.magic != "WKW".as_bytes() {
-            return Err(String::from("Sequence of magic bytes is invalid"));
+            return Err(format!("Sequence of magic bytes '{:?}' is invalid", &raw.magic));
         }
 
         if raw.version != 1 {
-            return Err(String::from("Version number is invalid"));
+            return Err(format!("Version number '{}' is invalid", raw.version));
         }
 
         let block_len_log2 = raw.per_dim_log2 & 0x0f;
@@ -262,7 +262,7 @@ impl Header {
             1 => BlockType::Raw,
             2 => BlockType::LZ4,
             3 => BlockType::LZ4HC,
-            _ => return Err(String::from("Block type is invalid")),
+            other => return Err(format!("Block type '{}' is invalid", other)),
         };
 
         let voxel_type = match raw.voxel_type {
@@ -276,7 +276,7 @@ impl Header {
             8 => VoxelType::I16,
             9 => VoxelType::I32,
             10 => VoxelType::I64,
-            _ => return Err(String::from("Voxel type is invalid")),
+            other => return Err(format!("Voxel type '{}' is invalid", other)),
         };
 
         Ok(Header {

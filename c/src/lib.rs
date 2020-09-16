@@ -29,7 +29,7 @@ fn as_log2(i: u8) -> Result<u8, &'static str> {
     }
 }
 
-fn from_header(header_ptr: *const Header) -> Result<wkw::Header, &'static str> {
+fn from_header(header_ptr: *const Header) -> Result<wkw::Header, String> {
     assert!(!header_ptr.is_null());
 
     let c_header = unsafe { &*header_ptr };
@@ -38,7 +38,7 @@ fn from_header(header_ptr: *const Header) -> Result<wkw::Header, &'static str> {
         1 => wkw::BlockType::Raw,
         2 => wkw::BlockType::LZ4,
         3 => wkw::BlockType::LZ4HC,
-        _ => return Err("Block type is invalid"),
+        other => return Err(format!("Block type '{}' is invalid", other)),
     };
 
     let voxel_type = match c_header.voxel_type {
@@ -52,7 +52,7 @@ fn from_header(header_ptr: *const Header) -> Result<wkw::Header, &'static str> {
         8 => wkw::VoxelType::I16,
         9 => wkw::VoxelType::I32,
         10 => wkw::VoxelType::I64,
-        _ => return Err("Voxel type is invalid"),
+        other => return Err(format!("Voxel type '{}' is invalid", other)),
     };
 
     let block_len_log2 = as_log2(c_header.block_len)?;
@@ -70,11 +70,11 @@ fn from_header(header_ptr: *const Header) -> Result<wkw::Header, &'static str> {
     })
 }
 
-fn check_return<T>(ret: Result<T, &str>) -> c_int {
+fn check_return<T>(ret: Result<T, String>) -> c_int {
     match ret {
         Ok(_) => 0,
         Err(msg) => {
-            set_last_error_msg(msg);
+            set_last_error_msg(&msg);
             1
         }
     }
@@ -107,7 +107,7 @@ pub extern "C" fn dataset_open(root_ptr: *const c_char) -> *const Dataset {
             unsafe { std::mem::transmute(dataset_ptr) }
         }
         Err(msg) => {
-            set_last_error_msg(msg);
+            set_last_error_msg(&msg);
             std::ptr::null::<Dataset>()
         }
     }
@@ -161,7 +161,7 @@ pub extern "C" fn dataset_create(
             unsafe { std::mem::transmute(dataset_ptr) }
         }
         Err(msg) => {
-            set_last_error_msg(msg);
+            set_last_error_msg(&msg);
             std::ptr::null::<Dataset>()
         }
     }
