@@ -10,7 +10,7 @@ use std::path::Path;
 mex_function!(_nlhs, _lhs, nrhs, rhs, {
     let rhs = match nrhs == 2 {
         true => slice::from_raw_parts(rhs, nrhs as usize),
-        false => return Err("Invalid number of input arguments")
+        false => return Err("Invalid number of input arguments".to_string())
     };
 
     let src_path = Path::new(mx_array_to_str(rhs[0])?);

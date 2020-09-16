@@ -5,11 +5,11 @@ use ::wkwrap;
 fn f64_slice_to_wkwrap_vec(buf: &[f64]) -> Result<wkwrap::Vec3> {
     match buf.len() == 3 {
         true => Ok(wkwrap::Vec3 {
-            x: as_nat(buf[0]).or(Err("Invalid X value"))? as u32,
-            y: as_nat(buf[1]).or(Err("Invalid Y value"))? as u32,
-            z: as_nat(buf[2]).or(Err("Invalid Z value"))? as u32
+            x: as_nat(buf[0]).or(Err("Invalid X value".to_string()))? as u32,
+            y: as_nat(buf[1]).or(Err("Invalid Y value".to_string()))? as u32,
+            z: as_nat(buf[2]).or(Err("Invalid Z value".to_string()))? as u32
         }),
-        false => Err("Size mismatch")
+        false => Err("Size mismatch".to_string())
     }
 }
 
@@ -18,12 +18,12 @@ pub fn mx_array_to_wkwrap_box(pm: MxArray) -> Result<wkwrap::Box3> {
 
     // verify shape of array
     if mx_array_size_to_usize_slice(pm) != &[3, 2] {
-        return Err("Bounding box has invalid shape");
+        return Err("Bounding box has invalid shape".to_string());
     }
 
     wkwrap::Box3::new(
-        f64_slice_to_wkwrap_vec(&buf[0..3]).or(Err("Invalid lower bound"))? - 1,
-        f64_slice_to_wkwrap_vec(&buf[3..6]).or(Err("Invalid upper bound"))?
+        f64_slice_to_wkwrap_vec(&buf[0..3]).or(Err("Invalid lower bound".to_string()))? - 1,
+        f64_slice_to_wkwrap_vec(&buf[3..6]).or(Err("Invalid upper bound".to_string()))?
     )
 }
 
@@ -49,7 +49,7 @@ pub fn mx_class_id_to_voxel_type(class_id: MxClassId) -> Result<wkwrap::VoxelTyp
         MxClassId::Int16  => Ok(wkwrap::VoxelType::I16),
         MxClassId::Int32  => Ok(wkwrap::VoxelType::I32),
         MxClassId::Int64  => Ok(wkwrap::VoxelType::I64),
-        _                 => Err("Unknown MxClassId")
+        _                 => Err("Unknown MxClassId".to_string())
     }
 }
 
@@ -81,7 +81,7 @@ pub fn mx_array_mut_to_wkwrap_mat<'a>(
 
     // check number of input dimensions
     if mx_size_len > if is_multi_channel { 4 } else { 3 } {
-        return Err("Data array has too many dimensions");
+        return Err("Data array has too many dimensions".to_string());
     }
 
     let mut size = [1usize; 4];

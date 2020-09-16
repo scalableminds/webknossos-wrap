@@ -51,7 +51,7 @@ pub extern fn mexFunction(
 
     match unsafe { body(nlhs, plhs, nrhs, prhs) } {
         Ok(_) => (),
-        Err(msg) => die(msg)
+        Err(msg) => die(&msg)
     }
 }
     }
