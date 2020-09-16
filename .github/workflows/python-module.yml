@@ -38,7 +38,7 @@ jobs:
           -v$(pwd):/app \
           -w/app/python \
           testing \
-          bash -c "\$PYBIN/pytest tests"
+          bash -c "\$PYBIN/pytest tests -v"
     - name: Check formatting
       run: |
         docker run \
