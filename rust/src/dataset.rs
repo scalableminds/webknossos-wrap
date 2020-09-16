@@ -13,7 +13,7 @@ static HEADER_FILE_NAME: &'static str = "header.wkw";
 impl Dataset {
     pub fn new(root: &Path) -> Result<Dataset> {
         if !root.is_dir() {
-            return Err(format!("Dataset root '{:?}' is not a directory", &root));
+            return Err(format!("Dataset root {:?} is not a directory", &root));
         }
 
         // read required header file
@@ -27,7 +27,7 @@ impl Dataset {
 
     pub fn create(root: &Path, mut header: Header) -> Result<Dataset> {
         // create directory hierarchy
-        fs::create_dir_all(root).or(Err(format!("Could not create dataset directory '{:?}'", &root)))?;
+        fs::create_dir_all(root).or(Err(format!("Could not create dataset directory {:?}", &root)))?;
 
         // create header file
         Self::create_header_file(root, &mut header)?;
@@ -48,11 +48,11 @@ impl Dataset {
         header_path.push(HEADER_FILE_NAME);
 
         if header_path.exists() {
-            return Err(String::from("Header file already exists"));
+            return Err(format!("Header {:?} file already exists", &header_path));
         }
 
         // create header file
-        let mut file = fs::File::create(header_path).or(Err("Could not create header file"))?;
+        let mut file = fs::File::create(&header_path).or(Err(format!("Could not create header file {:?}", &header_path)))?;
 
         header.write(&mut file)
     }
@@ -180,10 +180,10 @@ impl Dataset {
         let mut header_path = PathBuf::from(root);
         header_path.push(HEADER_FILE_NAME);
 
-        let mut header_file_opt = fs::File::open(header_path);
+        let mut header_file_opt = fs::File::open(&header_path);
         let header_file = match header_file_opt.as_mut() {
             Ok(header_file) => header_file,
-            Err(_) => return Err(String::from("Could not open header file")),
+            Err(_) => return Err(format!("Could not open header file {:?}", header_path)),
         };
 
         Header::read(header_file)
