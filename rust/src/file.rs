@@ -31,7 +31,7 @@ impl File {
     }
 
     pub fn open(path: &path::Path) -> Result<File> {
-        let mut file = fs::File::open(path).or(Err(format!("Could not open WKW file '{:?}'", path)))?;
+        let mut file = fs::File::open(path).or(Err(format!("Could not open WKW file {:?}", path)))?;
         let header = Header::read(&mut file)?;
         Ok(Self::new(file, header))
     }
@@ -39,13 +39,13 @@ impl File {
     pub(crate) fn open_or_create(path: &path::Path, header: &Header) -> Result<File> {
         // create parent directory, if needed
         if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).or(Err(format!("Could not create parent directory '{:?}'", parent)))?;
+            fs::create_dir_all(parent).or(Err(format!("Could not create parent directory {:?}", parent)))?;
         }
 
         let mut open_opts = fs::OpenOptions::new();
         open_opts.read(true).write(true).create(true);
 
-        let mut file = open_opts.open(path).or(Err(format!("Could not open file '{:?}'", path)))?;
+        let mut file = open_opts.open(path).or(Err(format!("Could not open file {:?}", path)))?;
 
         // check if file was created
         let (header, created) = match Header::read(&mut file) {
@@ -212,7 +212,7 @@ impl File {
 
         // make sure that output path does not exist yet
         let mut file = match path.exists() {
-            true => return Err(format!("Output file '{:?}' already exists", path)),
+            true => return Err(format!("Output file {:?} already exists", path)),
             false => Self::open_or_create(path, &header)?,
         };
 
