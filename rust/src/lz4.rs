@@ -47,7 +47,7 @@ pub fn compress_hc(src_buf: &[u8], dst_buf: &mut [u8]) -> Result<usize> {
     };
 
     match dst_len == 0 {
-        true => Err("Error in LZ4_compress_HC"),
+        true => Err(String::from("Error in LZ4_compress_HC")),
         false => Ok(dst_len as usize),
     }
 }
@@ -66,7 +66,7 @@ pub fn decompress_safe(src_buf: &[u8], dst_buf: &mut [u8]) -> Result<usize> {
     };
 
     match dst_len < 0 {
-        true => Err("Error in LZ4_decompress_safe"),
+        true => Err(String::from("Error in LZ4_decompress_safe")),
         false => Ok(dst_len as usize),
     }
 }

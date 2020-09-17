@@ -4,7 +4,7 @@ version = "0.1.1"
 authors = ["Alessandro Motta <alessandro.motta@brain.mpg.de>"]
 
 [dependencies]
-lazy_static = "0.2"
+lazy_static = "1.4"
 
 [dependencies.wkwrap]
 path = "../rust"

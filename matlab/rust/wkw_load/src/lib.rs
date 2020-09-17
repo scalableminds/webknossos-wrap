@@ -10,12 +10,12 @@ use std::path::Path;
 mex_function!(nlhs, lhs, nrhs, rhs, {
     let rhs = match nrhs == 2 {
         true => slice::from_raw_parts(rhs, nrhs as usize),
-        false => return Err("Invalid number of input arguments")
+        false => return Err("Invalid number of input arguments".to_string())
     };
 
     let lhs = match nlhs == 1 {
         true => slice::from_raw_parts_mut(lhs, nlhs as usize),
-        false => return Err("Invalid number of output arguments")
+        false => return Err("Invalid number of output arguments".to_string())
     };
 
     let wkw_path = mx_array_to_str(rhs[0])?;

@@ -1,7 +1,7 @@
 import wkw
 import numpy as np
 import shutil
-from os import path
+from os import path, makedirs
 import pytest
 
 POSITION = (0, 0, 0)
@@ -291,18 +291,38 @@ def test_multiple_writes_and_reads():
 def test_big_read():
     data = np.ones((10, 10, 764), order="C", dtype=np.uint8)
     offset = np.array([0, 0, 640])
-    bottom = (2000, 2000, 2000)
-    mem_buffer = np.zeros(bottom, dtype=np.uint8, order="F")
+    bottom = (1200, 2000, 2000)
 
     with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dataset:
         dataset.write(offset, data)
-        mem_buffer[
-            offset[0] : offset[0] + data.shape[0],
-            offset[1] : offset[1] + data.shape[1],
-            offset[2] : offset[2] + data.shape[2],
-        ] = data
-        read_data = dataset.read((0, 0, 0), bottom)
-        assert np.all(read_data == mem_buffer)
+        read_data = dataset.read((0, 0, 0), bottom)[0]
+        assert np.all(
+            read_data[
+                offset[0] : (offset[0] + data.shape[0]),
+                offset[1] : (offset[1] + data.shape[1]),
+                offset[2] : (offset[2] + data.shape[2]),
+            ]
+            == 1
+        )
+        assert np.count_nonzero(read_data[: offset[0], :, :]) == 0
+        assert np.count_nonzero(read_data[offset[0] + data.shape[0] :, :, :]) == 0
+        assert np.count_nonzero(read_data[:, : offset[1], :]) == 0
+        assert np.count_nonzero(read_data[:, offset[1] + data.shape[1] :, :]) == 0
+        assert np.count_nonzero(read_data[:, :, : offset[2]]) == 0
+        assert np.count_nonzero(read_data[:, :, offset[2] + data.shape[2] :]) == 0
+
+
+def test_invalid_dataset():
+    with pytest.raises(wkw.wkw.WKWException) as excinfo:
+        with wkw.Dataset.open("/path/does/not/exist") as dataset:
+            pass
+    print(excinfo.value)
+
+    with pytest.raises(wkw.wkw.WKWException) as excinfo:
+        makedirs("tests/tmp/exists", exist_ok=True)
+        with wkw.Dataset.open("tests/tmp/exists") as dataset:
+            pass
+    print(excinfo.value)
 
 
 def generate_test_data(dtype, size=SIZE, order="C"):

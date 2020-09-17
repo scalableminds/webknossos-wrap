@@ -18,7 +18,7 @@ impl Box3 {
     pub fn new(min: Vec3, max: Vec3) -> Result<Box3> {
         match min < (max + 1) {
             true => Ok(Box3 { min: min, max: max }),
-            false => Err("Minimum and maximum are in conflict"),
+            false => Err(String::from("Minimum and maximum are in conflict")),
         }
     }
 

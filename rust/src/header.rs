@@ -107,7 +107,7 @@ impl Header {
         let mut buf = [0u8; 16];
 
         let mut header = match file.read_exact(&mut buf) {
-            Err(_) => return Err("Could not read raw header"),
+            Err(_) => return Err(String::from("Could not read raw header")),
             Ok(_) => Self::from_bytes(buf)?,
         };
 
@@ -127,7 +127,7 @@ impl Header {
 
     pub fn write(&self, file: &mut fs::File) -> Result<()> {
         if file.write_all(&self.to_bytes()).is_err() {
-            return Err("Could not write header");
+            return Err(String::from("Could not write header"));
         }
 
         match self.jump_table {
@@ -156,7 +156,7 @@ impl Header {
 
         match result {
             Ok(_) => Ok(jump_table.into_boxed_slice()),
-            Err(_) => Err("Could not read jump table"),
+            Err(_) => Err(String::from("Could not read jump table")),
         }
     }
 
@@ -174,13 +174,13 @@ impl Header {
 
         match result {
             Ok(_) => Ok(()),
-            Err(_) => Err("Could not write jump table"),
+            Err(_) => Err(String::from("Could not write jump table")),
         }
     }
 
     pub fn block_offset(&self, block_idx: u64) -> Result<u64> {
         if block_idx >= self.file_vol() {
-            return Err("Block index out of bounds");
+            return Err(String::from("Block index out of bounds"));
         }
 
         let offset = match self.block_type {
@@ -215,7 +215,7 @@ impl Header {
                     let block_size = jump_table[block_idx] - jump_table[block_idx - 1];
                     Ok(block_size as usize)
                 } else {
-                    Err("Block index out of bounds")
+                    Err(String::from("Block index out of bounds"))
                 }
             }
         }
@@ -248,11 +248,11 @@ impl Header {
         let raw: HeaderRaw = unsafe { mem::transmute(buf) };
 
         if &raw.magic != "WKW".as_bytes() {
-            return Err("Sequence of magic bytes is invalid");
+            return Err(format!("Sequence of magic bytes {:?} is invalid", &raw.magic));
         }
 
         if raw.version != 1 {
-            return Err("Version number is invalid");
+            return Err(format!("Version number '{}' is invalid", raw.version));
         }
 
         let block_len_log2 = raw.per_dim_log2 & 0x0f;
@@ -262,7 +262,7 @@ impl Header {
             1 => BlockType::Raw,
             2 => BlockType::LZ4,
             3 => BlockType::LZ4HC,
-            _ => return Err("Block type is invalid"),
+            other => return Err(format!("Block type '{}' is invalid", other)),
         };
 
         let voxel_type = match raw.voxel_type {
@@ -276,7 +276,7 @@ impl Header {
             8 => VoxelType::I16,
             9 => VoxelType::I32,
             10 => VoxelType::I64,
-            _ => return Err("Voxel type is invalid"),
+            other => return Err(format!("Voxel type '{}' is invalid", other)),
         };
 
         Ok(Header {

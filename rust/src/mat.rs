@@ -23,11 +23,11 @@ impl<'a> Mat<'a> {
         let numel = shape.x as usize * shape.y as usize * shape.z as usize;
         let expected_len = numel * voxel_size;
         if data.len() != expected_len {
-            return Err("Length of slice does not match expected size");
+            return Err(format!("Length of slice does not match expected size {} != {}", data.len(), expected_len));
         }
 
         if voxel_size % voxel_type.size() != 0 {
-            return Err("Voxel size must be a multiple of voxel type size");
+            return Err(format!("Voxel size must be a multiple of voxel type size {} % {} != 0", voxel_size, voxel_type.size()));
         }
 
         Ok(Mat {
@@ -63,16 +63,16 @@ impl<'a> Mat<'a> {
 
     pub fn copy_as_fortran_order(&self, buffer: &mut Mat, src_bbox: Box3) -> Result<()> {
         if !self.data_in_c_order {
-            return Err("Mat is already in fortran order");
+            return Err(String::from("Mat is already in fortran order"));
         }
         if self.voxel_size != buffer.voxel_size {
-            return Err("Matrices mismatch in voxel size");
+            return Err(format!("Matrices mismatch in voxel size {} != {}", self.voxel_size, buffer.voxel_size));
         }
         if self.voxel_type != buffer.voxel_type {
-            return Err("Matrices mismatch in voxel type");
+            return Err(format!("Matrices mismatch in voxel type {:?} != {:?}", self.voxel_type, buffer.voxel_type));
         }
         if self.shape != buffer.shape {
-            return Err("Matrices mismatch in shape");
+            return Err(format!("Matrices mismatch in shape {:?} != {:?}", self.shape, buffer.shape));
         }
 
         let buffer_data = buffer.as_mut_slice();
@@ -125,7 +125,7 @@ impl<'a> Mat<'a> {
         intermediate_buffer: &mut Mat,
     ) -> Result<()> {
         if self.data_in_c_order {
-            return Err("copy_from_order_agnostic has to be called on a fortran order buffer.");
+            return Err(String::from("copy_from_order_agnostic has to be called on a fortran order buffer."));
         }
 
         if src.data_in_c_order {
@@ -140,19 +140,19 @@ impl<'a> Mat<'a> {
     pub fn copy_from(&mut self, dst_pos: Vec3, src: &Mat, src_box: Box3) -> Result<()> {
         // make sure that matrices are matching
         if self.voxel_size != src.voxel_size {
-            return Err("Matrices mismatch in voxel size");
+            return Err(format!("Matrices mismatch in voxel size {} != {}", self.voxel_size, src.voxel_size));
         }
         if self.voxel_type != src.voxel_type {
-            return Err("Matrices mismatch in voxel type");
+            return Err(format!("Matrices mismatch in voxel type {:?} != {:?}", self.voxel_type, src.voxel_type));
         }
         if !(src_box.max() < (src.shape + 1)) {
-            return Err("Reading out of bounds");
+            return Err(String::from("Reading out of bounds"));
         }
         if !(dst_pos + src_box.width() < (self.shape + 1)) {
-            return Err("Writing out of bounds");
+            return Err(String::from("Writing out of bounds"));
         }
         if self.data_in_c_order != src.data_in_c_order {
-            return Err("Source and destination has to be the same order");
+            return Err(String::from("Source and destination has to be the same order"));
         }
 
         let length = src_box.width();

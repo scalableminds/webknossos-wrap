@@ -9,7 +9,7 @@ use std::path::Path;
 unsafe fn new(nrhs: c_int, rhs: *const MxArray) -> Result<()> {
     let rhs = match nrhs == 5 {
         true => slice::from_raw_parts(rhs, nrhs as usize),
-        false => return Err("Invalid number of input arguments")
+        false => return Err("Invalid number of input arguments".to_string())
     };
 
     let wkw_path = Path::new(mx_array_to_str(rhs[0])?);
@@ -46,7 +46,7 @@ unsafe fn new(nrhs: c_int, rhs: *const MxArray) -> Result<()> {
 unsafe fn compress(nrhs: c_int, rhs: *const MxArray) -> Result<()> {
     let rhs = match nrhs == 2 {
         true => slice::from_raw_parts(rhs, nrhs as usize),
-        false => return Err("Invalid number of input arguments")
+        false => return Err("Invalid number of input arguments".to_string())
     };
 
     let src_path = Path::new(mx_array_to_str(rhs[0])?);
@@ -60,13 +60,13 @@ unsafe fn compress(nrhs: c_int, rhs: *const MxArray) -> Result<()> {
 
 mex_function!(_nlhs, _lhs, nrhs, rhs, {
     let command = match nrhs < 1 {
-        true => Err("Not enough input arguments"),
+        true => Err("Not enough input arguments".to_string()),
         false => mx_array_to_str(*rhs)
     }?;
 
     match command {
         "new" => new(nrhs - 1, rhs.offset(1)),
         "compress" => compress(nrhs - 1, rhs.offset(1)),
-        _ => Err("Unknown command")
+        _ => Err("Unknown command".to_string())
     }
 });

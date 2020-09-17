@@ -1,3 +1,3 @@
 use std::result;
 
-pub type Result<T> = result::Result<T, &'static str>;
+pub type Result<T> = result::Result<T, String>;
