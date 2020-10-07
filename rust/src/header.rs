@@ -192,7 +192,7 @@ impl Header {
                 if block_idx == 0 {
                     self.data_offset
                 } else {
-                    let ref jump_table = *self.jump_table.as_ref().unwrap();
+                    let jump_table = &*self.jump_table.as_ref().unwrap();
                     jump_table[block_idx as usize - 1]
                 }
             }
@@ -205,7 +205,7 @@ impl Header {
         match self.block_type {
             BlockType::Raw => Ok(self.block_size() as usize),
             BlockType::LZ4 | BlockType::LZ4HC => {
-                let ref jump_table = *self.jump_table.as_ref().unwrap();
+                let jump_table = &*self.jump_table.as_ref().unwrap();
 
                 if block_idx == 0 {
                     let block_size = jump_table[0] - self.data_offset;
@@ -247,7 +247,7 @@ impl Header {
     fn from_bytes(buf: [u8; 16]) -> Result<Header> {
         let raw: HeaderRaw = unsafe { mem::transmute(buf) };
 
-        if &raw.magic != "WKW".as_bytes() {
+        if &raw.magic != b"WKW" {
             return Err(format!("Sequence of magic bytes {:?} is invalid", &raw.magic));
         }
 
@@ -281,10 +281,10 @@ impl Header {
 
         Ok(Header {
             version: raw.version,
-            block_len_log2: block_len_log2,
-            file_len_log2: file_len_log2,
-            block_type: block_type,
-            voxel_type: voxel_type,
+            block_len_log2,
+            file_len_log2,
+            block_type,
+            voxel_type,
             voxel_size: raw.voxel_size,
             data_offset: raw.data_offset,
             jump_table: None,
@@ -297,7 +297,7 @@ impl Header {
         let mut raw = HeaderRaw {
             magic: [0u8; 3],
             version: self.version,
-            per_dim_log2: per_dim_log2,
+            per_dim_log2,
             block_type: 1u8 + self.block_type as u8,
             voxel_type: 1u8 + self.voxel_type as u8,
             voxel_size: self.voxel_size,
@@ -305,7 +305,7 @@ impl Header {
         };
 
         // set magic bytes
-        raw.magic.copy_from_slice("WKW".as_bytes());
+        raw.magic.copy_from_slice(b"WKW");
 
         // convert to bytes
         unsafe { mem::transmute::<HeaderRaw, [u8; 16]>(raw) }
