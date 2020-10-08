@@ -8,7 +8,7 @@ pub struct Dataset {
     header: Header,
 }
 
-static HEADER_FILE_NAME: &'static str = "header.wkw";
+static HEADER_FILE_NAME: &str = "header.wkw";
 
 impl Dataset {
     pub fn new(root: &Path) -> Result<Dataset> {
@@ -21,7 +21,7 @@ impl Dataset {
 
         Ok(Dataset {
             root: root.to_owned(),
-            header: header,
+            header,
         })
     }
 

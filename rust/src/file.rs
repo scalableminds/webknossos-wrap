@@ -23,8 +23,8 @@ impl File {
         };
 
         File {
-            file: file,
-            header: header,
+            file,
+            header,
             block_idx: None,
             disk_block_buf: block_buf,
         }
@@ -244,8 +244,7 @@ impl File {
             BlockType::LZ4 | BlockType::LZ4HC => {
                 let last_block_idx = self.header.file_vol() - 1;
                 let jump_table = self.header.jump_table.as_ref().unwrap();
-                let size = jump_table[last_block_idx as usize];
-                size
+                jump_table[last_block_idx as usize]
             }
         };
 
@@ -331,7 +330,7 @@ impl File {
         // write data
         self.file
             .write_all(&buf_lz4[..len_lz4])
-            .or(Err(String::from("Could not write LZ4 block")))?;
+            .or(Err("Could not write LZ4 block"))?;
 
         // update jump table
         let jump_entry = self
@@ -357,7 +356,7 @@ impl File {
         // read compressed block
         self.file
             .read_exact(buf_lz4)
-            .or(Err(String::from("Error while reading LZ4 block")))?;
+            .or(Err("Error while reading LZ4 block"))?;
 
         // decompress block
         let byte_written = lz4::decompress_safe(buf_lz4, buf)?;

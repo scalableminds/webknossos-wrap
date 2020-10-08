@@ -31,11 +31,11 @@ impl<'a> Mat<'a> {
         }
 
         Ok(Mat {
-            data: data,
-            shape: shape,
-            voxel_size: voxel_size,
-            voxel_type: voxel_type,
-            data_in_c_order: data_in_c_order,
+            data,
+            shape,
+            voxel_size,
+            voxel_type,
+            data_in_c_order,
         })
     }
 
@@ -92,7 +92,7 @@ impl<'a> Mat<'a> {
             x_length * y_length * self.voxel_size,
         ];
 
-        fn linearize(x: usize, y: usize, z: usize, stride: &Vec<usize>) -> isize {
+        fn linearize(x: usize, y: usize, z: usize, stride: &[usize]) -> isize {
             (x * stride[0] + y * stride[1] + z * stride[2]) as isize
         }
         let src_ptr = self.data.as_ptr();
@@ -186,8 +186,8 @@ impl<'a> Mat<'a> {
             * self.voxel_size) as isize;
 
         unsafe {
-            let mut src_ptr = src.data.as_ptr().offset(src.offset(src_box.min()) as isize);
-            let mut dst_ptr = self.data.as_mut_ptr().offset(self.offset(dst_pos) as isize);
+            let mut src_ptr = src.data.as_ptr().add(src.offset(src_box.min()));
+            let mut dst_ptr = self.data.as_mut_ptr().add(self.offset(dst_pos));
 
             for _ in 0..unified_length.z {
                 let mut src_ptr_cur = src_ptr;

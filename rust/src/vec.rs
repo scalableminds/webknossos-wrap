@@ -17,7 +17,7 @@ pub struct Box3 {
 impl Box3 {
     pub fn new(min: Vec3, max: Vec3) -> Result<Box3> {
         match min < (max + 1) {
-            true => Ok(Box3 { min: min, max: max }),
+            true => Ok(Box3 { min, max }),
             false => Err(String::from("Minimum and maximum are in conflict")),
         }
     }
@@ -48,7 +48,7 @@ impl From<Vec3> for Box3 {
     fn from(max: Vec3) -> Box3 {
         Box3 {
             min: Vec3::from(0u32),
-            max: max,
+            max,
         }
     }
 }
