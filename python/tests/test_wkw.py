@@ -288,6 +288,20 @@ def test_multiple_writes_and_reads():
             assert np.all(mem_buffer == read_data)
 
 
+def test_multiple_writes_and_reads2():
+
+    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8, num_channels=3)) as dataset:
+        offset = (0, 0, 10)
+        data_shape = (3, 1000, 1000, 100)
+        order = "C"
+        data = generate_test_data(np.uint8, list(data_shape), order)
+        print("%d bytes" % (data.size * data.itemsize))
+        dataset.write(offset, data)
+
+        read_data = dataset.read(offset, data_shape[1:])
+        assert np.all(data == read_data)
+
+
 def test_big_read():
     data = np.ones((10, 10, 764), order="C", dtype=np.uint8)
     offset = np.array([0, 0, 640])
