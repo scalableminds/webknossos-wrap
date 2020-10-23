@@ -290,7 +290,9 @@ def test_multiple_writes_and_reads():
 
 def test_mulit_channel_column_major_order():
 
-    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8, num_channels=3)) as dataset:
+    with wkw.Dataset.create(
+        "tests/tmp", wkw.Header(np.uint8, num_channels=3)
+    ) as dataset:
         offset = (30, 20, 10)
         data_shape = (3, 100, 200, 300)
         order = "C"
