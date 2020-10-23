@@ -113,19 +113,19 @@ impl<'a> Mat<'a> {
         let to = src_bbox.max();
 
         // Do continuous read in z. Last dim in Row-Major is continuous.
-        for channel in 0..num_channel {
-            for x in from.x as usize..to.x as usize {
-                for y in from.y as usize..to.y as usize {
-                    for z in from.z as usize..to.z as usize {
-                        let row_major_index = linearize(channel, x, y, z, &row_major_stride);
-                        let column_major_index = linearize(channel, x, y, z, &column_major_stride);
-                        unsafe {
-                            //println!("x {}, y {}, z {}, channel {}, column_major_index {}, row_major_index {}", x, y, z, channel, column_major_index, row_major_index);
-                            //println!("cur_src_ptr: {}", *src_ptr.offset(row_major_index));
-                            //println!("cur_dst_ptr: {}", *dst_ptr.offset(column_major_index));
-                            ptr::copy_nonoverlapping(src_ptr.offset(row_major_index), dst_ptr.offset(column_major_index), item_size);
-                        }
+        let stripe_len = item_size * num_channel;
+        for x in from.x as usize..to.x as usize {
+            for y in from.y as usize..to.y as usize {
+                for z in from.z as usize..to.z as usize {
+                    let row_major_index = linearize(0, x, y, z, &row_major_stride);
+                    let column_major_index = linearize(0, x, y, z, &column_major_stride);
+                    unsafe {
+                        //println!("x {}, y {}, z {}, channel {}, column_major_index {}, row_major_index {}", x, y, z, 0, column_major_index, row_major_index);
+                        //println!("cur_src_ptr: {}", *src_ptr.offset(row_major_index));
+                        //println!("cur_dst_ptr: {}", *dst_ptr.offset(column_major_index));
+                        ptr::copy_nonoverlapping(src_ptr.offset(row_major_index), dst_ptr.offset(column_major_index), stripe_len);
                     }
+
                 }
             }
         }
