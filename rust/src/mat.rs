@@ -144,8 +144,12 @@ impl<'a> Mat<'a> {
         }
 
         if src.data_in_c_order {
-            //intermediate_buffer.copy_from(dst_pos, src, src_box)?;
-            intermediate_buffer.copy_from_and_put_channels_last(dst_pos, src, src_box)?;
+            let num_channel = self.voxel_size / self.voxel_type.size();
+            if num_channel == 1 {
+                intermediate_buffer.copy_from(dst_pos, src, src_box)?;
+            } else {
+                intermediate_buffer.copy_from_and_put_channels_last(dst_pos, src, src_box)?;
+            }
             let dst_bbox = Box3::new(dst_pos, dst_pos + src_box.width())?;
             intermediate_buffer.copy_as_fortran_order(self, dst_bbox)
         } else {
