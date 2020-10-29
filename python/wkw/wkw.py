@@ -209,7 +209,6 @@ class Dataset:
         def is_contiguous(data):
             return data.flags["F_CONTIGUOUS"] or data.flags["C_CONTIGUOUS"]
 
-        # the row-major handling of the rust lib cannot handle num_channels > 1
         if not is_contiguous(data):
             data = np.asfortranarray(data)
 

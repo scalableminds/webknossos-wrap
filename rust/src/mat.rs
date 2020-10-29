@@ -11,6 +11,10 @@ pub struct Mat<'a> {
     pub data_in_c_order: bool,
 }
 
+pub fn linearize(channel: usize, x: usize, y: usize, z: usize, stride: &[usize]) -> isize {
+    (channel * stride[0] + x * stride[1] + y * stride[2] + z * stride[3]) as isize
+}
+
 impl<'a> Mat<'a> {
     pub fn new(
         data: &mut [u8],
@@ -96,10 +100,6 @@ impl<'a> Mat<'a> {
             x_length * y_length * self.voxel_size,
         ];
 
-        fn linearize(channel: usize, x: usize, y: usize, z: usize, stride: &[usize]) -> isize {
-            (channel * stride[0] + x * stride[1] + y * stride[2] + z * stride[3]) as isize
-        }
-
         let src_ptr = self.data.as_ptr();
         let dst_ptr = buffer_data.as_mut_ptr();
 
@@ -137,6 +137,7 @@ impl<'a> Mat<'a> {
         if src.data_in_c_order {
             let num_channel = self.voxel_size / self.voxel_type.size();
             if num_channel == 1 {
+                // if the data has only one channel, copy_from is a bit faster because it copies more items simultaneously
                 intermediate_buffer.copy_from(dst_pos, src, src_box)?;
             } else {
                 // putting the channels to the back avoids that the indices (in copy_as_fortran_order) make too big jumps
@@ -235,8 +236,8 @@ impl<'a> Mat<'a> {
         if !(dst_pos + src_box.width() < (self.shape + 1)) {
             return Err(String::from("Writing out of bounds"));
         }
-        if self.data_in_c_order != src.data_in_c_order {
-            return Err(String::from("Source and destination has to be the same order"));
+        if !(self.data_in_c_order & src.data_in_c_order) {
+            return Err(String::from("Source and destination have to be in c-order"));
         }
 
         let length = src_box.width();
@@ -257,10 +258,6 @@ impl<'a> Mat<'a> {
             self.shape.z as usize * self.voxel_size,
             self.voxel_size,
         ];
-
-        fn linearize(channel: usize, x: usize, y: usize, z: usize, stride: &[usize]) -> isize {
-            (channel * stride[0] + x * stride[1] + y * stride[2] + z * stride[3]) as isize
-        }
 
         unsafe {
             let src_ptr = src.data.as_ptr().add(src.offset(src_box.min()) / num_channel);
