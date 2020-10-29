@@ -288,7 +288,7 @@ def test_multiple_writes_and_reads():
             assert np.all(mem_buffer == read_data)
 
 
-def test_mulit_channel_column_major_order():
+def test_multi_channel_column_major_order():
 
     with wkw.Dataset.create(
         "tests/tmp", wkw.Header(np.uint8, num_channels=3)
