@@ -288,6 +288,21 @@ def test_multiple_writes_and_reads():
             assert np.all(mem_buffer == read_data)
 
 
+def test_multi_channel_column_major_order():
+
+    with wkw.Dataset.create(
+        "tests/tmp", wkw.Header(np.uint8, num_channels=3)
+    ) as dataset:
+        offset = (30, 20, 10)
+        data_shape = (3, 100, 200, 300)
+        order = "C"
+        data = generate_test_data(np.uint8, list(data_shape), order)
+        dataset.write(offset, data)
+
+        read_data = dataset.read(offset, data_shape[1:])
+        assert np.all(data == read_data)
+
+
 def test_big_read():
     data = np.ones((10, 10, 764), order="C", dtype=np.uint8)
     offset = np.array([0, 0, 640])

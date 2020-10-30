@@ -11,6 +11,10 @@ pub struct Mat<'a> {
     pub data_in_c_order: bool,
 }
 
+pub fn linearize(channel: usize, x: usize, y: usize, z: usize, stride: &[usize]) -> isize {
+    (channel * stride[0] + x * stride[1] + y * stride[2] + z * stride[3]) as isize
+}
+
 impl<'a> Mat<'a> {
     pub fn new(
         data: &mut [u8],
@@ -79,38 +83,40 @@ impl<'a> Mat<'a> {
 
         let x_length = self.shape.x as usize;
         let y_length = self.shape.y as usize;
-        let z_length = self.shape.z as usize;
+        let num_channel = self.voxel_size / self.voxel_type.size();
+        let item_size = self.voxel_size / num_channel;
 
         let row_major_stride: Vec<usize> = vec![
-            z_length * y_length * self.voxel_size,
-            z_length * self.voxel_size,
+            item_size,
+            y_length * x_length * self.voxel_size,
+            y_length * self.voxel_size,
             self.voxel_size,
         ];
+
         let column_major_stride: Vec<usize> = vec![
+            item_size,
             self.voxel_size,
             x_length * self.voxel_size,
             x_length * y_length * self.voxel_size,
         ];
 
-        fn linearize(x: usize, y: usize, z: usize, stride: &[usize]) -> isize {
-            (x * stride[0] + y * stride[1] + z * stride[2]) as isize
-        }
         let src_ptr = self.data.as_ptr();
         let dst_ptr = buffer_data.as_mut_ptr();
 
         let from = src_bbox.min();
         let to = src_bbox.max();
+
         // Do continuous read in z. Last dim in Row-Major is continuous.
+        let stripe_len = item_size * num_channel;
         for x in from.x as usize..to.x as usize {
             for y in from.y as usize..to.y as usize {
                 for z in from.z as usize..to.z as usize {
-                    let row_major_index = linearize(x, y, z, &row_major_stride);
-                    let column_major_index = linearize(x, y, z, &column_major_stride);
+                    let row_major_index = linearize(0, x, y, z, &row_major_stride);
+                    let column_major_index = linearize(0, x, y, z, &column_major_stride);
                     unsafe {
-                        let cur_src_ptr = src_ptr.offset(row_major_index);
-                        let cur_dst_ptr = dst_ptr.offset(column_major_index);
-                        ptr::copy_nonoverlapping(cur_src_ptr, cur_dst_ptr, self.voxel_size);
+                        ptr::copy_nonoverlapping(src_ptr.offset(row_major_index), dst_ptr.offset(column_major_index), stripe_len);
                     }
+
                 }
             }
         }
@@ -129,7 +135,14 @@ impl<'a> Mat<'a> {
         }
 
         if src.data_in_c_order {
-            intermediate_buffer.copy_from(dst_pos, src, src_box)?;
+            let num_channel = self.voxel_size / self.voxel_type.size();
+            if num_channel == 1 {
+                // if the data has only one channel, copy_from is a bit faster because it copies more items simultaneously
+                intermediate_buffer.copy_from(dst_pos, src, src_box)?;
+            } else {
+                // putting the channels to the back avoids that the indices (in copy_as_fortran_order) make too big jumps
+                intermediate_buffer.copy_from_and_put_channels_last(dst_pos, src, src_box)?;
+            }
             let dst_bbox = Box3::new(dst_pos, dst_pos + src_box.width())?;
             intermediate_buffer.copy_as_fortran_order(self, dst_bbox)
         } else {
@@ -204,6 +217,62 @@ impl<'a> Mat<'a> {
 
                 src_ptr = src_ptr.offset(src_outer_offset);
                 dst_ptr = dst_ptr.offset(dst_outer_offset);
+            }
+        }
+        Ok(())
+    }
+
+    pub fn copy_from_and_put_channels_last(&mut self, dst_pos: Vec3, src: &Mat, src_box: Box3) -> Result<()> {
+        // make sure that matrices are matching
+        if self.voxel_size != src.voxel_size {
+            return Err(format!("Matrices mismatch in voxel size {} != {}", self.voxel_size, src.voxel_size));
+        }
+        if self.voxel_type != src.voxel_type {
+            return Err(format!("Matrices mismatch in voxel type {:?} != {:?}", self.voxel_type, src.voxel_type));
+        }
+        if !(src_box.max() < (src.shape + 1)) {
+            return Err(String::from("Reading out of bounds"));
+        }
+        if !(dst_pos + src_box.width() < (self.shape + 1)) {
+            return Err(String::from("Writing out of bounds"));
+        }
+        if !(self.data_in_c_order & src.data_in_c_order) {
+            return Err(String::from("Source and destination have to be in c-order"));
+        }
+
+        let length = src_box.width();
+
+        let num_channel = self.voxel_size / self.voxel_type.size();
+        let item_size = self.voxel_size / num_channel;
+
+        let channel_last_stride: Vec<usize> = vec![
+            (src.shape.z * src.shape.y * src.shape.x) as usize * item_size,
+            (src.shape.z * src.shape.y) as usize * item_size,
+            src.shape.z as usize * item_size,
+            item_size,
+        ];
+
+        let channel_first_stride: Vec<usize> = vec![
+            item_size,
+            (self.shape.z * self.shape.y) as usize * self.voxel_size,
+            self.shape.z as usize * self.voxel_size,
+            self.voxel_size,
+        ];
+
+        unsafe {
+            let src_ptr = src.data.as_ptr().add(src.offset(src_box.min()) / num_channel);
+            let dst_ptr = self.data.as_mut_ptr().add(self.offset(dst_pos));
+
+            for channel in 0..num_channel {
+                for x in 0..length.x {
+                    for y in 0..length.y {
+                        for z in 0..length.z {
+                            let channel_last_index = linearize(channel, x as usize, y as usize, z as usize, &channel_last_stride);
+                            let channel_first_index = linearize(channel, x as usize, y as usize, z as usize, &channel_first_stride);
+                            ptr::copy_nonoverlapping(src_ptr.offset(channel_last_index), dst_ptr.offset(channel_first_index), item_size);
+                        }
+                    }
+                }
             }
         }
         Ok(())
