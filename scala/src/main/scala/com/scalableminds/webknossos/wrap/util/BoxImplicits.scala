@@ -1,6 +1,3 @@
-/*
-* Copyright (C) 2011-2017 Scalable minds UG (haftungsbeschränkt) & Co. KG. <http://scm.io>
-*/
 package com.scalableminds.webknossos.wrap.util
 
 import net.liftweb.common.{Box, Empty, Full}

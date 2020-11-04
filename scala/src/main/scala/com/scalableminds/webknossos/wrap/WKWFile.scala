@@ -1,12 +1,10 @@
-/*
- * Copyright (C) 2011-2017 scalableminds UG (haftungsbeschränkt) & Co. KG. <http://scm.io>
- */
 package com.scalableminds.webknossos.wrap
 
 import java.io._
 import java.nio.channels.FileChannel
 import java.nio.file.{Files, Paths, StandardCopyOption}
 
+import org.apache.commons.io.IOUtils
 import com.google.common.io.{LittleEndianDataInputStream => DataInputStream}
 import com.newrelic.api.agent.NewRelic
 import com.scalableminds.webknossos.wrap.util.ExtendedTypes._
@@ -303,8 +301,7 @@ object WKWFile extends WKWCompressionHelper {
         header <- WKWHeader(dataStream, true)
       } yield {
         val blockIterator = header.blockLengths.flatMap { blockLength =>
-          val data = Array.ofDim[Byte](blockLength)
-          dataStream.read(data)
+          val data: Array[Byte] = IOUtils.toByteArray(dataStream, blockLength)
           if (header.isCompressed) decompressBlock(header.blockType, header.numBytesPerBlock)(data) else Full(data)
         }
         f(header, blockIterator)
