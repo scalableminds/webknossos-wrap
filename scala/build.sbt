@@ -21,12 +21,9 @@ publishArtifact in Test := false
 pomIncludeRepository := { _ => false }
 
 publishTo := {
-  val path =
-    if (isSnapshot.value)
-      "snapshots"
-    else
-      "releases"
-  Some("scm.io nexus repo" at "https://oss.sonatype.org/content/repositories/" + path)
+  val nexus = "https://oss.sonatype.org/"
+  if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
+  else Some("releases" at nexus + "service/local/staging/deploy/maven2")
 }
 
 organization := "com.scalableminds"
