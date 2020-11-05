@@ -117,24 +117,6 @@ only semantic.
 
 Decompression must produce valid raw blocks.
 
-## Usage
-
-### Scala Release Process
-
-#### Local Testing
-To test changes locally, run `sbt publishLocal`. The [current version] should already be bumped and marked as `SNAPSHOT`. Then adapt the dependency to webknossos-wrap to this version.
-
-#### Releasing a version to maven
-Specify the sonatype credentials in `~/.sbt/<sbt version>/sonatype.sbt`:
-```
-credentials += Credentials("Sonatype Nexus Repository Manager",
-       "oss.sonatype.org",
-       "<user>",
-       "<password>")
-```
-
-Then run `sbt release`. This increments the version automatically, publishes the build and adds git commits and tags. Push the git changes via `git push --follow-tags`.
-
 ## Credits
 * [Max Planck Institute for Brain Research](https://brain.mpg.de/)
   - Alessandro Motta
