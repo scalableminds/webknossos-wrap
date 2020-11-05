@@ -38,6 +38,8 @@ description := "A small library to load webknossos-wrap encoded files."
 
 homepage := Some(url("https://github.com/scalableminds/webknossos-wrap"))
 
+licenses := Seq("AGPL-3.0" -> url("https://www.gnu.org/licenses/agpl-3.0.html"))
+
 scmInfo := Some(ScmInfo(
   url("https://github.com/scalableminds/webknossos-wrap"),
   "https://github.com/scalableminds/webknossos-wrap.git"))
@@ -56,6 +58,8 @@ libraryDependencies ++= Seq(
   "org.apache.logging.log4j" % "log4j-api" % "2.0-beta9",
   "org.apache.logging.log4j" % "log4j-core" % "2.0-beta9"
 )
+
+releasePublishArtifactsAction := PgpKeys.publishSigned.value
 
 val root = (project in file("."))
   .enablePlugins(BuildInfoPlugin)
