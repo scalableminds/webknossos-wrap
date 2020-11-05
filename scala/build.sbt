@@ -44,6 +44,16 @@ scmInfo := Some(ScmInfo(
   url("https://github.com/scalableminds/webknossos-wrap"),
   "https://github.com/scalableminds/webknossos-wrap.git"))
 
+pomExtra := (
+  <developers>
+    <developer>
+      <id>fm3</id>
+      <name>Florian M</name>
+      <url>https://github.com/fm3</url>
+    </developer>
+  </developers>
+)
+
 libraryDependencies ++= Seq(
   "com.google.guava" % "guava" % "21.0",
   "com.jsuereth" %% "scala-arm" % "2.0",
