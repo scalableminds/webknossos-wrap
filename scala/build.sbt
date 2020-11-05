@@ -21,12 +21,9 @@ publishArtifact in Test := false
 pomIncludeRepository := { _ => false }
 
 publishTo := {
-  val path =
-    if (isSnapshot.value)
-      "snapshots"
-    else
-      "releases"
-  Some("scm.io nexus repo" at "https://oss.sonatype.org/content/repositories/" + path)
+  val nexus = "https://oss.sonatype.org/"
+  if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
+  else Some("releases" at nexus + "service/local/staging/deploy/maven2")
 }
 
 organization := "com.scalableminds"
@@ -41,9 +38,21 @@ description := "A small library to load webknossos-wrap encoded files."
 
 homepage := Some(url("https://github.com/scalableminds/webknossos-wrap"))
 
+licenses := Seq("AGPL-3.0" -> url("https://www.gnu.org/licenses/agpl-3.0.html"))
+
 scmInfo := Some(ScmInfo(
   url("https://github.com/scalableminds/webknossos-wrap"),
   "https://github.com/scalableminds/webknossos-wrap.git"))
+
+pomExtra := (
+  <developers>
+    <developer>
+      <id>fm3</id>
+      <name>Florian M</name>
+      <url>https://github.com/fm3</url>
+    </developer>
+  </developers>
+)
 
 libraryDependencies ++= Seq(
   "com.google.guava" % "guava" % "21.0",
@@ -55,9 +64,12 @@ libraryDependencies ++= Seq(
   "net.liftweb" % "lift-common_2.10" % "2.6-M3",
   "net.liftweb" % "lift-util_2.10" % "3.0-M1",
   "org.apache.commons" % "commons-lang3" % "3.1",
+  "commons-io" % "commons-io" % "2.4",
   "org.apache.logging.log4j" % "log4j-api" % "2.0-beta9",
   "org.apache.logging.log4j" % "log4j-core" % "2.0-beta9"
 )
+
+releasePublishArtifactsAction := PgpKeys.publishSigned.value
 
 val root = (project in file("."))
   .enablePlugins(BuildInfoPlugin)

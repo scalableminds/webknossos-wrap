@@ -1,10 +1,8 @@
-/*
- * Copyright (C) 2011-2017 scalableminds UG (haftungsbeschränkt) & Co. KG. <http://scm.io>
- */
 package com.scalableminds.webknossos.wrap
 
 import com.google.common.io.{LittleEndianDataInputStream => DataInputStream}
 import com.scalableminds.webknossos.wrap.util.{BoxImplicits, ResourceBox}
+import org.apache.commons.io.IOUtils
 import java.io._
 import java.nio.{ByteBuffer, ByteOrder}
 
@@ -120,8 +118,7 @@ object WKWHeader extends BoxImplicits {
   val currentVersion = 1
 
   def apply(dataStream: DataInputStream, readJumpTable: Boolean): Box[WKWHeader] = {
-    val magicByteBuffer: Array[Byte] = Array.ofDim[Byte](magicBytes.length)
-    dataStream.read(magicByteBuffer, 0, magicBytes.length)
+    val magicByteBuffer: Array[Byte] = IOUtils.toByteArray(dataStream, magicBytes.length)
     val version = dataStream.readUnsignedByte()
     val sideLengths = dataStream.readUnsignedByte()
     val numBlocksPerCubeDimension = 1 << (sideLengths >>> 4) // fileSideLength [higher nibble]

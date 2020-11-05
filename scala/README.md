@@ -6,17 +6,23 @@ Is a library for loading data stored on disk in the webKnossos wrap file format.
 ## How to build the library
 
 #### Development
-During development, the library should be published locally using
-
-	sbt publish-local
-
-The packages get placed in .ivy2/local/com/scalableminds. To reference the build in another project you need to specify the version, which is contained in the `version` file, in the build file of the dependent project.
+To test changes locally, run `sbt publishLocal`. The [current version] should already be bumped and marked as `SNAPSHOT`. Then adapt the dependency to webknossos-wrap to this version.
 
 #### Release
-To release a new version of the libraries to our internal maven repository, make sure to commit all changes before starting the release procedure. You can use the release script to publish the library
 
-	release 0.3.5
+- Specify the sonatype credentials in `~/.sbt/<sbt version>/sonatype.sbt`:
+```
+credentials += Credentials("Sonatype Nexus Repository Manager",
+       "oss.sonatype.org",
+       "<user>",
+       "<password>")
+```
 
-This will build the library, publish it, create a github tag and pushes this tag to the origin repository.
+- Make sure you have [sbt-pgp](https://github.com/sbt/sbt-pgp) up and running, and have an active and published gpg key.
+- Make sure all changes are committed locally
+- Run `sbt release`. This increments the version automatically, publishes the build to a temporary staging repository and adds git commits and tags.
+- Log in to [Sonatype Nexus](https://oss.sonatype.org) and close and release the newly created Staging Repository, compare [this guide](https://central.sonatype.org/pages/releasing-the-deployment.html).
+- After some delay (10min to 2h) the package should be synced to maven
+- If all is successful, push the git changes via `git push --follow-tags`.
 
 **Never release a version twice. This screws up all caches and may lead to build errors in the projects depending on the library!**
