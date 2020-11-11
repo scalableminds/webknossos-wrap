@@ -28,7 +28,7 @@ publishTo := {
 
 organization := "com.scalableminds"
 
-organizationName := "scalable minds UG (haftungsbeschränkt) & Co. KG"
+organizationName := "scalable minds GmbH"
 
 organizationHomepage := Some(url("http://scalableminds.com"))
 
@@ -38,7 +38,7 @@ description := "A small library to load webknossos-wrap encoded files."
 
 homepage := Some(url("https://github.com/scalableminds/webknossos-wrap"))
 
-licenses := Seq("AGPL-3.0" -> url("https://www.gnu.org/licenses/agpl-3.0.html"))
+licenses := Seq("MIT" -> url("https://github.com/scalableminds/webknossos-wrap/blob/master/LICENSE"))
 
 scmInfo := Some(ScmInfo(
   url("https://github.com/scalableminds/webknossos-wrap"),
