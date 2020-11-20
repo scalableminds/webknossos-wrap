@@ -127,4 +127,4 @@ Decompression must produce valid raw blocks.
   - Norman Rzepka
 
 # License
-AGPLv3
+MIT
