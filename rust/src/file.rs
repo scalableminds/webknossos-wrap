@@ -1,5 +1,5 @@
 use lz4;
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::io::{ErrorKind, Read, Seek, SeekFrom, Write};
 use std::{fs, path};
 use {BlockType, Box3, Header, Iter, Mat, Morton, Result, Vec3};
 
@@ -30,10 +30,22 @@ impl File {
         }
     }
 
-    pub fn open(path: &path::Path) -> Result<File> {
-        let mut file = fs::File::open(path).or(Err(format!("Could not open WKW file {:?}", path)))?;
+    /// Opens an existing WKW file.
+    ///
+    /// # Return values
+    /// * Ok(None) if the file does not exist,
+    /// * Ok(Some(File)) if the file exists and could be opened, or
+    /// * Err(Error) if the file exists, but could not be opened.
+    pub fn open_existing(path: &path::Path) -> Result<Option<File>> {
+        // NOTE(amotta): `open` defaults to read-only
+        let mut file = match fs::File::open(path) {
+            Err(ref err) if err.kind() == ErrorKind::NotFound => return Ok(None),
+            Err(_) => return Err(format!("Could not open {:?}", path)),
+            Ok(file) => file,
+        };
+
         let header = Header::read(&mut file)?;
-        Ok(Self::new(file, header))
+        Ok(Some(Self::new(file, header)))
     }
 
     pub(crate) fn open_or_create(path: &path::Path, header: &Header) -> Result<File> {
