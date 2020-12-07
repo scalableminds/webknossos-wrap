@@ -1,8 +1,10 @@
-import wkw
 import numpy as np
-import shutil
-from os import path, makedirs
+import os
 import pytest
+import shutil
+import wkw
+
+from os import path, makedirs
 
 POSITION = (0, 0, 0)
 SIZE = (32, 32, 32)
@@ -53,6 +55,28 @@ def test_empty_read():
 
         data = dataset.read((1, 1, 1), (0, 0, 0))
         assert data.shape == (1, 0, 0, 0)
+
+
+def test_read_from_missing_file():
+    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dset:
+        data = dset.read((1, 2, 3), (4, 5, 6))
+        assert data.shape == (1, 4, 5, 6)
+        assert not data.any()
+
+
+def test_read_from_inaccessible_file():
+    with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dset:
+        test_data = generate_test_data(dset.header.voxel_type)
+        dset.write(POSITION, test_data)
+
+        # HACKHACKHACK(amotta): Assumes that `POSITION` is in first file
+        os.chmod("tests/tmp/z0/y0/x0.wkw", 0o000)
+
+        with pytest.raises(wkw.wkw.WKWException) as excinfo:
+            dset.read(POSITION, test_data.shape[-3:])
+
+        # Restore permissions for clean-up
+        os.chmod("tests/tmp/z0/y0/x0.wkw", 0o600)
 
 
 def test_readwrite():
