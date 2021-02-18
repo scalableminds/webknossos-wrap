@@ -27,12 +27,19 @@ function box = wkwBoundingBox(wkwDir)
         fullfile(f.folder, f.name), ...
         wkwFiles, 'UniformOutput', false);
     
-    pattern = ['z(\d+)', filesep, 'y(\d+)', filesep, 'x(\d+)'];
-    coords = regexp(wkwFiles, pattern, 'tokens', 'once');
-    
-    coords = flip(cat(1, coords{:}), 2);
-    coords = cellfun(@str2double, coords);
+    coords = cell2mat(cellfun(@getCoords, ...
+        wkwFiles(:), 'UniformOutput', false));
     
     box = [min(coords, [], 1)', max(coords, [], 1)'];
     box = (box + [0, 1]) * voxelsPerFileDim + [1, 0];
+end
+
+function coords = getCoords(path)
+    coords = nan(1, 3);
+    
+    for dim = 1:numel(coords)
+       [path, coord] = fileparts(path);
+        assert(coord(1) == char(char('x') + (dim - 1)));
+        coords(dim) = str2double(coord(2:end));
+    end
 end
