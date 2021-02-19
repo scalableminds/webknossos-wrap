@@ -53,7 +53,7 @@ jobs:
           testing \
           bash -c "
             for PYBIN in /opt/python/{cp37-cp37m,cp38-cp38,cp39-cp39}/bin; do
-              echo --> \$PYBIN
+              echo '-->' \$PYBIN
               \$PYBIN/pip install /app/python/dist/wkw-*-py3-none-manylinux2014_x86_64.whl
               \$PYBIN/python -c 'import wkw; print(wkw.Dataset)'
             done"
