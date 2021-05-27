@@ -12,9 +12,9 @@ import net.liftweb.util.Helpers.tryo
 object BlockType extends Enumeration(1) {
   val Raw, LZ4, LZ4HC = Value
 
-  def isCompressed(blockType: BlockType.Value) = blockType == LZ4 || blockType == LZ4HC
+  def isCompressed(blockType: BlockType.Value): Boolean = blockType == LZ4 || blockType == LZ4HC
 
-  def isUncompressed(blockType: BlockType.Value) = blockType == Raw
+  def isUncompressed(blockType: BlockType.Value): Boolean = blockType == Raw
 }
 
 object VoxelType extends Enumeration(1) {
@@ -107,14 +107,14 @@ case class WKWHeader(
 object WKWHeader extends BoxImplicits {
 
   private def error(msg: String, expected: Any, actual: Any): String = {
-    s"""Error reading WKW header: ${msg} [expected: ${expected}, actual: ${actual}]."""
+    s"""Error reading WKW header: $msg [expected: $expected, actual: $actual]."""
   }
 
   private def error(msg: String): String = {
-    s"""Error reading WKW header: ${msg}."""
+    s"""Error reading WKW header: $msg."""
   }
 
-  val magicBytes = "WKW".getBytes
+  val magicBytes: Array[Byte] = "WKW".getBytes
   val currentVersion = 1
 
   def apply(dataStream: DataInputStream, readJumpTable: Boolean): Box[WKWHeader] = {
@@ -128,7 +128,7 @@ object WKWHeader extends BoxImplicits {
     val numBytesPerVoxel = dataStream.readUnsignedByte() // voxel-size
 
     for {
-      _ <- (magicByteBuffer.sameElements(magicBytes)) ?~! error("Invalid magic bytes", magicBytes, magicByteBuffer)
+      _ <- magicByteBuffer.sameElements(magicBytes) ?~! error("Invalid magic bytes", magicBytes, magicByteBuffer)
       _ <- (version == currentVersion) ?~! error("Unknown version", currentVersion, version)
       // We only support fileSideLengths < 1024, so that the total number of blocks per file fits in an Int.
       _ <- (numBlocksPerCubeDimension < 1024) ?~! error("Specified fileSideLength not supported", numBlocksPerCubeDimension, "[0, 1024)")
@@ -151,7 +151,11 @@ object WKWHeader extends BoxImplicits {
     ResourceBox.manage(new DataInputStream(new BufferedInputStream(new FileInputStream(file))))(apply(_, readJumpTable))
   }
 
-  def apply(numBlocksPerCubeDimension: Int, numVoxelsPerBlockDimension: Int, blockType: BlockType.Value, voxelType: VoxelType.Value, numChannels: Int) = {
+  def apply(numBlocksPerCubeDimension: Int,
+            numVoxelsPerBlockDimension: Int,
+            blockType: BlockType.Value,
+            voxelType: VoxelType.Value,
+            numChannels: Int): WKWHeader = {
     new WKWHeader(
       currentVersion,
       numBlocksPerCubeDimension,

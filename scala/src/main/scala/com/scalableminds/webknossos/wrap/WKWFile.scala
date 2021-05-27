@@ -6,7 +6,6 @@ import java.nio.file.{Files, Paths, StandardCopyOption}
 
 import org.apache.commons.io.IOUtils
 import com.google.common.io.{LittleEndianDataInputStream => DataInputStream}
-import com.newrelic.api.agent.NewRelic
 import com.scalableminds.webknossos.wrap.util.ExtendedTypes._
 import com.scalableminds.webknossos.wrap.util.{BoxImplicits, ResourceBox}
 import net.jpountz.lz4.LZ4Factory
@@ -54,10 +53,10 @@ trait WKWMortonHelper {
 trait WKWCompressionHelper extends BoxImplicits {
 
   protected def error(msg: String): String =
-    s"""Error processing WKW file: ${msg}."""
+    s"""Error processing WKW file: $msg."""
 
   protected def error(msg: String, expected: Any, actual: Any): String =
-    s"""Error processing WKW file: ${msg} [expected: ${expected}, actual: ${actual}]."""
+    s"""Error processing WKW file: $msg [expected: $expected, actual: $actual]."""
 
   private lazy val lz4Decompressor = LZ4Factory.nativeInstance().fastDecompressor()
 
@@ -66,7 +65,6 @@ trait WKWCompressionHelper extends BoxImplicits {
   private lazy val lz4HighCompressor = LZ4Factory.nativeInstance().highCompressor()
 
   protected def compressBlock(targetBlockType: BlockType.Value)(rawBlock: Array[Byte]): Box[Array[Byte]] = {
-    val t = System.currentTimeMillis
     val result = targetBlockType match {
       case BlockType.LZ4 | BlockType.LZ4HC =>
         val compressor = if (targetBlockType == BlockType.LZ4) lz4FastCompressor else lz4HighCompressor
@@ -80,13 +78,10 @@ trait WKWCompressionHelper extends BoxImplicits {
       case _ =>
         Failure(error("Invalid targetBlockType for compression"))
     }
-    NewRelic.recordResponseTimeMetric(s"Custom/WebknossosWrap/block-compress-time-${targetBlockType}", System.currentTimeMillis - t)
     result
   }
 
   protected def decompressBlock(sourceBlockType: BlockType.Value, numBytesPerBlock: Int)(compressedBlock: Array[Byte]): Box[Array[Byte]] = {
-    val t = System.currentTimeMillis
-
     val result = sourceBlockType match {
       case BlockType.LZ4 | BlockType.LZ4HC =>
         val rawBlock: Array[Byte] = Array.ofDim[Byte](numBytesPerBlock)
@@ -101,14 +96,13 @@ trait WKWCompressionHelper extends BoxImplicits {
       case _ =>
         Failure(error("Invalid sourceBlockType for decompression"))
     }
-    NewRelic.recordResponseTimeMetric(s"Custom/WebknossosWrap/block-decompress-time-${sourceBlockType}", System.currentTimeMillis - t)
     result
   }
 }
 
 class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: RandomAccessFile) extends WKWCompressionHelper with WKWMortonHelper {
 
-  private val channel = underlyingFile.getChannel()
+  private val channel = underlyingFile.getChannel
 
   private val mappedBuffers: Array[ExtendedMappedByteBuffer] = mapBuffers
 
@@ -170,7 +164,6 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
   }
 
   def readBlock(x: Int, y: Int, z: Int): Box[Array[Byte]] = {
-    val t = System.currentTimeMillis
     for {
       _ <- (!underlyingFile.isClosed) ?~! error("File is already closed")
       mortonIndex <- computeMortonIndex(x, y, z)
@@ -178,13 +171,11 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
       data <- readFromUnderlyingBuffers(offset, length)
       decompressedData <- decompressBlock(header.blockType, header.numBytesPerBlock)(data)
     } yield {
-      NewRelic.recordResponseTimeMetric(s"Custom/WebknossosWrap/block-read-time-${header.blockType}", System.currentTimeMillis - t)
       decompressedData
     }
   }
 
   def writeBlock(x: Int, y: Int, z: Int, data: Array[Byte]): Box[Unit] = {
-    val t = System.currentTimeMillis
     for {
       _ <- (!underlyingFile.isClosed) ?~! error("File is already closed")
       _ <- (fileMode == FileMode.ReadWrite) ?~! error("Cannot write to erad-only files")
@@ -193,9 +184,7 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
       mortonIndex <- computeMortonIndex(x, y, z)
       (offset, _) <- header.blockBoundaries(mortonIndex)
       _ <- writeToUnderlyingBuffers(offset, data)
-    } yield {
-      NewRelic.recordResponseTimeMetric(s"Custom/WebknossosWrap/block-write-time-${header.blockType}", System.currentTimeMillis - t)
-    }
+    } yield ()
   }
 
   def close(): Unit = {
@@ -203,7 +192,7 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
     underlyingFile.close()
   }
 
-  private def moveFile(tempFile: File, targetFile: File): Unit = {
+  private def replaceUnderlyingFile(tempFile: File): Unit = {
     Files.move(tempFile.toPath, Paths.get(underlyingFile.getPath), StandardCopyOption.REPLACE_EXISTING)
     close()
   }
@@ -257,11 +246,9 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
     for {
       _ <- (targetBlockType != header.blockType) ?~! error("File already has requested blockType")
       _ <- ResourceBox.manage(new RandomAccessFile(tempFile, "rw"))(transcodeFile(targetBlockType))
-      _ <- tryo(moveFile(tempFile, targetFile))
+      _ <- tryo(replaceUnderlyingFile(tempFile))
       wkwFile <- WKWFile(targetFile, fileMode)
-    } yield {
-      wkwFile
-    }
+    } yield wkwFile
   }
 
   def decompress: Box[WKWFile] = changeBlockType(BlockType.Raw)
@@ -271,7 +258,7 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
 
 object WKWFile extends WKWCompressionHelper {
 
-  private def fileModeString(file: File, isCompressed: Boolean, fileMode: FileMode.Value): Box[String] = {
+  private def fileModeString(isCompressed: Boolean, fileMode: FileMode.Value): Box[String] = {
     fileMode match {
       case FileMode.Read =>
         Full("r")
@@ -286,19 +273,17 @@ object WKWFile extends WKWCompressionHelper {
 
   def apply(file: File, fileMode: FileMode.Value = FileMode.Read): Box[WKWFile] = {
     for {
-      header <- WKWHeader(file, true)
+      header <- WKWHeader(file, readJumpTable = true)
       _ <- (header.expectedFileSize == file.length) ?~! error("Unexpected file size", header.expectedFileSize, file.length)
-      mode <- fileModeString(file, header.isCompressed, fileMode)
+      mode <- fileModeString(header.isCompressed, fileMode)
       underlyingFile <- ResourceBox(new RandomAccessFile(file, mode))
-    } yield {
-      new WKWFile(header, fileMode, underlyingFile)
-    }
+    } yield new WKWFile(header, fileMode, underlyingFile)
   }
 
   def read[T](is: InputStream)(f: (WKWHeader, Iterator[Array[Byte]]) => T): Box[T] = {
     ResourceBox.manage(new DataInputStream(is)) { dataStream =>
       for {
-        header <- WKWHeader(dataStream, true)
+        header <- WKWHeader(dataStream, readJumpTable = true)
       } yield {
         val blockIterator = header.blockLengths.flatMap { blockLength =>
           val data: Array[Byte] = IOUtils.toByteArray(dataStream, blockLength)
