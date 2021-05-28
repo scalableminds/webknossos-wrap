@@ -1,7 +1,9 @@
 package com.scalableminds.webknossos.wrap.util
 
 import java.io.RandomAccessFile
+import java.lang.reflect.Method
 import java.nio.MappedByteBuffer
+
 import net.liftweb.common.{Box, Failure, Full}
 import org.apache.commons.lang3.reflect.FieldUtils
 import net.liftweb.util.Helpers.tryo
@@ -27,20 +29,20 @@ object ExtendedTypes {
   }
 
   class ExtendedMappedByteBuffer(mappedData: MappedByteBuffer) {
-    val unsafe = FieldUtils.readField(mappedData, "unsafe", true)
+    val unsafe: AnyRef = FieldUtils.readField(mappedData, "unsafe", true)
 
-    val address = FieldUtils.readField(mappedData, "address", true).asInstanceOf[Long]
+    val address: Long = FieldUtils.readField(mappedData, "address", true).asInstanceOf[Long]
 
-    val arrayBaseOffset = FieldUtils.readField(mappedData, "arrayBaseOffset", true).asInstanceOf[Long]
+    val arrayBaseOffset: Long = FieldUtils.readField(mappedData, "arrayBaseOffset", true).asInstanceOf[Long]
 
-    val unsafeCopy = {
+    val unsafeCopy: Method = {
       val m = unsafe.getClass.getDeclaredMethod("copyMemory",
         classOf[Object], classOf[Long], classOf[Object], classOf[Long], classOf[Long])
       m.setAccessible(true)
       m
     }
 
-    def capacity = mappedData.capacity
+    def capacity: Int = mappedData.capacity
 
     def copyTo(offset: Long, other: Array[Byte], destPos: Long, length: java.lang.Integer): Box[Unit] = {
       // Any regularly called log statements in here should be avoided as they drastically slow down this method.
