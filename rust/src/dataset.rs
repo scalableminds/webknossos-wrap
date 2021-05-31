@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use {BlockType, Box3, File, Header, Mat, Result, Vec3};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Dataset {
     root: PathBuf,
     header: Header,
