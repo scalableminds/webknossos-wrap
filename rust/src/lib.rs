@@ -8,7 +8,7 @@ pub mod result;
 pub mod vec;
 
 // private modules
-mod lz4;
+mod lz4_binding;
 
 // convenience
 pub use dataset::Dataset;

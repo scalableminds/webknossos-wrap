@@ -1,4 +1,4 @@
-use lz4;
+use lz4_binding;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::{fs, path};
 use {BlockType, Box3, Header, Iter, Mat, Morton, Result, Vec3};
@@ -31,7 +31,8 @@ impl File {
     }
 
     pub fn open(path: &path::Path) -> Result<File> {
-        let mut file = fs::File::open(path).or(Err(format!("Could not open WKW file {:?}", path)))?;
+        let mut file =
+            fs::File::open(path).or(Err(format!("Could not open WKW file {:?}", path)))?;
         let header = Header::read(&mut file)?;
         Ok(Self::new(file, header))
     }
@@ -39,13 +40,18 @@ impl File {
     pub(crate) fn open_or_create(path: &path::Path, header: &Header) -> Result<File> {
         // create parent directory, if needed
         if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).or(Err(format!("Could not create parent directory {:?}", parent)))?;
+            fs::create_dir_all(parent).or(Err(format!(
+                "Could not create parent directory {:?}",
+                parent
+            )))?;
         }
 
         let mut open_opts = fs::OpenOptions::new();
         open_opts.read(true).write(true).create(true);
 
-        let mut file = open_opts.open(path).or(Err(format!("Could not open file {:?}", path)))?;
+        let mut file = open_opts
+            .open(path)
+            .or(Err(format!("Could not open file {:?}", path)))?;
 
         // check if file was created
         let (header, created) = match Header::read(&mut file) {
@@ -325,7 +331,7 @@ impl File {
     fn write_block_lz4(&mut self, buf: &[u8]) -> Result<usize> {
         // compress data
         let mut buf_lz4 = &mut *self.disk_block_buf.as_mut().unwrap();
-        let len_lz4 = lz4::compress_hc(buf, &mut buf_lz4)?;
+        let len_lz4 = lz4_binding::compress_hc(buf, &mut buf_lz4)?;
 
         // write data
         self.file
@@ -359,7 +365,7 @@ impl File {
             .or(Err("Error while reading LZ4 block"))?;
 
         // decompress block
-        let byte_written = lz4::decompress_safe(buf_lz4, buf)?;
+        let byte_written = lz4_binding::decompress_safe(buf_lz4, buf)?;
 
         match byte_written == block_size_raw {
             true => Ok(byte_written),
