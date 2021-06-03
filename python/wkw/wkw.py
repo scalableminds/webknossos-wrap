@@ -11,13 +11,6 @@ def _init_libwkw():
     this_dir = os.path.dirname(__file__)
     path_wkw_header = os.path.join(this_dir, "lib", "wkw.h")
 
-    lz4_name_platform = {
-        "Linux": "liblz4.so.1",
-        "Windows": "liblz4.dll",
-        "Darwin": "liblz4.1.dylib",
-    }
-    path_lz4_lib = os.path.join(this_dir, "lib", lz4_name_platform[platform.system()])
-
     lib_name_platform = {
         "Linux": "libwkw.so",
         "Windows": "wkw.dll",
@@ -34,7 +27,6 @@ def _init_libwkw():
 
     ffi = cffi.FFI()
     ffi.cdef(wkw_header)
-    ffi.dlopen(path_lz4_lib)
     libwkw = ffi.dlopen(path_wkw_lib)
 
     return (ffi, libwkw)

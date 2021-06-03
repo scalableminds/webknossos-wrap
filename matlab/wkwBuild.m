@@ -15,14 +15,6 @@ function wkwBuild()
         % - the corresponding .lib files
         extraLinkPaths{end + 1} = ...
             fullfile(matlabRoot, 'extern', 'lib', arch, 'microsoft');
-        
-        % - liblz4.dll and liblz4.lib
-        extraLinkPaths{end + 1} = fileparts(mfilename('fullpath'));
-    end
-    
-    if ismac
-        % liblz4.dylib from homebrew
-        extraLinkPaths{end + 1} = '/usr/local/lib';
     end
     
     % make link paths available for cargo
