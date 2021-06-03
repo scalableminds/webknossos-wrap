@@ -4,20 +4,6 @@ use {Box3, Result, Vec3};
 #[derive(PartialEq, Debug)]
 pub struct Morton(u64);
 
-fn morton_encode(vec: &Vec3) -> u64 {
-    let x = vec.x as u64;
-    let y = vec.y as u64;
-    let z = vec.z as u64;
-    let mut morton = 0u64;
-    let bit_length = 64 - (std::cmp::max(x, std::cmp::max(y, z)) + 1).leading_zeros();
-    for i in 0..bit_length {
-        morton |= ((x & (1 << i)) << (2 * i))
-            | ((y & (1 << i)) << (2 * i + 1))
-            | ((z & (1 << i)) << (2 * i + 2))
-    }
-    morton
-}
-
 fn unshuffle(z: u64) -> u64 {
     let mut v = z & 0x1249249249249249;
     v = (v ^ (v >> 2)) & 0x10c30c30c30c30c3;
@@ -31,7 +17,17 @@ fn unshuffle(z: u64) -> u64 {
 
 impl<'a> From<&'a Vec3> for Morton {
     fn from(vec: &'a Vec3) -> Morton {
-        Morton(morton_encode(vec))
+        let x = vec.x as u64;
+        let y = vec.y as u64;
+        let z = vec.z as u64;
+        let mut idx = 0u64;
+        let bit_length = 64 - (std::cmp::max(x, std::cmp::max(y, z)) + 1).leading_zeros();
+        for i in 0..bit_length {
+            idx |= ((x & (1 << i)) << (2 * i))
+                | ((y & (1 << i)) << (2 * i + 1))
+                | ((z & (1 << i)) << (2 * i + 2))
+        }
+        Morton(idx)
     }
 }
 
@@ -176,11 +172,11 @@ fn test_encoding() {
     );
     assert_eq!(
         Morton::from(&Vec3 { x: 29, y: 20, z: 3 }),
-        Morton::from(12525 as u64)
+        Morton::from(13029 as u64)
     );
     assert_eq!(
         Morton::from(&Vec3 { x: 23, y: 20, z: 3 }),
-        Morton::from(13029 as u64)
+        Morton::from(12525 as u64)
     );
 }
 
@@ -229,5 +225,13 @@ fn test_decoding() {
     assert_eq!(
         Vec3 { x: 0, y: 0, z: 2 },
         Vec3::from(Morton::from(32 as u64))
+    );
+    assert_eq!(
+        Vec3 { x: 29, y: 20, z: 3 },
+        Vec3::from(Morton::from(13029 as u64))
+    );
+    assert_eq!(
+        Vec3 { x: 23, y: 20, z: 3 },
+        Vec3::from(Morton::from(12525 as u64))
     );
 }

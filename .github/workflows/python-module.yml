@@ -3,6 +3,14 @@ name: Build Python module
 on: [push]
 
 jobs:
+  test_rust:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v1
+    - run: |
+        cd rust
+        cargo test
+
   build_lin:
     runs-on: ubuntu-20.04
     steps:
@@ -57,7 +65,7 @@ jobs:
            bash -c "\$PYBIN/python setup.py sdist bdist_wheel -p manylinux1_x86_64 && \$PYBIN/twine upload dist/*.whl dist/*.tar.gz"
 
   build_mac:
-    runs-on: macOS-latest
+    runs-on: macos-latest
     strategy:
       max-parallel: 4
       matrix:
