@@ -4,17 +4,6 @@ use {Box3, Result, Vec3};
 #[derive(PartialEq, Debug)]
 pub struct Morton(u64);
 
-fn unshuffle(z: u64) -> u64 {
-    let mut v = z & 0x1249249249249249;
-    v = (v ^ (v >> 2)) & 0x10c30c30c30c30c3;
-    v = (v ^ (v >> 4)) & 0x100f00f00f00f00f;
-    v = (v ^ (v >> 8)) & 0x001f0000ff0000ff;
-    v = (v ^ (v >> 16)) & 0x001f00000000ffff;
-    v = (v ^ (v >> 32)) & 0x00000000001fffff;
-
-    v
-}
-
 impl<'a> From<&'a Vec3> for Morton {
     fn from(vec: &'a Vec3) -> Morton {
         let x = vec.x as u64;
@@ -33,10 +22,25 @@ impl<'a> From<&'a Vec3> for Morton {
 
 impl From<Morton> for Vec3 {
     fn from(idx: Morton) -> Vec3 {
+        let mut idx = idx.0;
+        let mut x = 0;
+        let mut y = 0;
+        let mut z = 0;
+        let mut bit = 0;
+
+        while idx > 0 {
+            x |= (idx & 1) << bit;
+            idx >>= 1;
+            y |= (idx & 1) << bit;
+            idx >>= 1;
+            z |= (idx & 1) << bit;
+            idx >>= 1;
+            bit += 1;
+        }
         Vec3 {
-            x: unshuffle(idx.0) as u32,
-            y: unshuffle(idx.0 >> 1) as u32,
-            z: unshuffle(idx.0 >> 2) as u32,
+            x: x as u32,
+            y: y as u32,
+            z: z as u32,
         }
     }
 }
