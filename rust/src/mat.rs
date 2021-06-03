@@ -27,11 +27,19 @@ impl<'a> Mat<'a> {
         let numel = shape.x as usize * shape.y as usize * shape.z as usize;
         let expected_len = numel * voxel_size;
         if data.len() != expected_len {
-            return Err(format!("Length of slice does not match expected size {} != {}", data.len(), expected_len));
+            return Err(format!(
+                "Length of slice does not match expected size {} != {}",
+                data.len(),
+                expected_len
+            ));
         }
 
         if voxel_size % voxel_type.size() != 0 {
-            return Err(format!("Voxel size must be a multiple of voxel type size {} % {} != 0", voxel_size, voxel_type.size()));
+            return Err(format!(
+                "Voxel size must be a multiple of voxel type size {} % {} != 0",
+                voxel_size,
+                voxel_type.size()
+            ));
         }
 
         Ok(Mat {
@@ -70,13 +78,22 @@ impl<'a> Mat<'a> {
             return Err(String::from("Mat is already in fortran order"));
         }
         if self.voxel_size != buffer.voxel_size {
-            return Err(format!("Matrices mismatch in voxel size {} != {}", self.voxel_size, buffer.voxel_size));
+            return Err(format!(
+                "Matrices mismatch in voxel size {} != {}",
+                self.voxel_size, buffer.voxel_size
+            ));
         }
         if self.voxel_type != buffer.voxel_type {
-            return Err(format!("Matrices mismatch in voxel type {:?} != {:?}", self.voxel_type, buffer.voxel_type));
+            return Err(format!(
+                "Matrices mismatch in voxel type {:?} != {:?}",
+                self.voxel_type, buffer.voxel_type
+            ));
         }
         if self.shape != buffer.shape {
-            return Err(format!("Matrices mismatch in shape {:?} != {:?}", self.shape, buffer.shape));
+            return Err(format!(
+                "Matrices mismatch in shape {:?} != {:?}",
+                self.shape, buffer.shape
+            ));
         }
 
         let buffer_data = buffer.as_mut_slice();
@@ -114,9 +131,12 @@ impl<'a> Mat<'a> {
                     let row_major_index = linearize(0, x, y, z, &row_major_stride);
                     let column_major_index = linearize(0, x, y, z, &column_major_stride);
                     unsafe {
-                        ptr::copy_nonoverlapping(src_ptr.offset(row_major_index), dst_ptr.offset(column_major_index), stripe_len);
+                        ptr::copy_nonoverlapping(
+                            src_ptr.offset(row_major_index),
+                            dst_ptr.offset(column_major_index),
+                            stripe_len,
+                        );
                     }
-
                 }
             }
         }
@@ -131,7 +151,9 @@ impl<'a> Mat<'a> {
         intermediate_buffer: &mut Mat,
     ) -> Result<()> {
         if self.data_in_c_order {
-            return Err(String::from("copy_from_order_agnostic has to be called on a fortran order buffer."));
+            return Err(String::from(
+                "copy_from_order_agnostic has to be called on a fortran order buffer.",
+            ));
         }
 
         if src.data_in_c_order {
@@ -153,10 +175,16 @@ impl<'a> Mat<'a> {
     pub fn copy_from(&mut self, dst_pos: Vec3, src: &Mat, src_box: Box3) -> Result<()> {
         // make sure that matrices are matching
         if self.voxel_size != src.voxel_size {
-            return Err(format!("Matrices mismatch in voxel size {} != {}", self.voxel_size, src.voxel_size));
+            return Err(format!(
+                "Matrices mismatch in voxel size {} != {}",
+                self.voxel_size, src.voxel_size
+            ));
         }
         if self.voxel_type != src.voxel_type {
-            return Err(format!("Matrices mismatch in voxel type {:?} != {:?}", self.voxel_type, src.voxel_type));
+            return Err(format!(
+                "Matrices mismatch in voxel type {:?} != {:?}",
+                self.voxel_type, src.voxel_type
+            ));
         }
         if !(src_box.max() < (src.shape + 1)) {
             return Err(String::from("Reading out of bounds"));
@@ -165,7 +193,9 @@ impl<'a> Mat<'a> {
             return Err(String::from("Writing out of bounds"));
         }
         if self.data_in_c_order != src.data_in_c_order {
-            return Err(String::from("Source and destination has to be the same order"));
+            return Err(String::from(
+                "Source and destination has to be the same order",
+            ));
         }
 
         let length = src_box.width();
@@ -222,13 +252,24 @@ impl<'a> Mat<'a> {
         Ok(())
     }
 
-    pub fn copy_from_and_put_channels_last(&mut self, dst_pos: Vec3, src: &Mat, src_box: Box3) -> Result<()> {
+    pub fn copy_from_and_put_channels_last(
+        &mut self,
+        dst_pos: Vec3,
+        src: &Mat,
+        src_box: Box3,
+    ) -> Result<()> {
         // make sure that matrices are matching
         if self.voxel_size != src.voxel_size {
-            return Err(format!("Matrices mismatch in voxel size {} != {}", self.voxel_size, src.voxel_size));
+            return Err(format!(
+                "Matrices mismatch in voxel size {} != {}",
+                self.voxel_size, src.voxel_size
+            ));
         }
         if self.voxel_type != src.voxel_type {
-            return Err(format!("Matrices mismatch in voxel type {:?} != {:?}", self.voxel_type, src.voxel_type));
+            return Err(format!(
+                "Matrices mismatch in voxel type {:?} != {:?}",
+                self.voxel_type, src.voxel_type
+            ));
         }
         if !(src_box.max() < (src.shape + 1)) {
             return Err(String::from("Reading out of bounds"));
@@ -260,16 +301,35 @@ impl<'a> Mat<'a> {
         ];
 
         unsafe {
-            let src_ptr = src.data.as_ptr().add(src.offset(src_box.min()) / num_channel);
+            let src_ptr = src
+                .data
+                .as_ptr()
+                .add(src.offset(src_box.min()) / num_channel);
             let dst_ptr = self.data.as_mut_ptr().add(self.offset(dst_pos));
 
             for channel in 0..num_channel {
                 for x in 0..length.x {
                     for y in 0..length.y {
                         for z in 0..length.z {
-                            let channel_last_index = linearize(channel, x as usize, y as usize, z as usize, &channel_last_stride);
-                            let channel_first_index = linearize(channel, x as usize, y as usize, z as usize, &channel_first_stride);
-                            ptr::copy_nonoverlapping(src_ptr.offset(channel_last_index), dst_ptr.offset(channel_first_index), item_size);
+                            let channel_last_index = linearize(
+                                channel,
+                                x as usize,
+                                y as usize,
+                                z as usize,
+                                &channel_last_stride,
+                            );
+                            let channel_first_index = linearize(
+                                channel,
+                                x as usize,
+                                y as usize,
+                                z as usize,
+                                &channel_first_stride,
+                            );
+                            ptr::copy_nonoverlapping(
+                                src_ptr.offset(channel_last_index),
+                                dst_ptr.offset(channel_first_index),
+                                item_size,
+                            );
                         }
                     }
                 }
