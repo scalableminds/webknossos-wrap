@@ -1,4 +1,4 @@
-use lz4_binding;
+use lz4;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::{fs, path};
 use {BlockType, Box3, Header, Iter, Mat, Morton, Result, Vec3};
@@ -331,7 +331,7 @@ impl File {
     fn write_block_lz4(&mut self, buf: &[u8]) -> Result<usize> {
         // compress data
         let mut buf_lz4 = &mut *self.disk_block_buf.as_mut().unwrap();
-        let len_lz4 = lz4_binding::compress_hc(buf, &mut buf_lz4)?;
+        let len_lz4 = lz4::compress_hc(buf, &mut buf_lz4)?;
 
         // write data
         self.file
@@ -365,7 +365,7 @@ impl File {
             .or(Err("Error while reading LZ4 block"))?;
 
         // decompress block
-        let byte_written = lz4_binding::decompress_safe(buf_lz4, buf)?;
+        let byte_written = lz4::decompress_safe(buf_lz4, buf)?;
 
         match byte_written == block_size_raw {
             true => Ok(byte_written),

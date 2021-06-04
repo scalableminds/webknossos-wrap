@@ -1,4 +1,4 @@
-use lz4_binding;
+use lz4;
 use result::Result;
 use std::io::{Read, Write};
 use std::{fs, mem, slice};
@@ -226,7 +226,7 @@ impl Header {
 
         match self.block_type {
             BlockType::Raw => block_size,
-            BlockType::LZ4 | BlockType::LZ4HC => lz4_binding::compress_bound(block_size),
+            BlockType::LZ4 | BlockType::LZ4HC => lz4::compress_bound(block_size),
         }
     }
 
