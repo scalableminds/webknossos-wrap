@@ -4,43 +4,43 @@ use {Box3, Result, Vec3};
 #[derive(PartialEq, Debug)]
 pub struct Morton(u64);
 
+fn shuffle(v: u64) -> u64 {
+    // take first 21 bits
+    let mut z = v & 0x00000000001fffff;
+    z = (z | (z << 32)) & 0x001f00000000ffff;
+    z = (z | (z << 16)) & 0x001f0000ff0000ff;
+    z = (z | (z << 8)) & 0x100f00f00f00f00f;
+    z = (z | (z << 4)) & 0x10c30c30c30c30c3;
+    z = (z | (z << 2)) & 0x1249249249249249;
+
+    z
+}
+
+fn unshuffle(z: u64) -> u64 {
+    let mut v = z & 0x1249249249249249;
+    v = (v ^ (v >> 2)) & 0x10c30c30c30c30c3;
+    v = (v ^ (v >> 4)) & 0x100f00f00f00f00f;
+    v = (v ^ (v >> 8)) & 0x001f0000ff0000ff;
+    v = (v ^ (v >> 16)) & 0x001f00000000ffff;
+    v = (v ^ (v >> 32)) & 0x00000000001fffff;
+
+    v
+}
+
 impl<'a> From<&'a Vec3> for Morton {
     fn from(vec: &'a Vec3) -> Morton {
-        let x = vec.x as u64;
-        let y = vec.y as u64;
-        let z = vec.z as u64;
-        let mut idx = 0u64;
-        let bit_length = 64 - (std::cmp::max(x, std::cmp::max(y, z)) + 1).leading_zeros();
-        for i in 0..bit_length {
-            idx |= ((x & (1 << i)) << (2 * i))
-                | ((y & (1 << i)) << (2 * i + 1))
-                | ((z & (1 << i)) << (2 * i + 2))
-        }
-        Morton(idx)
+        Morton(
+            (shuffle(vec.x as u64)) | (shuffle(vec.y as u64) << 1) | (shuffle(vec.z as u64) << 2),
+        )
     }
 }
 
 impl From<Morton> for Vec3 {
     fn from(idx: Morton) -> Vec3 {
-        let mut idx = idx.0;
-        let mut x = 0;
-        let mut y = 0;
-        let mut z = 0;
-        let mut bit = 0;
-
-        while idx > 0 {
-            x |= (idx & 1) << bit;
-            idx >>= 1;
-            y |= (idx & 1) << bit;
-            idx >>= 1;
-            z |= (idx & 1) << bit;
-            idx >>= 1;
-            bit += 1;
-        }
         Vec3 {
-            x: x as u32,
-            y: y as u32,
-            z: z as u32,
+            x: unshuffle(idx.0) as u32,
+            y: unshuffle(idx.0 >> 1) as u32,
+            z: unshuffle(idx.0 >> 2) as u32,
         }
     }
 }
