@@ -29,18 +29,6 @@ object ExtendedTypes {
   }
 
   class ExtendedMappedByteBuffer(mappedData: MappedByteBuffer) {
-    val unsafe: AnyRef = FieldUtils.readField(mappedData, "unsafe", true)
-
-    val address: Long = FieldUtils.readField(mappedData, "address", true).asInstanceOf[Long]
-
-    val arrayBaseOffset: Long = FieldUtils.readField(mappedData, "arrayBaseOffset", true).asInstanceOf[Long]
-
-    val unsafeCopy: Method = {
-      val m = unsafe.getClass.getDeclaredMethod("copyMemory",
-        classOf[Object], classOf[Long], classOf[Object], classOf[Long], classOf[Long])
-      m.setAccessible(true)
-      m
-    }
 
     def capacity: Int = mappedData.capacity
 
@@ -48,10 +36,9 @@ object ExtendedTypes {
       // Any regularly called log statements in here should be avoided as they drastically slow down this method.
       if (offset + length <= mappedData.limit()) {
         tryo {
-          val memOffset: java.lang.Long = address + offset
-          val targetOffset: java.lang.Long = destPos + arrayBaseOffset
-          // Anything that might go south here can result in a segmentation fault, so be careful!
-          unsafeCopy.invoke(unsafe, null, memOffset, other, targetOffset, length)
+          for (i <- 0 until length) {
+            other(destPos.toInt + i) = mappedData.get(offset.toInt + i)
+          }
           Full(())
         }
       } else {
@@ -63,10 +50,9 @@ object ExtendedTypes {
       // Any regularly called log statements in here should be avoided as they drastically slow down this method.
       if (offset + length <= mappedData.limit()) {
         tryo {
-          val memOffset: java.lang.Long = address + offset
-          val srcOffset: java.lang.Long = srcPos + arrayBaseOffset
-          // Anything that might go south here can result in a segmentation fault, so be careful!
-          unsafeCopy.invoke(unsafe, other, srcOffset, null, memOffset, length)
+          for (i <- 0 until length) {
+            mappedData.put(offset.toInt + i, other(srcPos.toInt + i))
+          }
           Full(())
         }
       } else {
