@@ -100,7 +100,7 @@ trait WKWCompressionHelper extends BoxImplicits {
   }
 }
 
-class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: RandomAccessFile) extends WKWCompressionHelper with WKWMortonHelper {
+class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: RandomAccessFile, underlyingFilePath: String) extends WKWCompressionHelper with WKWMortonHelper {
 
   private val channel = underlyingFile.getChannel
 
@@ -165,7 +165,6 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
 
   def readBlock(x: Int, y: Int, z: Int): Box[Array[Byte]] = {
     for {
-      _ <- (!underlyingFile.isClosed) ?~! error("File is already closed")
       mortonIndex <- computeMortonIndex(x, y, z)
       (offset, length) <- header.blockBoundaries(mortonIndex)
       data <- readFromUnderlyingBuffers(offset, length)
@@ -177,7 +176,6 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
 
   def writeBlock(x: Int, y: Int, z: Int, data: Array[Byte]): Box[Unit] = {
     for {
-      _ <- (!underlyingFile.isClosed) ?~! error("File is already closed")
       _ <- (fileMode == FileMode.ReadWrite) ?~! error("Cannot write to erad-only files")
       _ <- (!header.isCompressed) ?~! error("Cannot write to compressed files")
       _ <- (data.length == header.numBytesPerBlock) ?~! error("Data to be written has invalid length", header.numBytesPerBlock, data.length)
@@ -193,7 +191,7 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
   }
 
   private def replaceUnderlyingFile(tempFile: File): Unit = {
-    Files.move(tempFile.toPath, Paths.get(underlyingFile.getPath), StandardCopyOption.REPLACE_EXISTING)
+    Files.move(tempFile.toPath, Paths.get(underlyingFilePath), StandardCopyOption.REPLACE_EXISTING)
     close()
   }
 
@@ -240,8 +238,8 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
   }
 
   def changeBlockType(targetBlockType: BlockType.Value): Box[WKWFile] = {
-    val tempFile = new File(underlyingFile.getPath + ".tmp")
-    val targetFile = new File(underlyingFile.getPath)
+    val tempFile = new File(underlyingFilePath + ".tmp")
+    val targetFile = new File(underlyingFilePath)
 
     for {
       _ <- (targetBlockType != header.blockType) ?~! error("File already has requested blockType")
@@ -277,7 +275,7 @@ object WKWFile extends WKWCompressionHelper {
       _ <- (header.expectedFileSize == file.length) ?~! error("Unexpected file size", header.expectedFileSize, file.length)
       mode <- fileModeString(header.isCompressed, fileMode)
       underlyingFile <- ResourceBox(new RandomAccessFile(file, mode))
-    } yield new WKWFile(header, fileMode, underlyingFile)
+    } yield new WKWFile(header, fileMode, underlyingFile, underlyingFilePath = file.getPath())
   }
 
   def read[T](is: InputStream)(f: (WKWHeader, Iterator[Array[Byte]]) => T): Box[T] = {

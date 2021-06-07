@@ -1,32 +1,11 @@
 package com.scalableminds.webknossos.wrap.util
 
-import java.io.RandomAccessFile
-import java.lang.reflect.Method
 import java.nio.MappedByteBuffer
 
 import net.liftweb.common.{Box, Failure, Full}
-import org.apache.commons.lang3.reflect.FieldUtils
 import net.liftweb.util.Helpers.tryo
 
 object ExtendedTypes {
-
-  implicit class ExtendedRandomAccessFile(f: RandomAccessFile) {
-    private val closedF = {
-      val method = f.getClass.getDeclaredField("closed")
-      method.setAccessible(true)
-      method
-    }
-
-    private val pathF = {
-      val method = f.getClass.getDeclaredField("path")
-      method.setAccessible(true)
-      method
-    }
-
-    def isClosed: Boolean = closedF.getBoolean(f)
-
-    def getPath: String = pathF.get(f).asInstanceOf[String]
-  }
 
   class ExtendedMappedByteBuffer(mappedData: MappedByteBuffer) {
 
