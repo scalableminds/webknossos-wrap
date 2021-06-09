@@ -5,6 +5,7 @@ use {Box3, Result, Vec3};
 pub struct Morton(u64);
 
 fn shuffle(v: u64) -> u64 {
+    // See https://github.com/Forceflow/libmorton/blob/24b63e34b1b3b5591fd10575c89ef1e5d1bb3e2a/libmorton/morton3D.h#L229
     // take first 21 bits
     let mut z = v & 0x00000000001fffff;
     z = (z | (z << 32)) & 0x001f00000000ffff;
