@@ -9,9 +9,7 @@ $ cargo build
 ```
 
 This requires the [Rust compiler and build tools](https://www.rust-lang.org/en-US/install.html)
-to be installed on your machine. If you're using Linux, then you will
-furthermore need the development version of `liblz4` (`lz4` on Arch
-Linux, `liblz4-dev` on Debian and Ubuntu).
+as well as a C compiler to be installed on your machine.
 
 ## Contact
 Contributions and bug reports are welcome!

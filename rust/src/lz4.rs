@@ -1,45 +1,20 @@
-extern crate libc;
-use self::libc::c_int;
+extern crate lz4 as lz4_crate;
+use self::lz4_crate::liblz4;
 use Result;
 
-#[cfg_attr(target_os = "linux", link(name = "lz4", kind = "dylib"))]
-#[cfg_attr(target_os = "macos", link(name = "lz4", kind = "dylib"))]
-#[cfg_attr(target_os = "windows", link(name = "liblz4", kind = "dylib"))]
-extern "C" {
-    // upper bound
-    fn LZ4_compressBound(input_size: c_int) -> c_int;
-
-    // compression
-    fn LZ4_compress_HC(
-        src: *const u8,
-        dst: *mut u8,
-        src_size: c_int,
-        dst_capacity: c_int,
-        compression_level: c_int,
-    ) -> c_int;
-
-    // decompression
-    fn LZ4_decompress_safe(
-        src_buf: *const u8,
-        dst_buf: *mut u8,
-        compressed_size: c_int,
-        max_decompressed_size: c_int,
-    ) -> c_int;
-}
-
 pub fn compress_bound(input_size: usize) -> usize {
-    unsafe { LZ4_compressBound(input_size as c_int) as usize }
+    unsafe { liblz4::LZ4_compressBound(input_size as i32) as usize }
 }
 
 pub fn compress_hc(src_buf: &[u8], dst_buf: &mut [u8]) -> Result<usize> {
-    let src_size = src_buf.len() as c_int;
-    let dst_capacity = dst_buf.len() as c_int;
+    let src_size = src_buf.len() as i32;
+    let dst_capacity = dst_buf.len() as i32;
     let compression_level = 9;
 
     let dst_len = unsafe {
-        LZ4_compress_HC(
-            src_buf.as_ptr(),
-            dst_buf.as_mut_ptr(),
+        liblz4::LZ4_compress_HC(
+            std::mem::transmute::<&[u8], &[i8]>(src_buf).as_ptr(),
+            std::mem::transmute::<&mut [u8], &mut [i8]>(dst_buf).as_mut_ptr(),
             src_size,
             dst_capacity,
             compression_level,
@@ -53,13 +28,13 @@ pub fn compress_hc(src_buf: &[u8], dst_buf: &mut [u8]) -> Result<usize> {
 }
 
 pub fn decompress_safe(src_buf: &[u8], dst_buf: &mut [u8]) -> Result<usize> {
-    let compressed_size = src_buf.len() as c_int;
-    let max_decompressed_size = dst_buf.len() as c_int;
+    let compressed_size = src_buf.len() as i32;
+    let max_decompressed_size = dst_buf.len() as i32;
 
     let dst_len = unsafe {
-        LZ4_decompress_safe(
-            src_buf.as_ptr(),
-            dst_buf.as_mut_ptr(),
+        liblz4::LZ4_decompress_safe(
+            std::mem::transmute::<&[u8], &[i8]>(src_buf).as_ptr(),
+            std::mem::transmute::<&mut [u8], &mut [i8]>(dst_buf).as_mut_ptr(),
             compressed_size,
             max_decompressed_size,
         )

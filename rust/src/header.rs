@@ -248,7 +248,10 @@ impl Header {
         let raw: HeaderRaw = unsafe { mem::transmute(buf) };
 
         if &raw.magic != b"WKW" {
-            return Err(format!("Sequence of magic bytes {:?} is invalid", &raw.magic));
+            return Err(format!(
+                "Sequence of magic bytes {:?} is invalid",
+                &raw.magic
+            ));
         }
 
         if raw.version != 1 {
