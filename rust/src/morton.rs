@@ -5,12 +5,13 @@ use {Box3, Result, Vec3};
 pub struct Morton(u64);
 
 fn shuffle(v: u64) -> u64 {
+    // See https://github.com/Forceflow/libmorton/blob/24b63e34b1b3b5591fd10575c89ef1e5d1bb3e2a/libmorton/morton3D.h#L229
     // take first 21 bits
     let mut z = v & 0x00000000001fffff;
     z = (z | (z << 32)) & 0x001f00000000ffff;
     z = (z | (z << 16)) & 0x001f0000ff0000ff;
     z = (z | (z << 8)) & 0x100f00f00f00f00f;
-    z = (z | (z << 4)) & 0x100f00f00f00f00f;
+    z = (z | (z << 4)) & 0x10c30c30c30c30c3;
     z = (z | (z << 2)) & 0x1249249249249249;
 
     z
@@ -30,9 +31,7 @@ fn unshuffle(z: u64) -> u64 {
 impl<'a> From<&'a Vec3> for Morton {
     fn from(vec: &'a Vec3) -> Morton {
         Morton(
-            (shuffle(vec.x as u64))
-                | (shuffle(vec.y as u64) << 1)
-                | (shuffle(vec.z as u64) << 2),
+            (shuffle(vec.x as u64)) | (shuffle(vec.y as u64) << 1) | (shuffle(vec.z as u64) << 2),
         )
     }
 }
@@ -132,30 +131,112 @@ impl Iterator for Iter {
 
 #[test]
 fn test_encoding() {
-    assert_eq!(Morton::from(&Vec3 { x: 0, y: 0, z: 0 }), Morton::from(0 as u64));
-    assert_eq!(Morton::from(&Vec3 { x: 1, y: 0, z: 0 }), Morton::from(1 as u64));
-    assert_eq!(Morton::from(&Vec3 { x: 0, y: 1, z: 0 }), Morton::from(2 as u64));
-    assert_eq!(Morton::from(&Vec3 { x: 1, y: 1, z: 0 }), Morton::from(3 as u64));
-    assert_eq!(Morton::from(&Vec3 { x: 0, y: 0, z: 1 }), Morton::from(4 as u64));
-    assert_eq!(Morton::from(&Vec3 { x: 1, y: 0, z: 1 }), Morton::from(5 as u64));
-    assert_eq!(Morton::from(&Vec3 { x: 0, y: 1, z: 1 }), Morton::from(6 as u64));
-    assert_eq!(Morton::from(&Vec3 { x: 1, y: 1, z: 1 }), Morton::from(7 as u64));
-    assert_eq!(Morton::from(&Vec3 { x: 2, y: 0, z: 0 }), Morton::from(8 as u64));
-    assert_eq!(Morton::from(&Vec3 { x: 0, y: 2, z: 0 }), Morton::from(16 as u64));
-    assert_eq!(Morton::from(&Vec3 { x: 0, y: 0, z: 2 }), Morton::from(32 as u64));
+    assert_eq!(
+        Morton::from(&Vec3 { x: 0, y: 0, z: 0 }),
+        Morton::from(0 as u64)
+    );
+    assert_eq!(
+        Morton::from(&Vec3 { x: 1, y: 0, z: 0 }),
+        Morton::from(1 as u64)
+    );
+    assert_eq!(
+        Morton::from(&Vec3 { x: 0, y: 1, z: 0 }),
+        Morton::from(2 as u64)
+    );
+    assert_eq!(
+        Morton::from(&Vec3 { x: 1, y: 1, z: 0 }),
+        Morton::from(3 as u64)
+    );
+    assert_eq!(
+        Morton::from(&Vec3 { x: 0, y: 0, z: 1 }),
+        Morton::from(4 as u64)
+    );
+    assert_eq!(
+        Morton::from(&Vec3 { x: 1, y: 0, z: 1 }),
+        Morton::from(5 as u64)
+    );
+    assert_eq!(
+        Morton::from(&Vec3 { x: 0, y: 1, z: 1 }),
+        Morton::from(6 as u64)
+    );
+    assert_eq!(
+        Morton::from(&Vec3 { x: 1, y: 1, z: 1 }),
+        Morton::from(7 as u64)
+    );
+    assert_eq!(
+        Morton::from(&Vec3 { x: 2, y: 0, z: 0 }),
+        Morton::from(8 as u64)
+    );
+    assert_eq!(
+        Morton::from(&Vec3 { x: 0, y: 2, z: 0 }),
+        Morton::from(16 as u64)
+    );
+    assert_eq!(
+        Morton::from(&Vec3 { x: 0, y: 0, z: 2 }),
+        Morton::from(32 as u64)
+    );
+    assert_eq!(
+        Morton::from(&Vec3 { x: 29, y: 20, z: 3 }),
+        Morton::from(13029 as u64)
+    );
+    assert_eq!(
+        Morton::from(&Vec3 { x: 23, y: 20, z: 3 }),
+        Morton::from(12525 as u64)
+    );
 }
 
 #[test]
 fn test_decoding() {
-    assert_eq!(Vec3 { x: 0, y: 0, z: 0 }, Vec3::from(Morton::from(0 as u64)));
-    assert_eq!(Vec3 { x: 1, y: 0, z: 0 }, Vec3::from(Morton::from(1 as u64)));
-    assert_eq!(Vec3 { x: 0, y: 1, z: 0 }, Vec3::from(Morton::from(2 as u64)));
-    assert_eq!(Vec3 { x: 1, y: 1, z: 0 }, Vec3::from(Morton::from(3 as u64)));
-    assert_eq!(Vec3 { x: 0, y: 0, z: 1 }, Vec3::from(Morton::from(4 as u64)));
-    assert_eq!(Vec3 { x: 1, y: 0, z: 1 }, Vec3::from(Morton::from(5 as u64)));
-    assert_eq!(Vec3 { x: 0, y: 1, z: 1 }, Vec3::from(Morton::from(6 as u64)));
-    assert_eq!(Vec3 { x: 1, y: 1, z: 1 }, Vec3::from(Morton::from(7 as u64)));
-    assert_eq!(Vec3 { x: 2, y: 0, z: 0 }, Vec3::from(Morton::from(8 as u64)));
-    assert_eq!(Vec3 { x: 0, y: 2, z: 0 }, Vec3::from(Morton::from(16 as u64)));
-    assert_eq!(Vec3 { x: 0, y: 0, z: 2 }, Vec3::from(Morton::from(32 as u64)));
+    assert_eq!(
+        Vec3 { x: 0, y: 0, z: 0 },
+        Vec3::from(Morton::from(0 as u64))
+    );
+    assert_eq!(
+        Vec3 { x: 1, y: 0, z: 0 },
+        Vec3::from(Morton::from(1 as u64))
+    );
+    assert_eq!(
+        Vec3 { x: 0, y: 1, z: 0 },
+        Vec3::from(Morton::from(2 as u64))
+    );
+    assert_eq!(
+        Vec3 { x: 1, y: 1, z: 0 },
+        Vec3::from(Morton::from(3 as u64))
+    );
+    assert_eq!(
+        Vec3 { x: 0, y: 0, z: 1 },
+        Vec3::from(Morton::from(4 as u64))
+    );
+    assert_eq!(
+        Vec3 { x: 1, y: 0, z: 1 },
+        Vec3::from(Morton::from(5 as u64))
+    );
+    assert_eq!(
+        Vec3 { x: 0, y: 1, z: 1 },
+        Vec3::from(Morton::from(6 as u64))
+    );
+    assert_eq!(
+        Vec3 { x: 1, y: 1, z: 1 },
+        Vec3::from(Morton::from(7 as u64))
+    );
+    assert_eq!(
+        Vec3 { x: 2, y: 0, z: 0 },
+        Vec3::from(Morton::from(8 as u64))
+    );
+    assert_eq!(
+        Vec3 { x: 0, y: 2, z: 0 },
+        Vec3::from(Morton::from(16 as u64))
+    );
+    assert_eq!(
+        Vec3 { x: 0, y: 0, z: 2 },
+        Vec3::from(Morton::from(32 as u64))
+    );
+    assert_eq!(
+        Vec3 { x: 29, y: 20, z: 3 },
+        Vec3::from(Morton::from(13029 as u64))
+    );
+    assert_eq!(
+        Vec3 { x: 23, y: 20, z: 3 },
+        Vec3::from(Morton::from(12525 as u64))
+    );
 }

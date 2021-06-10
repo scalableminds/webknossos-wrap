@@ -28,17 +28,6 @@ If you're using Windows, make sure that the latest version of the
 [Microsoft Visual C++ Redistributable for Visual Studio 2015](https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads)
 is installed on your system.
 
-### macOS
-If you're using macOS, please install `lz4` and `rust` with [Homebrew](https://brew.sh/): 
-```bash
-brew install lz4 rust
-```
-
-### Linux
-If you're using Linux, make sure that `liblz4` is installed on your
-system. On most Linux distributions this library is part of the official
-package repository.
-
 ## How to build the library
 To build the MEX files from the Rust code, just run the following
 function from within MATLAB:
@@ -47,9 +36,7 @@ function from within MATLAB:
 ```
 
 This requires the [Rust compiler and build tools](https://www.rust-lang.org/en-US/install.html)
-to be installed on your machine. If you're using Linux, then you will
-furthermore need the development version of `liblz4` (`lz4` on Arch
-Linux, `liblz4-dev` on Debian and Ubuntu).
+as well as a C compiler to be installed on your machine.
 
 ## Contact
 Contributions and bug reports are welcome!

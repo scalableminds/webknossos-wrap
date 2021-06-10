@@ -18,14 +18,6 @@ class BuildPyCommand(build_py):
         subprocess.call(["cargo", "clean"], cwd=c_dir)
         subprocess.call(["cargo", "build", "--release"], cwd=c_dir)
 
-        lz4_dir = os.path.normpath(os.path.join(this_dir, "..", "lz4", "lib"))
-        lz4_name_platform = {
-            "Linux": "liblz4.so.1",
-            "Windows": "liblz4.dll",
-            "Darwin": "liblz4.1.dylib",
-        }
-        lz4_name = lz4_name_platform[platform.system()]
-
         lib_name_platform = {
             "Linux": "libwkw.so",
             "Windows": "wkw.dll",
@@ -42,7 +34,6 @@ class BuildPyCommand(build_py):
             shutil.rmtree(lib_dir)
 
         os.makedirs(lib_dir)
-        shutil.copy(os.path.join(lz4_dir, lz4_name), os.path.join(lib_dir, lz4_name))
         shutil.copy(lib_file, os.path.join(lib_dir, lib_name))
         shutil.copy(header_file, os.path.join(lib_dir, "wkw.h"))
 
