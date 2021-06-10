@@ -6,7 +6,7 @@ import java.nio.file.{Files, Paths, StandardCopyOption}
 
 import org.apache.commons.io.IOUtils
 import com.google.common.io.{LittleEndianDataInputStream => DataInputStream}
-import com.scalableminds.webknossos.wrap.util.ExtendedTypes._
+import com.scalableminds.webknossos.wrap.util.ExtendedMappedByteBuffer
 import com.scalableminds.webknossos.wrap.util.{BoxImplicits, ResourceBox}
 import net.jpountz.lz4.LZ4Factory
 import net.liftweb.common.{Box, Failure, Full}
@@ -176,7 +176,7 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
 
   def writeBlock(x: Int, y: Int, z: Int, data: Array[Byte]): Box[Unit] = {
     for {
-      _ <- (fileMode == FileMode.ReadWrite) ?~! error("Cannot write to erad-only files")
+      _ <- (fileMode == FileMode.ReadWrite) ?~! error("Cannot write to read-only files")
       _ <- (!header.isCompressed) ?~! error("Cannot write to compressed files")
       _ <- (data.length == header.numBytesPerBlock) ?~! error("Data to be written has invalid length", header.numBytesPerBlock, data.length)
       mortonIndex <- computeMortonIndex(x, y, z)
@@ -275,7 +275,7 @@ object WKWFile extends WKWCompressionHelper {
       _ <- (header.expectedFileSize == file.length) ?~! error("Unexpected file size", header.expectedFileSize, file.length)
       mode <- fileModeString(header.isCompressed, fileMode)
       underlyingFile <- ResourceBox(new RandomAccessFile(file, mode))
-    } yield new WKWFile(header, fileMode, underlyingFile, underlyingFilePath = file.getPath())
+    } yield new WKWFile(header, fileMode, underlyingFile, underlyingFilePath = file.getPath)
   }
 
   def read[T](is: InputStream)(f: (WKWHeader, Iterator[Array[Byte]]) => T): Box[T] = {
