@@ -1,4 +1,5 @@
 package com.scalableminds.webknossos.wrap.util
+import scala.language.implicitConversions
 
 import net.liftweb.common.{Box, Empty, Full}
 
