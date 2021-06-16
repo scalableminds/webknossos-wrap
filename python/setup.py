@@ -51,6 +51,7 @@ setup(
     url="https://github.com/scalableminds/webknossos-wrap",
     packages=find_packages(),
     include_package_data=True,
+    license="MIT",
     install_requires=["cffi", "numpy"],
     cmdclass={"build_py": BuildPyCommand},
 )
