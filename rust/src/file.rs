@@ -256,7 +256,7 @@ impl File {
 
         self.file
             .set_len(truncated_size)
-            .map_err(|_| String::from("Could not truncate file"))
+            .map_err(|err| format!("Could not truncate file: {:?}", err))
     }
 
     fn seek_header(&mut self) -> Result<()> {
