@@ -12,7 +12,7 @@ class BuildPyCommand(build_py):
 
     def __build_c_library(self):
         this_dir = os.path.dirname(__file__)
-        c_dir = os.path.normpath(os.path.join(this_dir, "..", "c"))
+        c_dir = os.path.normpath(os.path.join(this_dir, "c"))
 
         # building C library
         subprocess.call(["cargo", "clean"], cwd=c_dir)
@@ -44,7 +44,6 @@ class BuildPyCommand(build_py):
 
 setup(
     name="wkw",
-    use_scm_version={"root": ".."},
     setup_requires=["setuptools_scm"],
     author="Alessandro Motta",
     author_email="alessandro.motta@brain.mpg.de",
