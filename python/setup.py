@@ -17,12 +17,14 @@ class BuildPyCommand(build_py):
         # building C library
         subprocess.call(["cargo", "clean"], cwd=c_dir)
         if platform.system() == "Darwin":
-            subprocess.call(
-                ["cargo", "build", "--target=aarch64-apple-darwin", "--release"],
-                cwd=c_dir,
-            )
+            print("x86_64-apple-darwin compilation")
             subprocess.call(
                 ["cargo", "build", "--target=x86_64-apple-darwin", "--release"],
+                cwd=c_dir,
+            )
+            print("aarch64-apple-darwin compilation")
+            subprocess.call(
+                ["cargo", "build", "--target=aarch64-apple-darwin", "--release"],
                 cwd=c_dir,
             )
             subprocess.call(
