@@ -16,7 +16,42 @@ class BuildPyCommand(build_py):
 
         # building C library
         subprocess.call(["cargo", "clean"], cwd=c_dir)
-        subprocess.call(["cargo", "build", "--release"], cwd=c_dir)
+        if platform.system() == "Darwin":
+            print("x86_64-apple-darwin compilation")
+            subprocess.call(
+                ["cargo", "build", "--target=x86_64-apple-darwin", "--release"],
+                cwd=c_dir,
+            )
+            print("aarch64-apple-darwin compilation")
+            subprocess.call(
+                ["cargo", "build", "--target=aarch64-apple-darwin", "--release"],
+                cwd=c_dir,
+            )
+            subprocess.call(
+                [
+                    "lipo",
+                    "-create",
+                    os.path.join(
+                        c_dir,
+                        "target",
+                        "aarch64-apple-darwin",
+                        "release",
+                        "libwkw.dylib",
+                    ),
+                    os.path.join(
+                        c_dir,
+                        "target",
+                        "x86_64-apple-darwin",
+                        "release",
+                        "libwkw.dylib",
+                    ),
+                    "-output",
+                    os.path.join(c_dir, "target", "release", "libwkw.dylib"),
+                ],
+                cwd=c_dir,
+            )
+        else:
+            subprocess.call(["cargo", "build", "--release"], cwd=c_dir)
 
         lib_name_platform = {
             "Linux": "libwkw.so",
