@@ -23,7 +23,7 @@ credentials += Credentials("Sonatype Nexus Repository Manager",
 - Change directory to the scala root directory.
 - Run `sbt release`. This increments the version automatically, publishes the build to a temporary staging repository and adds git commits and tags.
 - Log in to [Sonatype Nexus](https://oss.sonatype.org) and close and release the newly created Staging Repository, compare [this guide](https://central.sonatype.org/pages/releasing-the-deployment.html).
-- After some delay (10min to 2h) the package should be synced to maven
+- After some delay (10min to 2h) the package should be synced to [maven](https://mvnrepository.com/artifact/com.scalableminds/webknossos-wrap)
 - If all is successful, push the git changes via `git push --follow-tags`.
 
 **Never release a version twice. This screws up all caches and may lead to build errors in the projects depending on the library!**
