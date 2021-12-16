@@ -9,7 +9,7 @@ This repository contains reference implementations for the webKNOSSOS wrapper
 format. Code is available for
 
 * C/C++
-* Scala
+* [Scala](https://github.com/scalableminds/webknossos-wrap/tree/master/scala)
 * [MATLAB](https://github.com/scalableminds/webknossos-wrap/tree/master/matlab#webknossos-wrapper-for-matlab)
 * [Rust](https://github.com/scalableminds/webknossos-wrap/tree/master/rust#webknossos-wrapper-core-library)
 * [Python](https://github.com/scalableminds/webknossos-wrap/tree/master/python#webknossos-wrapper-for-python)
