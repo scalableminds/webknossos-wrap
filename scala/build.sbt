@@ -63,8 +63,8 @@ libraryDependencies ++= Seq(
   "net.liftweb" % "lift-util_2.10" % "3.0-M1",
   "org.apache.commons" % "commons-lang3" % "3.1",
   "commons-io" % "commons-io" % "2.9.0",
-  "org.apache.logging.log4j" % "log4j-api" % "2.15.0",
-  "org.apache.logging.log4j" % "log4j-core" % "2.15.0"
+  "org.apache.logging.log4j" % "log4j-api" % "2.17.0",
+  "org.apache.logging.log4j" % "log4j-core" % "2.17.0"
 )
 
 releasePublishArtifactsAction := PgpKeys.publishSigned.value
