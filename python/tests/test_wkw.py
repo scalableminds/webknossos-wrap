@@ -64,7 +64,7 @@ def test_readwrite():
         dataset.write(POSITION, test_data)
         assert (
             path.getsize(path.join("tests/tmp", "z0", "y0", "x0.wkw"))
-            == np.prod(SIZE) * (dataset.header.file_len ** 3) + header_size
+            == np.prod(SIZE) * (dataset.header.file_len**3) + header_size
         )
         assert np.all(dataset.read(POSITION, SIZE) == test_data)
 
@@ -84,7 +84,7 @@ def test_readwrite_live_compression():
         # The size should be less than if it was not compressed
         assert (
             path.getsize(path.join("tests/tmp", "z0", "y0", "x0.wkw"))
-            < np.prod(SIZE128) * (dataset.header.file_len ** 3) + header_size
+            < np.prod(SIZE128) * (dataset.header.file_len**3) + header_size
         )
 
     with wkw.Dataset.open("tests/tmp") as dataset:
@@ -158,7 +158,7 @@ def test_compress():
             assert path.exists(path.join("tests/tmp2", "header.wkw"))
             assert (
                 path.getsize(path.join("tests/tmp2", "z0", "y0", "x0.wkw"))
-                < np.prod(SIZE) * (dataset2.header.file_len ** 3) + header_size
+                < np.prod(SIZE) * (dataset2.header.file_len**3) + header_size
             )
             assert np.all(dataset2.read(POSITION, SIZE) == test_data)
 

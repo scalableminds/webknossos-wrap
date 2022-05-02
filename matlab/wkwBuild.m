@@ -37,11 +37,18 @@ function buildWithCargo(oldName, newName)
     cd(cargoDir);
     system('cargo clean');
     system('cargo update');
-    system('cargo build --release');
+    
+    if ismac
+        % In case the binary is build on arm64 make sure to use x86 as the
+        % target.
+        system('cargo build --release --target=x86_64-apple-darwin');
+        libDir = fullfile(cargoDir, 'target', 'x86_64-apple-darwin', 'release');
+    else
+        system('cargo build --release');
+        libDir = fullfile(cargoDir, 'target', 'release');
+    end
     
     % rename library
-    libDir = fullfile(cargoDir, 'target', 'release');
-    
     if ismac
         libPath = fullfile(libDir, strcat('lib', oldName, '.dylib'));
     elseif isunix
