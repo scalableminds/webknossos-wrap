@@ -19,4 +19,4 @@ RUN $PYBIN/pip install \
   setuptools \
   pytest \
   twine \
-  black
+  black==22.3.0
