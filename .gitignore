@@ -27,3 +27,6 @@ project/plugins/project/
 
 # Rust specific
 Cargo.lock
+
+# Python specific
+python/.eggs
