@@ -87,6 +87,11 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     license="MIT",
-    install_requires=["cffi", "numpy>=1.15,<1.22"],
+    install_requires=["cffi", "numpy>=1.15,==1.*"],
+    extras_require={
+        ':python_version < "3.8"': [
+            "numpy<1.22",
+        ],
+    },
     cmdclass={"build_py": BuildPyCommand},
 )
