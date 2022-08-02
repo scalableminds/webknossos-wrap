@@ -85,16 +85,24 @@ class Header:
     ):
         self.version = version
 
-        assert block_len & (block_len - 1) == 0, f"block_len must be a power of two, but is {block_len}"
+        assert (
+            block_len & (block_len - 1) == 0
+        ), f"block_len must be a power of two, but is {block_len}"
         self.block_len = block_len
 
-        assert file_len & (file_len - 1) == 0, f"file_len must be a power of two, but is {file_len}"
+        assert (
+            file_len & (file_len - 1) == 0
+        ), f"file_len must be a power of two, but is {file_len}"
         self.file_len = file_len
 
-        assert block_type in self.VALID_BLOCK_TYPES, f"block_type must be one of {self.VALID_BLOCK_TYPES}, but is {block_type}"
+        assert (
+            block_type in self.VALID_BLOCK_TYPES
+        ), f"block_type must be one of {self.VALID_BLOCK_TYPES}, but is {block_type}"
         self.block_type = block_type
 
-        assert voxel_type in self.VALID_VOXEL_TYPES, f"voxel_type must be one of {self.VALID_VOXEL_TYPES}, but is {voxel_type}"
+        assert (
+            voxel_type in self.VALID_VOXEL_TYPES
+        ), f"voxel_type must be one of {self.VALID_VOXEL_TYPES}, but is {voxel_type}"
         self.voxel_type = voxel_type
 
         assert num_channels > 0, f"num_channels must be >0, but is {num_channels}"
