@@ -88,6 +88,7 @@ jobs:
       run: |
         cd python
         export PATH=$PATH:$HOME/.cargo/bin
+        pip install twine wheel
         python setup.py bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform().replace('x86_64', 'universal2'))")
         pip install dist/*.whl
     - name: Test
@@ -102,7 +103,6 @@ jobs:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
-        pip install twine wheel
         cd python
         rm -rf dist
         export PATH=$PATH:$HOME/.cargo/bin
@@ -126,6 +126,7 @@ jobs:
       shell: bash
       run: |
         cd python
+        pip install twine wheel
         python setup.py bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform())")
         pip install dist/*.whl
     - name: Test
@@ -147,7 +148,6 @@ jobs:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
-        pip install twine wheel
         cd python
         rm -rf dist
         python setup.py sdist bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform())")
