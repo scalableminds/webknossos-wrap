@@ -47,7 +47,7 @@ jobs:
           -v$(pwd):/app \
           testing \
           bash -c "
-            for PYBIN in /opt/python/{cp37-cp37m,cp38-cp38,cp39-cp39}/bin; do
+            for PYBIN in /opt/python/{cp37-cp37m,cp38-cp38,cp39-cp39,cp310-cp310,cp311-cp311}/bin; do
               echo '-->' \$PYBIN
               \$PYBIN/pip install /app/python/dist/wkw-*-py3-none-manylinux2014_x86_64.whl
               \$PYBIN/python -c 'import wkw; print(wkw.Dataset)'
@@ -68,7 +68,7 @@ jobs:
     strategy:
       max-parallel: 4
       matrix:
-        python-version: [3.7, 3.8, 3.9]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
     steps:
     - uses: actions/checkout@v1
     - name: Set up Python ${{ matrix.python-version }}
@@ -110,7 +110,7 @@ jobs:
     strategy:
       max-parallel: 4
       matrix:
-        python-version: [3.7, 3.8, 3.9]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
     steps:
     - uses: actions/checkout@v1
     - name: Set up Python ${{ matrix.python-version }}
