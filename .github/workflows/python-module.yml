@@ -88,7 +88,8 @@ jobs:
       run: |
         cd python
         export PATH=$PATH:$HOME/.cargo/bin
-        python setup.py install
+        python setup.py bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform().replace('x86_64', 'universal2'))")
+        pip install dist/*.whl
     - name: Test
       run: |
         cd python
@@ -103,8 +104,9 @@ jobs:
       run: |
         pip install twine wheel
         cd python
+        rm -rf dist
         export PATH=$PATH:$HOME/.cargo/bin
-        python setup.py sdist bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform().replace('x86_64', 'universal2'))") --python-tag py${{ matrix.python-version }}
+        python setup.py sdist bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform().replace('x86_64', 'universal2'))")
         twine upload dist/*.whl
 
   build_win:
@@ -124,7 +126,8 @@ jobs:
       shell: bash
       run: |
         cd python
-        python setup.py install
+        python setup.py bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform())")
+        pip install dist/*.whl
     - name: Test
       shell: bash
       run: |
@@ -146,5 +149,6 @@ jobs:
       run: |
         pip install twine wheel
         cd python
-        python setup.py sdist bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform())") --python-tag py${{ matrix.python-version }}
+        rm -rf dist
+        python setup.py sdist bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform())")
         twine upload dist/*.whl
