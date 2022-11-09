@@ -45,12 +45,14 @@ jobs:
       run: |
         docker run \
           -v$(pwd):/app \
+          -w/app/python \
           testing \
           bash -c "
-            for PYBIN in /opt/python/{cp37-cp37m,cp38-cp38,cp39-cp39}/bin; do
+            for PYBIN in /opt/python/{cp37-cp37m,cp38-cp38,cp39-cp39,cp310-cp310,cp311-cp311}/bin; do
               echo '-->' \$PYBIN
               \$PYBIN/pip install /app/python/dist/wkw-*-py3-none-manylinux2014_x86_64.whl
               \$PYBIN/python -c 'import wkw; print(wkw.Dataset)'
+              \$PYBIN/pytest tests -v
             done"
     - name: Publish
       if: startsWith(github.event.ref, 'refs/tags')
@@ -68,7 +70,7 @@ jobs:
     strategy:
       max-parallel: 4
       matrix:
-        python-version: [3.7, 3.8, 3.9]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
     steps:
     - uses: actions/checkout@v1
     - name: Set up Python ${{ matrix.python-version }}
@@ -86,7 +88,9 @@ jobs:
       run: |
         cd python
         export PATH=$PATH:$HOME/.cargo/bin
-        python setup.py install
+        pip install twine wheel
+        python setup.py bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform().replace('x86_64', 'universal2'))")
+        pip install dist/*.whl
     - name: Test
       run: |
         cd python
@@ -99,10 +103,10 @@ jobs:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
-        pip install twine wheel
         cd python
+        rm -rf dist
         export PATH=$PATH:$HOME/.cargo/bin
-        python setup.py sdist bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform().replace('x86_64', 'universal2'))") --python-tag py${{ matrix.python-version }}
+        python setup.py sdist bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform().replace('x86_64', 'universal2'))")
         twine upload dist/*.whl
 
   build_win:
@@ -110,7 +114,7 @@ jobs:
     strategy:
       max-parallel: 4
       matrix:
-        python-version: [3.7, 3.8, 3.9]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
     steps:
     - uses: actions/checkout@v1
     - name: Set up Python ${{ matrix.python-version }}
@@ -122,7 +126,9 @@ jobs:
       shell: bash
       run: |
         cd python
-        python setup.py install
+        pip install twine wheel
+        python setup.py bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform())")
+        pip install dist/*.whl
     - name: Test
       shell: bash
       run: |
@@ -142,7 +148,7 @@ jobs:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
-        pip install twine wheel
         cd python
-        python setup.py sdist bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform())") --python-tag py${{ matrix.python-version }}
+        rm -rf dist
+        python setup.py sdist bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform())")
         twine upload dist/*.whl
