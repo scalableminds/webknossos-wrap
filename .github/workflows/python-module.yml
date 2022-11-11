@@ -98,7 +98,7 @@ jobs:
         pip install pytest
         pytest tests
     - name: Publish
-      if: startsWith(github.event.ref, 'refs/tags') && matrix.python-version == "3.8"
+      if: startsWith(github.event.ref, 'refs/tags') && ${{ matrix.python-version == '3.8' }}
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
@@ -143,7 +143,7 @@ jobs:
         pytest tests -k "not big_read"
     - name: Publish
       shell: bash
-      if: startsWith(github.event.ref, 'refs/tags') && matrix.python-version == "3.8"
+      if: startsWith(github.event.ref, 'refs/tags') && ${{ matrix.python-version == '3.8' }}
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
