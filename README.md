@@ -98,7 +98,7 @@ If the file header indicates that the blocks were compressed using LZ4 (by
 having a blockType value of either 0x02 or 0x03), the file header is immediately
 followed by the jump table.
 
-The jump table is an array of N unsigned 64-bit intergers, where N is the number
+The jump table is an array of N unsigned 64-bit integers, where N is the number
 of blocks in the file. The n-th entry of the jump table contains the absolute
 address (relative to the beginning of the file) of the first byte after the data
 of block n.
