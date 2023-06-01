@@ -4,9 +4,9 @@ on: [push]
 
 jobs:
   test_rust:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v3
     - run: |
         cd rust
         cargo test
@@ -14,7 +14,7 @@ jobs:
   build_lin:
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v3
     - name: Build testing docker container
       run: |
         docker build -f python/Dockerfile -t testing .
@@ -41,19 +41,15 @@ jobs:
           -w/app/python \
           testing \
           bash -c "\$PYBIN/black --check ."
-    - name: Try to import on different python versions
-      run: |
-        docker run \
-          -v$(pwd):/app \
-          -w/app/python \
-          testing \
-          bash -c "
-            for PYBIN in /opt/python/{cp37-cp37m,cp38-cp38,cp39-cp39,cp310-cp310,cp311-cp311}/bin; do
-              echo '-->' \$PYBIN
-              \$PYBIN/pip install /app/python/dist/wkw-*-py3-none-manylinux2014_x86_64.whl
-              \$PYBIN/python -c 'import wkw; print(wkw.Dataset)'
-              \$PYBIN/pytest tests -v
-            done"
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: wheels
+        path: ./python/dist/*.whl
+    - uses: actions/upload-artifact@v3
+      with:
+        name: targz
+        path: ./python/dist/*.tar.gz
     - name: Publish
       if: startsWith(github.event.ref, 'refs/tags')
       run: | 
@@ -72,9 +68,9 @@ jobs:
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
         architecture: 'x64' # (x64 or x86)
@@ -88,7 +84,7 @@ jobs:
       run: |
         cd python
         export PATH=$PATH:$HOME/.cargo/bin
-        pip install twine wheel
+        pip install wheel
         python setup.py bdist_wheel -p macosx-10.9-universal2
         pip install dist/*.whl
     - name: Test
@@ -97,17 +93,11 @@ jobs:
         python -c "import wkw"
         pip install pytest
         pytest tests
-    - name: Publish
-      if: startsWith(github.event.ref, 'refs/tags') && matrix.python-version == '3.8'
-      env:
-        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-      run: |
-        cd python
-        rm -rf dist
-        export PATH=$PATH:$HOME/.cargo/bin
-        python setup.py sdist bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform().replace('x86_64', 'universal2'))")
-        twine upload dist/*.whl
+    
+    - uses: actions/upload-artifact@v3
+      with:
+        name: wheels
+        path: ./python/dist/*.whl
 
   build_win:
     runs-on: windows-2022
@@ -119,16 +109,16 @@ jobs:
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
         architecture: 'x64' # (x64 or x86)
     - name: Build
       run: |
         cd python
-        pip install twine wheel
+        pip install wheel
         python setup.py bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform())")
         pip install dist/*.whl
     - name: Test
@@ -138,17 +128,47 @@ jobs:
         pip install pytest
         pytest tests -k "not big_read"
     - name: Test (non-bash)
+      shell: cmd
       run: |
         cd python
         python -c "import wkw"
         pytest tests -k "not big_read"
+    
+    - uses: actions/upload-artifact@v3
+      with:
+        name: wheels
+        path: ./python/dist/*.whl
+  
+  publish:
+    needs: 
+    - test_rust
+    - build_lin
+    - build_mac
+    - build_win
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        depth: '0'
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+    - name: Get wheels
+      uses: actions/download-artifact@v3
+      with:
+        name: wheels
+        path: dist
+    - name: Get tar.gz
+      uses: actions/download-artifact@v3
+      with:
+        name: targz
+        path: dist
     - name: Publish
-      if: startsWith(github.event.ref, 'refs/tags') && matrix.python-version == '3.8'
+      if: startsWith(github.event.ref, 'refs/tags')
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
-        cd python
-        rm -rf dist
-        python setup.py sdist bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform())")
-        twine upload dist/*.whl
+        pip install twine
+        twine upload dist/*.whl dist/*.tar.gz
