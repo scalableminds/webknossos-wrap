@@ -84,6 +84,7 @@ setup(
     author="Alessandro Motta",
     author_email="alessandro.motta@brain.mpg.de",
     url="https://github.com/scalableminds/webknossos-wrap",
+    long_description_content_type="text/markdown",
     packages=find_packages(),
     include_package_data=True,
     license="MIT",
