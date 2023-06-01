@@ -356,6 +356,7 @@ def test_dataset_with_invalid_jumptable():
         with wkw.Dataset.open("tests/tmp") as dataset:
             dataset.read((0, 0, 0), (32 * 4,) * 3)
 
+    print(excinfo)
     assert "Corrupt jump table" in str(excinfo)
 
 
