@@ -1,3 +1,4 @@
+from pathlib import Path
 import wkw
 import numpy as np
 import shutil
@@ -50,14 +51,12 @@ def test_non_negative_offsets():
 
 def test_empty_read():
     with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dataset:
-
         data = dataset.read((1, 1, 1), (0, 0, 0))
         assert data.shape == (1, 0, 0, 0)
 
 
 def test_readwrite():
     with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dataset:
-
         header_size = path.getsize(path.join("tests/tmp", "header.wkw"))
         test_data = generate_test_data(dataset.header.voxel_type)
 
@@ -96,7 +95,6 @@ def test_readwrite_live_compression_should_enforce_full_file_write():
         with wkw.Dataset.create(
             "tests/tmp", wkw.Header(np.uint8, block_type=BLOCK_TYPE_LZ4)
         ) as dataset:
-
             test_data = generate_test_data(dataset.header.voxel_type)
             dataset.write(POSITION, test_data)
 
@@ -145,7 +143,6 @@ def test_readwrite_live_compression_should_truncate():
 
 def test_compress():
     with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dataset:
-
         test_data = generate_test_data(dataset.header.voxel_type)
         dataset.write(POSITION, test_data)
 
@@ -269,7 +266,6 @@ def test_not_too_much_data_is_written():
 
 
 def test_multiple_writes_and_reads():
-
     mem_buffer = np.zeros((200, 200, 200), dtype=np.uint8, order="F")
     with wkw.Dataset.create("tests/tmp", wkw.Header(np.uint8)) as dataset:
         for i in range(10):
@@ -289,7 +285,6 @@ def test_multiple_writes_and_reads():
 
 
 def test_multi_channel_column_major_order():
-
     with wkw.Dataset.create(
         "tests/tmp", wkw.Header(np.uint8, num_channels=3)
     ) as dataset:
@@ -338,6 +333,31 @@ def test_invalid_dataset():
         with wkw.Dataset.open("tests/tmp/exists") as dataset:
             pass
     print(excinfo.value)
+
+
+def test_dataset_with_invalid_jumptable():
+    with wkw.Dataset.create(
+        "tests/tmp",
+        wkw.Header(np.uint8, block_type=wkw.Header.BLOCK_TYPE_LZ4HC, file_len=4),
+    ) as dataset:
+        test_data = generate_test_data(
+            dataset.header.voxel_type, (32 * 4, 32 * 4, 32 * 4)
+        )
+        dataset.write((0, 0, 0), test_data)
+
+    # reset jumptable with zeros
+    data_path = Path("tests/tmp") / "z0" / "y0" / "x0.wkw"
+    wkw_file_bytes = bytearray(data_path.read_bytes())
+    zeros = b"\x00" * (4**3 * 8)
+    wkw_file_bytes[16 : (16 + (4**3) * 8)] = zeros
+    data_path.write_bytes(wkw_file_bytes)
+
+    with pytest.raises(wkw.wkw.WKWException) as excinfo:
+        with wkw.Dataset.open("tests/tmp") as dataset:
+            dataset.read((0, 0, 0), (32 * 4,) * 3)
+
+    print(excinfo)
+    assert "Corrupt jump table" in str(excinfo)
 
 
 def generate_test_data(dtype, size=SIZE, order="C"):

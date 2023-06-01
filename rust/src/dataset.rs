@@ -55,10 +55,12 @@ impl Dataset {
         }
 
         // create header file
-        let mut file = fs::File::create(&header_path).or(Err(format!(
-            "Could not create header file {:?}",
-            &header_path
-        )))?;
+        let mut file = fs::File::create(&header_path).or_else(|err| {
+            Err(format!(
+                "Could not create header file {:?}: {}",
+                &header_path, err
+            ))
+        })?;
 
         header.write(&mut file)
     }
@@ -104,7 +106,15 @@ impl Dataset {
 
                     // try to open file
                     if let Ok(mut file) = File::open(&cur_path) {
-                        file.read_mat(cur_src_pos, mat, cur_dst_pos)?;
+                        match file.read_mat(cur_src_pos, mat, cur_dst_pos) {
+                            Ok(_) => {}
+                            Err(err) => {
+                                return Err(format!(
+                                    "Error while reading from file {:?}: {}",
+                                    &cur_path, err
+                                ));
+                            }
+                        }
                     }
                 }
             }
@@ -176,8 +186,24 @@ impl Dataset {
                     let cur_src_pos = cur_box.min() - dst_pos;
                     let cur_dst_pos = cur_box.min() - cur_file_box.min();
 
-                    let mut file = File::open_or_create(&cur_path, &self.header)?;
-                    file.write_mat(cur_dst_pos, mat, cur_src_pos)?;
+                    let mut file = match File::open_or_create(&cur_path, &self.header) {
+                        Ok(file) => file,
+                        Err(err) => {
+                            return Err(format!(
+                                "Error while open file {:?} for writing: {}",
+                                &cur_path, err
+                            ));
+                        }
+                    };
+                    match file.write_mat(cur_dst_pos, mat, cur_src_pos) {
+                        Ok(_) => {}
+                        Err(err) => {
+                            return Err(format!(
+                                "Error while writing to file {:?}: {}",
+                                &cur_path, err
+                            ));
+                        }
+                    }
                 }
             }
         }

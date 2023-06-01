@@ -357,7 +357,15 @@ impl File {
         let block_size_raw = self.header.block_size();
 
         let buf_lz4_orig = &mut *self.disk_block_buf.as_mut().unwrap();
-        let buf_lz4 = &mut buf_lz4_orig[..block_size_lz4];
+        let buf_lz4 = match buf_lz4_orig.get_mut(..block_size_lz4) {
+            Some(buf_lz4) => buf_lz4,
+            None => {
+                return Err(format!(
+                    "Unexpected compressed block length {}",
+                    block_size_lz4
+                ))
+            }
+        };
 
         // read compressed block
         self.file
