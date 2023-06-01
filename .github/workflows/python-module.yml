@@ -126,10 +126,12 @@ jobs:
         python-version: ${{ matrix.python-version }}
         architecture: 'x64' # (x64 or x86)
     - name: Build
+      env:
+        CIBW_ARCHS_MACOS: "universal2"
       run: |
         cd python
-        pip install twine wheel
-        python setup.py bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform())")
+        pip install twine wheel cibuildwheel
+        python -m cibuildwheel --output-dir dist
         pip install dist/*.whl
     - name: Test
       run: |
