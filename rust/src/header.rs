@@ -208,12 +208,18 @@ impl Header {
                 let jump_table = &*self.jump_table.as_ref().unwrap();
 
                 if block_idx == 0 {
-                    let block_size = jump_table[0] - self.data_offset;
-                    Ok(block_size as usize)
+                    let block_size = jump_table[0].checked_sub(self.data_offset);
+                    match block_size {
+                        Some(block_size) => Ok(block_size as usize),
+                        None => Err(String::from("Corrupt jump table")),
+                    }
                 } else if block_idx < self.file_vol() {
                     let block_idx = block_idx as usize;
-                    let block_size = jump_table[block_idx] - jump_table[block_idx - 1];
-                    Ok(block_size as usize)
+                    let block_size = jump_table[block_idx].checked_sub(jump_table[block_idx - 1]);
+                    match block_size {
+                        Some(block_size) => Ok(block_size as usize),
+                        None => Err(String::from("Corrupt jump table")),
+                    }
                 } else {
                     Err(String::from("Block index out of bounds"))
                 }
