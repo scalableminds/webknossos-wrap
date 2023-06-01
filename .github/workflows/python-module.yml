@@ -48,7 +48,6 @@ jobs:
           path: ./python/dist/*.whl
 
       - name: Make sdist
-        if: startsWith(github.event.ref, 'refs/tags')
         run: |
           docker run \
             -v$(pwd):/app \
