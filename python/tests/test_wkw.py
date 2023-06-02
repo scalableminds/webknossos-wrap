@@ -65,7 +65,36 @@ def test_readwrite():
             path.getsize(path.join("tests/tmp", "z0", "y0", "x0.wkw"))
             == np.prod(SIZE) * (dataset.header.file_len**3) + header_size
         )
-        assert np.all(dataset.read(POSITION, SIZE) == test_data)
+        assert np.array_equal(dataset.read(POSITION, SIZE), test_data)
+
+
+def test_readwrite_lz4():
+    with wkw.Dataset.create(
+        "tests/tmp", wkw.Header(np.uint8, block_type=wkw.Header.BLOCK_TYPE_LZ4)
+    ) as dataset:
+        header_size = path.getsize(path.join("tests/tmp", "header.wkw"))
+        test_data = generate_test_data(dataset.header.voxel_type)
+
+        dataset.write(POSITION, test_data)
+        assert (
+            path.getsize(path.join("tests/tmp", "z0", "y0", "x0.wkw"))
+            == np.prod(SIZE) * (dataset.header.file_len**3) + header_size
+        )
+        assert np.array_equal(dataset.read(POSITION, SIZE), test_data)
+
+def test_readwrite_lz4hc():
+    with wkw.Dataset.create(
+        "tests/tmp", wkw.Header(np.uint8, block_type=wkw.Header.BLOCK_TYPE_LZ4HC)
+    ) as dataset:
+        header_size = path.getsize(path.join("tests/tmp", "header.wkw"))
+        test_data = generate_test_data(dataset.header.voxel_type)
+
+        dataset.write(POSITION, test_data)
+        assert (
+            path.getsize(path.join("tests/tmp", "z0", "y0", "x0.wkw"))
+            == np.prod(SIZE) * (dataset.header.file_len**3) + header_size
+        )
+        assert np.array_equal(dataset.read(POSITION, SIZE), test_data)
 
 
 def test_readwrite_live_compression():
@@ -87,13 +116,13 @@ def test_readwrite_live_compression():
         )
 
     with wkw.Dataset.open("tests/tmp") as dataset:
-        assert np.all(dataset.read(POSITION, SIZE128) == test_data)
+        assert np.array_equal(dataset.read(POSITION, SIZE128), test_data)
 
 
 def test_readwrite_live_compression_should_enforce_full_file_write():
     with pytest.raises(Exception):
         with wkw.Dataset.create(
-            "tests/tmp", wkw.Header(np.uint8, block_type=BLOCK_TYPE_LZ4)
+            "tests/tmp", wkw.Header(np.uint8, block_type=wkw.Header.BLOCK_TYPE_LZ4)
         ) as dataset:
             test_data = generate_test_data(dataset.header.voxel_type)
             dataset.write(POSITION, test_data)
@@ -113,7 +142,7 @@ def test_readwrite_live_compression_should_not_allow_inconsistent_writes():
             dataset.write(POSITION, test_data)
 
     with wkw.Dataset.open("tests/tmp") as dataset:
-        assert np.all(dataset.read(POSITION, SIZE129) == empty_data)
+        assert np.array_equal(dataset.read(POSITION, SIZE129), empty_data)
 
 
 def test_readwrite_live_compression_should_truncate():
@@ -138,7 +167,7 @@ def test_readwrite_live_compression_should_truncate():
     assert empty_compressed_size < random_compressed_size
 
     with wkw.Dataset.open("tests/tmp") as dataset:
-        assert np.all(dataset.read(POSITION, SIZE128) == ones_data)
+        assert np.array_equal(dataset.read(POSITION, SIZE128), ones_data)
 
 
 def test_compress():
@@ -157,7 +186,7 @@ def test_compress():
                 path.getsize(path.join("tests/tmp2", "z0", "y0", "x0.wkw"))
                 < np.prod(SIZE) * (dataset2.header.file_len**3) + header_size
             )
-            assert np.all(dataset2.read(POSITION, SIZE) == test_data)
+            assert np.array_equal(dataset2.read(POSITION, SIZE), test_data)
 
 
 def test_row_major_order():
@@ -167,15 +196,15 @@ def test_row_major_order():
         dataset.write((0, 0, 0), data)
         read_data = dataset.read((0, 0, 0), data_shape)
 
-    assert np.all(data == read_data)
+    assert np.array_equal(data, read_data)
 
     with wkw.Dataset.create("tests/tmp2", wkw.Header(np.uint8)) as dataset:
         fortran_data = np.asfortranarray(data)
         dataset.write((0, 0, 0), fortran_data)
         fortran_read_data = dataset.read((0, 0, 0), data_shape)
 
-    assert np.all(fortran_read_data == read_data)
-    assert np.all(fortran_read_data == fortran_data)
+    assert np.array_equal(fortran_read_data, read_data)
+    assert np.array_equal(fortran_read_data, fortran_data)
 
 
 def test_row_major_order_with_offset():
@@ -185,7 +214,7 @@ def test_row_major_order_with_offset():
         dataset.write((15, 2, 0), data)
         read_data = dataset.read((15, 2, 0), data_shape)
 
-    assert np.all(data == read_data)
+    assert np.array_equal(data, read_data)
 
 
 def test_row_major_order_with_different_voxel_size():
@@ -195,7 +224,7 @@ def test_row_major_order_with_different_voxel_size():
         dataset.write((3, 1, 0), data)
         read_data = dataset.read((3, 1, 0), data_shape)
 
-    assert np.all(data == read_data)
+    assert np.array_equal(data, read_data)
 
 
 def test_row_major_order_with_channels():
@@ -207,7 +236,7 @@ def test_row_major_order_with_channels():
         dataset.write((3, 1, 0), data)
         read_data = dataset.read((3, 1, 0), data_shape[1:])
 
-    assert np.all(data == read_data)
+    assert np.array_equal(data, read_data)
 
 
 def test_row_major_order_with_channels_and_different_voxel_size():
@@ -219,7 +248,7 @@ def test_row_major_order_with_channels_and_different_voxel_size():
         dataset.write((3, 1, 0), data)
         read_data = dataset.read((3, 1, 0), data_shape[1:])
 
-    assert np.all(data == read_data)
+    assert np.array_equal(data, read_data)
 
 
 def test_column_major_order_with_channels_and_different_voxel_size():
@@ -231,7 +260,7 @@ def test_column_major_order_with_channels_and_different_voxel_size():
         dataset.write((3, 1, 0), data)
         read_data = dataset.read((3, 1, 0), data_shape[1:])
 
-    assert np.all(data == read_data)
+    assert np.array_equal(data, read_data)
 
 
 def test_view_on_np_array():
@@ -242,7 +271,7 @@ def test_view_on_np_array():
         dataset.write((3, 1, 0), data)
         read_data = dataset.read((3, 1, 0), data.shape)
 
-    assert np.all(data == read_data)
+    assert np.array_equal(data, read_data)
 
 
 def test_not_too_much_data_is_written():
@@ -257,9 +286,9 @@ def test_not_too_much_data_is_written():
             before = dataset.read((0, 0, 0), (1, 2, 3))
             after = dataset.read((0, 0, 38), (35, 35, 26))
 
-        assert np.all(data == read_data)
-        assert np.all(before == 1)
-        assert np.all(after == 1)
+        assert np.array_equal(data, read_data)
+        assert np.array_equal(before, 1)
+        assert np.array_equal(after, 1)
 
     write_and_test_in_given_order("tests/tmp", "F")
     write_and_test_in_given_order("tests/tmp2", "C")
@@ -281,7 +310,7 @@ def test_multiple_writes_and_reads():
             ] = data
 
             read_data = dataset.read((0, 0, 0), (200, 200, 200))
-            assert np.all(mem_buffer == read_data)
+            assert np.array_equal(mem_buffer, read_data)
 
 
 def test_multi_channel_column_major_order():
@@ -295,7 +324,7 @@ def test_multi_channel_column_major_order():
         dataset.write(offset, data)
 
         read_data = dataset.read(offset, data_shape[1:])
-        assert np.all(data == read_data)
+        assert np.array_equal(data, read_data)
 
 
 def test_big_read():
