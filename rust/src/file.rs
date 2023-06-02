@@ -302,8 +302,8 @@ impl File {
 
         let result = match self.header.block_type {
             BlockType::Raw => self.write_block_raw(buf),
-            BlockType::LZ4 => self.write_block_lz4(buf),
-            BlockType::LZ4HC => self.write_block_lz4hc(buf),
+            BlockType::LZ4 => self.write_block_lz4(buf, BlockType::LZ4),
+            BlockType::LZ4HC => self.write_block_lz4(buf, BlockType::LZ4HC),
         };
 
         // advance
@@ -329,38 +329,24 @@ impl File {
         }
     }
 
-    fn write_block_lz4(&mut self, buf: &[u8]) -> Result<usize> {
+    fn write_block_lz4(&mut self, buf: &[u8], block_type: BlockType) -> Result<usize> {
         // compress data
         let mut buf_lz4 = &mut *self.disk_block_buf.as_mut().unwrap();
-        let len_lz4 = lz4::compress(buf, &mut buf_lz4)?;
+        let len_lz4 = match block_type {
+            BlockType::LZ4 => lz4::compress(buf, &mut buf_lz4)?,
+            BlockType::LZ4HC => lz4::compress_hc(buf, &mut buf_lz4)?,
+            _ => {
+                return Err(format!(
+                    "Invalid block_type {:?} for compression.",
+                    block_type
+                ));
+            }
+        };
 
         // write data
         self.file
             .write_all(&buf_lz4[..len_lz4])
             .or(Err("Could not write LZ4 block"))?;
-
-        // update jump table
-        let jump_entry = self
-            .file
-            .seek(SeekFrom::Current(0))
-            .or(Err("Could not determine jump entry"))?;
-
-        let block_idx = self.block_idx.unwrap();
-        let jump_table = &mut *self.header.jump_table.as_mut().unwrap();
-        jump_table[block_idx as usize] = jump_entry;
-
-        Ok(len_lz4)
-    }
-
-    fn write_block_lz4hc(&mut self, buf: &[u8]) -> Result<usize> {
-        // compress data
-        let mut buf_lz4 = &mut *self.disk_block_buf.as_mut().unwrap();
-        let len_lz4 = lz4::compress_hc(buf, &mut buf_lz4)?;
-
-        // write data
-        self.file
-            .write_all(&buf_lz4[..len_lz4])
-            .or(Err("Could not write LZ4HC block"))?;
 
         // update jump table
         let jump_entry = self
