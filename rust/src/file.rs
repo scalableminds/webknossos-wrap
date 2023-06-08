@@ -51,7 +51,7 @@ impl File {
 
         let mut file = open_opts
             .open(path)
-            .or(Err(format!("Could not open file {:?}", path)))?;
+            .or(Err(format!("Could not open file {:?}", &path)))?;
 
         // check if file was created
         let (header, created) = match Header::read(&mut file) {
@@ -68,6 +68,10 @@ impl File {
         }
 
         Ok(file)
+    }
+
+    pub(crate) fn rename(old_path: &path::Path, new_path: &path::Path) -> Result<()> {
+        fs::rename(old_path, new_path).or_else(|err| Err(err.to_string()))
     }
 
     pub(crate) fn read_mat(

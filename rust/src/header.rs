@@ -250,6 +250,10 @@ impl Header {
         self.voxel_size as usize > self.voxel_type_size()
     }
 
+    pub fn is_compressed(&self) -> bool {
+        return self.block_type == BlockType::LZ4 || self.block_type == BlockType::LZ4HC;
+    }
+
     fn from_bytes(buf: [u8; 16]) -> Result<Header> {
         let raw: HeaderRaw = unsafe { mem::transmute(buf) };
 
