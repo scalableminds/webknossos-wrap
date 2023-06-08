@@ -1,6 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use {BlockType, Box3, File, Header, Mat, Result, Vec3};
+use {Box3, File, Header, Mat, Result, Vec3};
 
 #[derive(Debug, Clone)]
 pub struct Dataset {
@@ -172,7 +172,7 @@ impl Dataset {
 
                     // writing compressed file into temporary file first
                     if self.header.is_compressed() {
-                        cur_path.set_extension("wkw_");
+                        cur_path.set_extension("wkw_tmp");
                     }
 
                     // bounding box

@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import wkw
 import numpy as np
@@ -382,6 +383,27 @@ def test_dataset_with_invalid_jumptable():
 
     print(excinfo)
     assert "Corrupt jump table" in str(excinfo)
+
+
+def test_readwrite_compressed_tmp():
+    with wkw.Dataset.create(
+        "tests/tmp",
+        wkw.Header(np.uint8, block_type=wkw.Header.BLOCK_TYPE_LZ4, file_len=1),
+    ) as dataset:
+        test_data = generate_test_data(dataset.header.voxel_type)
+
+        wkw_path = path.join("tests/tmp", "z0", "y0", "x0.wkw")
+
+        dataset.write(POSITION, test_data)
+        assert np.array_equiv(dataset.read(POSITION, SIZE), test_data)
+        assert path.exists(wkw_path)
+        assert not path.exists(wkw_path + "_tmp")
+
+        os.rename(wkw_path, wkw_path + "_tmp")
+        dataset.write(POSITION, test_data)
+        assert path.exists(wkw_path)
+        assert not path.exists(wkw_path + "_tmp")
+        assert np.array_equiv(dataset.read(POSITION, SIZE), test_data)
 
 
 def generate_test_data(dtype, size=SIZE, order="C"):
