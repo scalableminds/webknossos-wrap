@@ -394,12 +394,20 @@ def test_readwrite_compressed_tmp():
 
         wkw_path = path.join("tests/tmp", "z0", "y0", "x0.wkw")
 
+        # write data, should run through cleanly
         dataset.write(POSITION, test_data)
         assert np.array_equiv(dataset.read(POSITION, SIZE), test_data)
         assert path.exists(wkw_path)
         assert not path.exists(wkw_path + "_tmp")
 
+        # simulate broken write
         os.rename(wkw_path, wkw_path + "_tmp")
+        wkw_file_bytes = bytearray(Path(wkw_path + "_tmp").read_bytes())
+        zeros = b"\x00" * 8
+        wkw_file_bytes[16 : (16 + 8)] = zeros
+        Path(wkw_path + "_tmp").write_bytes(wkw_file_bytes)
+
+        # try another write, should clean up broken write
         dataset.write(POSITION, test_data)
         assert path.exists(wkw_path)
         assert not path.exists(wkw_path + "_tmp")
