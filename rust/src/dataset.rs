@@ -1,6 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use {BlockType, Box3, File, Header, Mat, Result, Vec3};
+use {Box3, File, Header, Mat, Result, Vec3};
 
 #[derive(Debug, Clone)]
 pub struct Dataset {
@@ -140,7 +140,7 @@ impl Dataset {
         }
 
         let file_len_vx_log2 = self.header.file_len_vx_log2() as u32;
-        if self.header.block_type == BlockType::LZ4 || self.header.block_type == BlockType::LZ4HC {
+        if self.header.is_compressed() {
             let file_len_vec = Vec3::from(1 << file_len_vx_log2);
             let is_dst_aligned = dst_pos % file_len_vec == Vec3::from(0);
             let is_shape_aligned = mat.shape % file_len_vec == Vec3::from(0);
@@ -170,6 +170,11 @@ impl Dataset {
                     cur_path.push(format!("y{}", cur_y));
                     cur_path.push(format!("x{}.wkw", cur_x));
 
+                    // writing compressed file into temporary file first
+                    if self.header.is_compressed() {
+                        cur_path.set_extension("wkw_tmp");
+                    }
+
                     // bounding box
                     let cur_file_ids = Vec3 {
                         x: cur_x,
@@ -186,22 +191,38 @@ impl Dataset {
                     let cur_src_pos = cur_box.min() - dst_pos;
                     let cur_dst_pos = cur_box.min() - cur_file_box.min();
 
-                    let mut file = match File::open_or_create(&cur_path, &self.header) {
-                        Ok(file) => file,
-                        Err(err) => {
-                            return Err(format!(
-                                "Error while open file {:?} for writing: {}",
-                                &cur_path, err
-                            ));
+                    {
+                        let mut file = match File::open_or_create(&cur_path, &self.header) {
+                            Ok(file) => file,
+                            Err(err) => {
+                                return Err(format!(
+                                    "Error while open file {:?} for writing: {}",
+                                    &cur_path, err
+                                ));
+                            }
+                        };
+                        match file.write_mat(cur_dst_pos, mat, cur_src_pos) {
+                            Ok(_) => {}
+                            Err(err) => {
+                                return Err(format!(
+                                    "Error while writing to file {:?}: {}",
+                                    &cur_path, err
+                                ));
+                            }
                         }
-                    };
-                    match file.write_mat(cur_dst_pos, mat, cur_src_pos) {
-                        Ok(_) => {}
-                        Err(err) => {
-                            return Err(format!(
-                                "Error while writing to file {:?}: {}",
-                                &cur_path, err
-                            ));
+                    }
+                    // moving compressed file into final file
+                    if self.header.is_compressed() {
+                        let mut new_path = cur_path.clone();
+                        new_path.set_extension("wkw");
+                        match File::rename(&cur_path, &new_path) {
+                            Ok(_) => {}
+                            Err(err) => {
+                                return Err(format!(
+                                    "Error while renaming temporary file {:?} to {:?}: {}",
+                                    &cur_path, &new_path, err
+                                ));
+                            }
                         }
                     }
                 }

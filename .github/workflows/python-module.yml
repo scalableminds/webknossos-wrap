@@ -171,3 +171,20 @@ jobs:
           user: __token__
           password: ${{ secrets.PYPI_PASSWORD }}
           skip-existing: true
+
+  complete:
+    needs:
+      - test_rust
+      - build_lin
+      - build_mac
+      - build_win
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check failure
+        if: |
+          contains(needs.*.result, 'failure') ||
+          contains(needs.*.result, 'cancelled')
+        run: exit 1
+      - name: Success
+        run: echo Success!
