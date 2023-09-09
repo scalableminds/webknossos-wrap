@@ -1,6 +1,6 @@
 name := "webknossos-wrap"
 
-scalaVersion := "2.12.7"
+scalaVersion := "2.13.11"
 
 javaOptions in test ++= Seq("-Xmx512m")
 
@@ -56,7 +56,6 @@ pomExtra := (
 
 libraryDependencies ++= Seq(
   "com.google.guava" % "guava" % "21.0",
-  "com.jsuereth" %% "scala-arm" % "2.0",
   "net.jpountz.lz4" % "lz4" % "1.3.0",
   "net.liftweb" % "lift-common_2.10" % "2.6-M3",
   "net.liftweb" % "lift-util_2.10" % "3.0-M1",

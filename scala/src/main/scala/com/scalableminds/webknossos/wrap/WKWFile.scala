@@ -207,7 +207,7 @@ class WKWFile(val header: WKWHeader, fileMode: FileMode.Value, underlyingFile: R
     val sourceBlockLengths = if (header.isCompressed) {
       header.jumpTable.sliding(2).map(a => (a(1) - a(0)).toInt)
     } else {
-      Array.fill(header.numBlocksPerCube)(header.numBytesPerBlock).toIterator
+      Array.fill(header.numBlocksPerCube)(header.numBytesPerBlock).iterator
     }
 
     val targetBlockLengths = sourceBlockLengths.foldLeft[Box[Seq[Int]]](Full(Seq.empty)) {
