@@ -5,7 +5,7 @@ import java.nio.channels.FileChannel
 import java.nio.file.{Files, Paths, StandardCopyOption}
 
 import org.apache.commons.io.IOUtils
-import com.google.common.io.{LittleEndianDataInputStream => DataInputStream}
+import com.google.common.io.LittleEndianDataInputStream
 import com.scalableminds.webknossos.wrap.util.ExtendedMappedByteBuffer
 import com.scalableminds.webknossos.wrap.util.{BoxImplicits, ResourceBox}
 import net.jpountz.lz4.LZ4Factory
@@ -279,7 +279,7 @@ object WKWFile extends WKWCompressionHelper {
   }
 
   def read[T](is: InputStream)(f: (WKWHeader, Iterator[Array[Byte]]) => T): Box[T] = {
-    ResourceBox.manage(new DataInputStream(is)) { dataStream =>
+    ResourceBox.manage(new LittleEndianDataInputStream(is)) { dataStream =>
       for {
         header <- WKWHeader(dataStream, readJumpTable = true)
       } yield {
@@ -297,7 +297,7 @@ object WKWFile extends WKWCompressionHelper {
     (0 until header.numBlocksPerCube).foldLeft[Box[Array[Int]]](Full(Array.emptyIntArray)) {
       case (Full(blockLengths), _) =>
         if (blocks.hasNext) {
-          val data = blocks.next
+          val data = blocks.next()
           for {
             _ <- (data.length == header.numBytesPerBlock) ?~! error("Unexpected block size", header.numBytesPerBlock, data.length)
             compressedBlock <- if (header.isCompressed) compressBlock(header.blockType)(data) else Full(data)
