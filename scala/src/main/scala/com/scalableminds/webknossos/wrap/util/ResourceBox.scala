@@ -1,25 +1,29 @@
 package com.scalableminds.webknossos.wrap.util
 
-import net.liftweb.common.{Box, Failure}
+import net.liftweb.common.Box
+import net.liftweb.common.{Failure => BoxFailure}
 import net.liftweb.util.Helpers.tryo
-import resource._
+
+import scala.util.Using.Releasable
+import scala.util.{Success, Using, Failure => TryFailure}
+
 
 object ResourceBox {
-  def apply[R : Resource](resource: => R): Box[R] = {
+  def apply[R : Releasable](resource: => R): Box[R] = {
     tryo(resource) ~> "Exception during resource creation"
   }
 
-  def manage[R : Resource, T](resource: => R)(f: R => Box[T]): Box[T] = {
+  def manage[R : Releasable, T](resource: => R)(f: R => Box[T]): Box[T] = {
     for {
       r <- ResourceBox(resource)
-      result <- managed(r).map(f).either.either match {
-        case Left(ex) =>
-          Failure(s"Exception during resource management: ${ex.toString}")
-        case Right(result) =>
-          result
-      }
-    } yield {
-      result
-    }
+      result <- Using.Manager { use =>
+          f(use(r))
+        } match {
+          case TryFailure(ex) =>
+            BoxFailure(s"Exception during resource management: ${ex.toString}")
+          case Success(result) =>
+            result
+        }
+    } yield result
   }
 }
