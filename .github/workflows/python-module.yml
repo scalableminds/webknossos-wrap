@@ -83,7 +83,7 @@ jobs:
         run: |
           cd python
           export PATH=$PATH:$HOME/.cargo/bin
-          pip install wheel
+          pip install wheel setuptools
           python setup.py bdist_wheel -p macosx-10.9-universal2
           pip install dist/*.whl
       - name: Test
@@ -117,7 +117,7 @@ jobs:
       - name: Build
         run: |
           cd python
-          pip install wheel
+          pip install wheel setuptools
           python setup.py bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform())")
           pip install dist/*.whl
       - name: Test
