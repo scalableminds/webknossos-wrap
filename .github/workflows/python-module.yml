@@ -42,7 +42,7 @@ jobs:
             testing \
             bash -c "\$PYBIN/black --check ."
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: wheels-lin
           path: ./python/dist/*.whl
@@ -55,7 +55,7 @@ jobs:
             testing \
             bash -c "\$PYBIN/python setup.py sdist"
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: targz
           path: ./python/dist/*.tar.gz
