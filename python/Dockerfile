@@ -13,7 +13,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- --no-modify-path -y; \
     cargo --version; \
     rustc --version;
 
-RUN for PYBIN in /opt/python/{cp37-cp37m,cp38-cp38,cp39-cp39,cp310-cp310,cp311-cp311}/bin; do \
+RUN for PYBIN in /opt/python/{cp38-cp38,cp39-cp39,cp310-cp310,cp311-cp311,cp312-cp312}/bin; do \
   echo "--> $PYBIN"; \
   $PYBIN/pip install \
     numpy \
