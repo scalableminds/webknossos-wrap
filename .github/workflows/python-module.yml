@@ -44,7 +44,7 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
-          name: wheels
+          name: wheels-lin
           path: ./python/dist/*.whl
 
       - name: Make sdist
@@ -61,11 +61,11 @@ jobs:
           path: ./python/dist/*.tar.gz
 
   build_mac:
-    runs-on: macos-12
+    runs-on: macos-13
     strategy:
       max-parallel: 4
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
@@ -83,7 +83,7 @@ jobs:
         run: |
           cd python
           export PATH=$PATH:$HOME/.cargo/bin
-          pip install wheel
+          pip install wheel setuptools
           python setup.py bdist_wheel -p macosx-10.9-universal2
           pip install dist/*.whl
       - name: Test
@@ -93,9 +93,9 @@ jobs:
           pip install pytest
           pytest tests
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-mac-py${{ matrix.python-version }}
           path: ./python/dist/*.whl
 
   build_win:
@@ -106,18 +106,18 @@ jobs:
     strategy:
       max-parallel: 4
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           architecture: "x64" # (x64 or x86)
       - name: Build
         run: |
           cd python
-          pip install wheel
+          pip install wheel setuptools
           python setup.py bdist_wheel -p $(python -c "import distutils.util; print(distutils.util.get_platform())")
           pip install dist/*.whl
       - name: Test
@@ -133,9 +133,9 @@ jobs:
           python -c "import wkw"
           pytest tests -k "not big_read"
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-win-py${{ matrix.python-version }}
           path: ./python/dist/*.whl
 
   publish:
@@ -147,20 +147,21 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.event.ref, 'refs/tags')
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: "0"
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
       - name: Get wheels
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
-          name: wheels
+          pattern: wheels-*
+          merge-multiple: true
           path: dist
       - name: Get tar.gz
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: targz
           path: dist
