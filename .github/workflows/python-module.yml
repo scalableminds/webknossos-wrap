@@ -94,8 +94,9 @@ jobs:
           pytest tests
 
       - uses: actions/upload-artifact@v4
+        if: ${{ matrix.python-version == '3.12' }}
         with:
-          name: wheels-mac-py${{ matrix.python-version }}
+          name: wheels-mac
           path: ./python/dist/*.whl
 
   build_win:
@@ -134,8 +135,9 @@ jobs:
           pytest tests -k "not big_read"
 
       - uses: actions/upload-artifact@v4
+        if: ${{ matrix.python-version == '3.12' }}
         with:
-          name: wheels-win-py${{ matrix.python-version }}
+          name: wheels-win
           path: ./python/dist/*.whl
 
   publish:
