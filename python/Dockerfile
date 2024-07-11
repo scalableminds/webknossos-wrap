@@ -3,7 +3,7 @@ FROM quay.io/pypa/manylinux2014_x86_64
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH \
-    PYBIN=/opt/python/cp37-cp37m/bin
+    PYBIN=/opt/python/cp312-cp312/bin
     
 RUN git config --global --add safe.directory /app
 
