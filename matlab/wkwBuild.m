@@ -20,10 +20,10 @@ function wkwBuild()
     % make link paths available for cargo
     exportExtraLinkPaths(extraLinkPaths);
     
-    buildWithCargo('wkw_compress', 'wkwCompress');
-    buildWithCargo('wkw_init', 'wkwInit');
+    %buildWithCargo('wkw_compress', 'wkwCompress');
+    %buildWithCargo('wkw_init', 'wkwInit');
     buildWithCargo('wkw_load', 'wkwLoadRoi');
-    buildWithCargo('wkw_save', 'wkwSaveRoi');
+    %buildWithCargo('wkw_save', 'wkwSaveRoi');
 end
 
 function buildWithCargo(oldName, newName)
@@ -35,14 +35,14 @@ function buildWithCargo(oldName, newName)
     
     % build project
     cd(cargoDir);
-    system('cargo clean');
-    system('cargo update');
+    %system('cargo clean');
+    %system('cargo update');
     
     if ismac
         % In case the binary is build on arm64 make sure to use x86 as the
         % target.
-        system('cargo build --release --target=x86_64-apple-darwin');
-        libDir = fullfile(cargoDir, 'target', 'x86_64-apple-darwin', 'release');
+        system('cargo build --release --target=aarch64-apple-darwin');
+        libDir = fullfile(cargoDir, 'target', 'aarch64-apple-darwin', 'release');
     else
         system('cargo build --release');
         libDir = fullfile(cargoDir, 'target', 'release');
