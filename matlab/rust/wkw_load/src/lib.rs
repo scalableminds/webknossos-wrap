@@ -4,7 +4,6 @@ extern crate zarrs;
 #[macro_use]
 extern crate wkw_mex;
 use wkw_mex::*;
-use wkwrap::{Box3, Mat, Vec3, VoxelType};
 use zarrs::array::data_type::DataType;
 use zarrs::array::Array;
 use zarrs::array_subset::ArraySubset;
@@ -40,55 +39,37 @@ mex_function!(nlhs, lhs, nrhs, rhs, {
     );
     let array = zarrs_result_to_str_error(Array::open(store.clone(), "/"))?;
 
-    let num_channels = array.shape()[0] as usize;
-    let is_multi_channel = num_channels > 1;
+    let array_shape = array.shape();
+    let ndim = array_shape.len();
+    let data_type = array.data_type();
+    let type_size = if let Some(type_size) = data_type.fixed_size() {
+        type_size
+    } else {
+        return Err("Unsupported data type".to_string());
+    };
 
     // build shape
-    let bbox = mx_array_to_wkwrap_box(rhs[1])?;
+    let (bbox_start, bbox_shape) = mx_array_to_bbox(rhs[1], ndim)?;
+
+    if bbox_start
+        .iter()
+        .zip(bbox_shape.iter())
+        .zip(array_shape.iter())
+        .any(|((bbox_min_x, bbox_shape_x), shape_x)| (*bbox_min_x + *bbox_shape_x) > *shape_x)
+    {
+        return Err(format!(
+            "Bounding box start={:?}, shape={:?} is out of bounds for array of shape={:?}.",
+            bbox_start, bbox_shape, array_shape
+        ));
+    }
+    println!("{:?} {:?}", bbox_start, bbox_shape);
     let subset = zarrs_result_to_str_error(ArraySubset::new_with_start_shape(
-        vec![
-            0,
-            bbox.min().x as u64,
-            bbox.min().y as u64,
-            bbox.min().z as u64,
-        ],
-        vec![
-            1,
-            bbox.width().x as u64,
-            bbox.width().y as u64,
-            bbox.width().z as u64,
-        ],
+        bbox_start.clone(),
+        bbox_shape.clone(),
     ))?;
 
-    let shape_arr = [
-        num_channels,
-        bbox.width().x as usize,
-        bbox.width().y as usize,
-        bbox.width().z as usize,
-    ];
-    let shape_slice = if is_multi_channel {
-        &shape_arr[0..]
-    } else {
-        &shape_arr[1..]
-    };
-
     // prepare allocation
-    let voxel_type = match array.data_type() {
-        DataType::UInt8 => VoxelType::U8,
-        DataType::UInt16 => VoxelType::U16,
-        DataType::UInt32 => VoxelType::U32,
-        DataType::UInt64 => VoxelType::U64,
-        DataType::Float32 => VoxelType::F32,
-        DataType::Float64 => VoxelType::F64,
-        DataType::Int8 => VoxelType::I8,
-        DataType::Int16 => VoxelType::I16,
-        DataType::Int32 => VoxelType::I32,
-        DataType::Int64 => VoxelType::I64,
-        _ => {
-            return Err("Unsupported data type".to_string());
-        }
-    };
-    let class = match array.data_type() {
+    let mat_class = match array.data_type() {
         DataType::UInt8 => MxClassId::Uint8,
         DataType::UInt16 => MxClassId::Uint16,
         DataType::UInt32 => MxClassId::Uint32,
@@ -106,24 +87,16 @@ mex_function!(nlhs, lhs, nrhs, rhs, {
 
     // read data
     let data_all = zarrs_result_to_str_error(array.retrieve_array_subset(&subset))?;
-    let mut buf = zarrs_result_to_str_error(data_all.into_fixed())?.into_owned(); // in c-order
-    let src_mat = Mat::new(
-        &mut buf,
-        bbox.width(),
-        voxel_type.size() * num_channels,
-        voxel_type,
-        true,
-    )?;
-    let arr = create_numeric_array(shape_slice, class, MxComplexity::Real)?;
-    let mut mat = mx_array_mut_to_wkwrap_mat(is_multi_channel, arr)?;
+    let zarr_buf = zarrs_result_to_str_error(data_all.into_fixed())?.into_owned(); // in c-order
 
-    src_mat.copy_as_fortran_order(
-        &mut mat,
-        Box3::new(Vec3 { x: 0, y: 0, z: 0 }, bbox.width())?,
-    )?;
+    println!("zarr_buf: {:?}", zarr_buf);
+
+    let mat_arr = create_numeric_array(&bbox_shape, mat_class, MxComplexity::Real)?;
+
+    copy_as_fortran_order(&zarr_buf, mat_arr, &bbox_shape, type_size)?;
 
     // set output
-    lhs[0] = arr;
+    lhs[0] = mat_arr;
 
     Ok(())
 });
