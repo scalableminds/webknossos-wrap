@@ -62,7 +62,6 @@ mex_function!(nlhs, lhs, nrhs, rhs, {
             bbox_start, bbox_shape, array_shape
         ));
     }
-    println!("{:?} {:?}", bbox_start, bbox_shape);
     let subset = zarrs_result_to_str_error(ArraySubset::new_with_start_shape(
         bbox_start.clone(),
         bbox_shape.clone(),
@@ -88,8 +87,6 @@ mex_function!(nlhs, lhs, nrhs, rhs, {
     // read data
     let data_all = zarrs_result_to_str_error(array.retrieve_array_subset(&subset))?;
     let zarr_buf = zarrs_result_to_str_error(data_all.into_fixed())?.into_owned(); // in c-order
-
-    println!("zarr_buf: {:?}", zarr_buf);
 
     let mat_arr = create_numeric_array(&bbox_shape, mat_class, MxComplexity::Real)?;
 

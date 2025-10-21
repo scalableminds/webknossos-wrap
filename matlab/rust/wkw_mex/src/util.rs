@@ -17,31 +17,6 @@ pub fn as_nat(f: f64) -> Result<u64> {
     }
 }
 
-pub fn as_log2(f: f64) -> Result<u8> {
-    let i = as_nat(f)?;
-
-    match i & (i - 1) == 0 {
-        true => Ok(i.trailing_zeros() as u8),
-        false => Err("Input must be a power of two".to_string()),
-    }
-}
-
-pub fn str_slice_to_mx_class_id(class_id: &str) -> Result<MxClassId> {
-    match class_id {
-        "uint8" => Ok(MxClassId::Uint8),
-        "uint16" => Ok(MxClassId::Uint16),
-        "uint32" => Ok(MxClassId::Uint32),
-        "uint64" => Ok(MxClassId::Uint64),
-        "single" => Ok(MxClassId::Single),
-        "double" => Ok(MxClassId::Double),
-        "int8" => Ok(MxClassId::Int8),
-        "int16" => Ok(MxClassId::Int16),
-        "int32" => Ok(MxClassId::Int32),
-        "int64" => Ok(MxClassId::Int64),
-        _ => Err("Unknown MxClassId name".to_string()),
-    }
-}
-
 pub fn mx_array_to_str<'a>(pm: MxArray) -> Result<&'a str> {
     let pm_ptr = unsafe { mxArrayToUTF8String(pm) };
 
@@ -73,15 +48,6 @@ pub fn mx_array_to_f64_slice<'a>(pm: MxArray) -> Result<&'a [f64]> {
     match pm_ptr.is_null() {
         true => Err("MxArray does not contain real values".to_string()),
         false => Ok(unsafe { slice::from_raw_parts(pm_ptr, pm_numel) }),
-    }
-}
-
-pub fn mx_array_to_f64(pm: MxArray) -> Result<f64> {
-    let pm_slice = mx_array_to_f64_slice(pm)?;
-
-    match pm_slice.len() {
-        1 => Ok(pm_slice[0]),
-        _ => Err("MxArray contains an invalid number of doubles".to_string()),
     }
 }
 
@@ -220,4 +186,58 @@ pub fn copy_as_fortran_order(
     }
 
     Ok(())
+}
+
+fn f64_slice_to_vec(buf: &[f64]) -> Result<Vec<u64>> {
+    buf.iter()
+        .map(|x| as_nat(*x).or(Err("Invalid value".to_string())))
+        .collect()
+}
+
+pub fn mx_array_to_bbox(pm: MxArray, ndim: usize) -> Result<(Vec<u64>, Vec<u64>)> {
+    let buf = mx_array_to_f64_slice(pm)?;
+
+    // verify shape of array
+    let input_arg_shape = mx_array_size_to_usize_slice(pm);
+    if input_arg_shape != &[ndim, 2] {
+        return Err(format!(
+            "Bounding box has invalid shape. Needs to be [{}, 2]. Got {:?}.",
+            ndim, input_arg_shape
+        ));
+    }
+
+    let bbox_min_f64 = &buf[0..ndim];
+    let bbox_max_f64 = &buf[ndim..(ndim * 2)];
+    let bbox_min = f64_slice_to_vec(bbox_min_f64)
+        .or(Err(format!("Invalid lower bound. Got {:?}.", bbox_min_f64)))?;
+    let bbox_max = f64_slice_to_vec(bbox_max_f64)
+        .or(Err(format!("Invalid upper bound. Got {:?}.", bbox_max_f64)))?;
+
+    if bbox_min
+        .iter()
+        .zip(bbox_max.iter())
+        .any(|(min_x, max_x)| min_x >= max_x)
+    {
+        return Err(format!(
+            "Bounding box has invalid shape. Got min={:?}, max={:?}.",
+            bbox_min, bbox_max
+        ));
+    }
+
+    let bbox_shape: Vec<u64> = bbox_min
+        .iter()
+        .zip(bbox_max.iter())
+        .map(|(min_x, max_x)| max_x - min_x)
+        .collect();
+
+    let bbox_min = bbox_min.iter().map(|x| x - 1).collect();
+
+    if bbox_shape.iter().any(|x| *x < 1) {
+        return Err(format!(
+            "Bounding box has invalid shape. Got {:?}.",
+            bbox_shape
+        ));
+    }
+
+    Ok((bbox_min, bbox_shape))
 }
